@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { resolveModel } from '../core/LLMBudget.js';
 import aegisConfig from '../aegis.config.js';
+import { trace } from '../monitoring/tracing.js';
 
 dotenv.config();
 
@@ -52,25 +53,29 @@ async function fetchChatCompletion(apiKey, body) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
     try {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'http://localhost:3001',
-                'X-Title': 'Aegis DeFAI Terminal',
-            },
-            body: JSON.stringify(body),
-            signal: controller.signal
-        });
+        // Phase 4 (D8) — trace the LLM call (no-op when tracing disabled)
+        return await trace('aegis.llm', async (span) => {
+            span.setAttribute('model', String(body.model || ''));
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': 'http://localhost:3001',
+                    'X-Title': 'Aegis DeFAI Terminal',
+                },
+                body: JSON.stringify(body),
+                signal: controller.signal
+            });
 
-        if (!response.ok) {
-            const err = new Error(`OpenRouter API error: ${response.statusText}`);
-            err.status = response.status;
-            throw err;
-        }
+            if (!response.ok) {
+                const err = new Error(`OpenRouter API error: ${response.statusText}`);
+                err.status = response.status;
+                throw err;
+            }
 
-        return await response.json();
+            return await response.json();
+        }, { model: String(body.model || '') });
     } finally {
         // Clear the abort timer even when fetch rejects at the network layer
         clearTimeout(timeoutId);

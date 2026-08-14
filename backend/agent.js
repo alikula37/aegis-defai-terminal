@@ -15,6 +15,7 @@ import { createExecutionLayer } from './execution/ExecutionLayer.js';
 import { resolveOnchainDeps, resolveExecutionMode } from './execution/onchainSetup.js';
 import aegisConfig from './aegis.config.js';
 import { notificationService } from './utils/NotificationService.js';
+import { trace } from './monitoring/tracing.js';
 
 // ---- Retry utility ----
 async function withRetry(fn, { maxRetries = 3, baseDelay = 1000, name = '' } = {}) {
@@ -389,6 +390,8 @@ export class AegisAgent {
     async runCycle() {
         if (!this.isRunning) return;
 
+        // Phase 4 (D8) — trace the full cycle as one span (no-op when disabled).
+        return trace('aegis.cycle', async (span) => {
         // B2.5-7 — stuck-detection watchdog: if the cycle takes longer than
         // cycleWatchdogMs, an alert is broadcast. The timer fires even if the
         // cycle hangs forever (the awaited work never resolves).
@@ -492,11 +495,13 @@ export class AegisAgent {
             }
             await this.executionLayer.execute(response, marketData, conditions);
             this._recordCycleMetrics();
+            try { span.setAttribute('decision', response.decision); } catch (_) { /* ignore */ }
 
         } catch (error) {
             this.logAndBroadcast('system', `❌ Error in agent cycle: ${error.message}`);
         } finally {
             if (watchdog) clearTimeout(watchdog);
         }
+        });
     }
 }

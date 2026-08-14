@@ -11,6 +11,7 @@ import { AavePoolConnector } from './connectors/AavePoolConnector.js';
 import { EthenaConnector } from './connectors/EthenaConnector.js';
 import { PendleConnector } from './connectors/PendleConnector.js';
 import { TOKENS } from './connectors/protocolConfig.js';
+import { trace } from '../monitoring/tracing.js';
 
 /**
  * Pure slippage guard: returns true when `actual` is within `bps` (basis
@@ -325,6 +326,9 @@ export class OnchainExecution {
     }
 
     async _executePlan(plan, marketData, response) {
+        return trace('aegis.onchain', async (span) => {
+        span.setAttribute('steps', plan.length);
+        span.setAttribute('decision', response?.decision || 'unknown');
         const maxGasUsd = this.config.maxGasLimitUsd ?? 10;
         const feeData = await this.provider.getFeeData().catch(() => null);
         const gasPriceGwei = feeData?.gasPrice ? Number(feeData.gasPrice) / 1e9 : marketData.gasPrice;
@@ -378,6 +382,7 @@ export class OnchainExecution {
         if (this.insertMemory && this._lastMarketData) {
             this.insertMemory(this._lastMarketData, response?.decision || 'onchain', true, -totalGasUsd, this.activeSimulationId);
         }
+        });
     }
 
     // ---- small numeric/state helpers (kept local to the backend) ----

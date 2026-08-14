@@ -1,0 +1,93 @@
+{
+  "title": "Aegis DeFAI Terminal",
+  "uid": "aegis-defai",
+  "version": 1,
+  "schemaVersion": 39,
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "30s",
+  "timezone": "browser",
+  "tags": ["aegis", "defai"],
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Ajan Durumu",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "targets": [{ "refId": "A", "expr": "aegis_agent_running" }],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Portföy TVL (USD)",
+      "gridPos": { "h": 6, "w": 8, "x": 4, "y": 0 },
+      "targets": [{ "refId": "A", "expr": "aegis_portfolio_tvl" }]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "HTTP İstek Hızı",
+      "gridPos": { "h": 6, "w": 8, "x": 12, "y": 0 },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(aegis_http_requests_total[5m])) by (status)" },
+        { "refId": "B", "expr": "sum(rate(aegis_http_requests_total[5m])) by (route)" }
+      ],
+      "legend": { "displayMode": "list" }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Ajan Döngü Gecikmesi (aegis.cycle)",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.95, sum(rate(aegis_span_duration_seconds_bucket{name=\"aegis.cycle\"}[5m])) by (le))", "legendFormat": "p95" },
+        { "refId": "B", "expr": "histogram_quantile(0.5, sum(rate(aegis_span_duration_seconds_bucket{name=\"aegis.cycle\"}[5m])) by (le))", "legendFormat": "p50" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "LLM Çağrıları",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 6 },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(aegis_llm_calls_total[5m])) by (kind)" },
+        { "refId": "B", "expr": "sum(rate(aegis_llm_calls_total[5m])) by (model)" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Araç Çağrıları",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 6 },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(aegis_tool_calls_total[5m])) by (tool)" }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Span Hata Oranı",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(aegis_spans_total{status=\"error\"}[5m])) by (name)", "legendFormat": "{{name}}" }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Bağlı WS İstemcileri",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "targets": [{ "refId": "A", "expr": "aegis_ws_clients" }]
+    }
+  ]
+}

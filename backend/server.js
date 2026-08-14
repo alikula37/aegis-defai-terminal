@@ -11,6 +11,7 @@ import { z } from 'zod';
 import logger from './utils/logger.js';
 import { validateWsSubprotocol, expectedWsKey } from './utils/wsAuth.js';
 import { createMetrics } from './monitoring/metrics.js';
+import { initTracing } from './monitoring/tracing.js';
 import { apiKeyMiddleware } from './utils/apiAuth.js';
 import { createRateLimiter } from './utils/rateLimit.js';
 
@@ -19,6 +20,10 @@ dotenv.config();
 const app = express();
 const server = createServer(app);
 const metrics = createMetrics();
+
+// Phase 4 (D8) — OpenTelemetry spans folded into the prom-client registry.
+// Enable with OTEL_ENABLED=true (docs/OBSERVABILITY.md).
+initTracing({ registry: metrics.registry, enabled: process.env.OTEL_ENABLED === 'true' });
 const wss = new WebSocketServer({
     server,
     // Auth via Sec-WebSocket-Protocol subprotocol (not query string)

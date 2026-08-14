@@ -83,6 +83,9 @@ export function createMetrics(registry = new Registry()) {
         llmCalls,
         llmCallsPerCycle,
         toolCallsPerCycle,
+        // Phase 4 (D8) — expose the shared registry so OTel tracing can fold
+        // span samples into the same /metrics output.
+        registry,
         render: () => registry.metrics(),
     };
 }

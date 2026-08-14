@@ -19,6 +19,9 @@
     "npm": ">=9.0.0"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/sdk-trace-base": "^2.10.0",
+    "@opentelemetry/sdk-trace-node": "^2.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.0",
     "ethers": "^6.17.0",
