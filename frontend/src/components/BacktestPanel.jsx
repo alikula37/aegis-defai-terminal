@@ -152,15 +152,15 @@ export default function BacktestPanel() {
                         <div className="mt-2 h-48">
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={result.data.equityCurve} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#444746" opacity={0.2} vertical={false} />
-                                    <XAxis dataKey="date" stroke="#8e918f" fontSize={10} fontFamily="JetBrains Mono" tickLine={false} axisLine={false} tickMargin={8} minTickGap={30} />
-                                    <YAxis stroke="#8e918f" fontSize={10} fontFamily="JetBrains Mono" tickFormatter={v => `${(v - 1) * 100 >= 0 ? '+' : ''}${((v - 1) * 100).toFixed(1)}%`} tickLine={false} axisLine={false} tickMargin={6} width={56} />
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#23252a" opacity={0.2} vertical={false} />
+                                    <XAxis dataKey="date" stroke="#383b3f" fontSize={10} fontFamily="JetBrains Mono" tickLine={false} axisLine={false} tickMargin={8} minTickGap={30} />
+                                    <YAxis stroke="#383b3f" fontSize={10} fontFamily="JetBrains Mono" tickFormatter={v => `${(v - 1) * 100 >= 0 ? '+' : ''}${((v - 1) * 100).toFixed(1)}%`} tickLine={false} axisLine={false} tickMargin={6} width={56} />
                                     <Tooltip
                                         content={({ active, payload }) => {
                                             if (!active || !payload?.length) return null;
                                             const p = payload[0].payload;
                                             return (
-                                                <div className="bg-[#1a1d1e]/95 backdrop-blur-md border border-white/10 rounded-xl p-3 shadow-2xl">
+                                                <div className="bg-[#161718]/95 backdrop-blur-md border border-white/10 rounded-xl p-3 shadow-2xl">
                                                     <p className="font-[JetBrains_Mono] text-[10px] text-on-surface-variant">{p.date}</p>
                                                     <p className="font-[JetBrains_Mono] text-[12px] font-bold text-on-surface mt-1">
                                                         {((p.equity - 1) * 100 >= 0 ? '+' : '')}{((p.equity - 1) * 100).toFixed(2)}%
@@ -169,8 +169,8 @@ export default function BacktestPanel() {
                                             );
                                         }}
                                     />
-                                    <ReferenceLine y={1} stroke="#8e918f" strokeDasharray="4 4" opacity={0.4} />
-                                    <Line type="monotone" dataKey="equity" stroke="#8ab4f8" strokeWidth={2} dot={false} isAnimationActive={false} />
+                                    <ReferenceLine y={1} stroke="#383b3f" strokeDasharray="4 4" opacity={0.4} />
+                                    <Line type="monotone" dataKey="equity" stroke="#17c3b2" strokeWidth={2} dot={false} isAnimationActive={false} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>

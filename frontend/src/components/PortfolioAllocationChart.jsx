@@ -1,7 +1,7 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useWebSocket } from '../contexts/WebSocketContext';
 
-const COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'];
+const COLORS = ['#17c3b2', '#27a644', '#8b5cf6', '#f5a623', '#eb5757'];
 
 export default function PortfolioAllocationChart() {
     const { portfolioData } = useWebSocket();

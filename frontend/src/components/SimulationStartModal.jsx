@@ -254,7 +254,7 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                     <button
                         type="submit"
                         disabled={isLoadingSettings || isSaving || isStarting}
-                        className="w-full py-2.5 mt-4 rounded-md font-[JetBrains_Mono] text-[14px] font-medium transition-colors flex items-center justify-center gap-2 bg-primary text-on-primary hover:bg-primary-fixed hover:text-on-primary-fixed disabled:opacity-50"
+                        className="w-full py-2.5 mt-4 rounded-md font-[JetBrains_Mono] text-[14px] font-[510] transition-colors flex items-center justify-center gap-2 bg-linear-to-r from-[#0f8a7e] via-[#17c3b2] to-[#7ff0e3] text-accent-contrast hover:brightness-110 disabled:opacity-50"
                     >
                         <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
                         {isStarting ? 'Starting...' : isSaving ? 'Saving & Launching...' : 'Launch Agent'}

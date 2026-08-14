@@ -8,8 +8,8 @@ export default function RiskAlerts() {
     const alerts = deriveRiskAlerts(portfolioData, settings);
 
     return (
-        <div className="bg-surface-container border border-outline-variant rounded-md p-6 flex flex-col">
-            <h3 className="font-[Inter] text-[20px] leading-[28px] font-semibold text-on-surface mb-6 pb-4 border-b border-outline-variant flex items-center gap-2">
+        <div className="bg-surface-container border border-outline rounded-lg p-5 flex flex-col">
+            <h3 className="font-[Inter] text-[18px] leading-[24px] font-[510] text-paper mb-4 pb-4 border-b border-outline-variant flex items-center gap-2">
                 <span className="material-symbols-outlined text-warning text-[20px]">warning</span> Risk Alerts
             </h3>
             <div className="flex flex-col gap-3">

@@ -75,7 +75,7 @@ export default function TransactionAnalytics() {
         if (!active || !payload || !payload.length) return null;
         const data = payload[0].payload;
         return (
-            <div className="bg-[#1a1d1e]/95 backdrop-blur-md border border-white/10 rounded-xl p-4 shadow-2xl min-w-[200px]">
+            <div className="bg-[#161718]/95 backdrop-blur-md border border-white/10 rounded-xl p-4 shadow-2xl min-w-[200px]">
                 <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mb-2 pb-2 border-b border-white/10">
                     {data.time}
                 </p>
@@ -162,7 +162,7 @@ export default function TransactionAnalytics() {
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: '#ffffff05' }} />
                                 <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                                     {transactions.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? '#34a853' : '#ea4335'} />
+                                        <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? '#27a644' : '#eb5757'} />
                                     ))}
                                 </Bar>
                             </BarChart>
@@ -184,7 +184,7 @@ export default function TransactionAnalytics() {
                                 <YAxis dataKey="netApy" type="number" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}%`} domain={['auto', 'auto']} />
                                 <ZAxis dataKey="pnl" range={[50, 400]} />
                                 <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
-                                <Scatter name="Transactions" data={transactions} fill="#8ab4f8" fillOpacity={0.8} />
+                                <Scatter name="Transactions" data={transactions} fill="#17c3b2" fillOpacity={0.8} />
                             </ScatterChart>
                         </ResponsiveContainer>
                     </div>

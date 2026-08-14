@@ -36,7 +36,7 @@ export default function TvlProjectionChart() {
         if (!active || !payload || !payload.length) return null;
         const data = payload[0].payload;
         return (
-            <div className="bg-[#1a1d1e]/95 backdrop-blur-md border border-white/10 rounded-xl p-4 shadow-2xl min-w-[200px]">
+            <div className="bg-[#161718]/95 backdrop-blur-md border border-white/10 rounded-xl p-4 shadow-2xl min-w-[200px]">
                 <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mb-2 pb-2 border-b border-white/10">
                     {data.time}
                 </p>
@@ -81,8 +81,8 @@ export default function TvlProjectionChart() {
                     <AreaChart data={projectionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorTvl" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#8ab4f8" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="#8ab4f8" stopOpacity={0} />
+                                <stop offset="5%" stopColor="#17c3b2" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="#17c3b2" stopOpacity={0} />
                             </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
@@ -99,7 +99,7 @@ export default function TvlProjectionChart() {
                         <Area
                             type="monotone"
                             dataKey="tvl"
-                            stroke="#8ab4f8"
+                            stroke="#17c3b2"
                             strokeWidth={2}
                             fillOpacity={1}
                             fill="url(#colorTvl)"

@@ -104,7 +104,7 @@ export default function AgentTerminal() {
     }, [logs]);
 
     return (
-        <div className="bg-slate-950 border border-outline-variant rounded-md flex flex-col overflow-hidden">
+        <div className="bg-background border border-outline rounded-lg flex flex-col overflow-hidden">
             <div className="bg-surface-container-highest px-4 py-2 border-b border-outline-variant flex items-center gap-2">
                 <span className="material-symbols-outlined text-on-surface-variant text-[16px]">terminal</span>
                 <h3 className="font-[JetBrains_Mono] text-[13px] leading-[16px] font-medium text-on-surface">AI Agent Execution Logs</h3>

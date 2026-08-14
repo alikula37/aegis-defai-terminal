@@ -30,7 +30,7 @@ const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload || !payload.length) return null;
     const d = payload[0]?.payload || {};
     return (
-        <div className="bg-[#1a1d1e]/95 backdrop-blur-md border border-white/10 rounded-xl p-4 shadow-2xl min-w-[200px]">
+        <div className="bg-[#161718]/95 backdrop-blur-md border border-white/10 rounded-xl p-4 shadow-2xl min-w-[200px]">
             <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mb-3 border-b border-white/10 pb-2">
                 {label}
             </p>
@@ -67,9 +67,9 @@ const ChartLegend = ({ series }) => (
 );
 
 const SERIES = [
-    { key: 'netApy', label: 'Net APY (Leveraged)', color: '#8ab4f8' },
-    { key: 'pendleApy', label: 'Pendle PT Fixed', color: '#34a853' },
-    { key: 'morphoBorrow', label: 'Morpho Borrow Cost', color: '#f28b82' },
+    { key: 'netApy', label: 'Net APY (Leveraged)', color: '#17c3b2' },
+    { key: 'pendleApy', label: 'Pendle PT Fixed', color: '#27a644' },
+    { key: 'morphoBorrow', label: 'Morpho Borrow Cost', color: '#eb5757' },
 ];
 
 const MAX_POINTS = 1000; // Keep up to 1000 data points in memory
@@ -190,8 +190,8 @@ export default function LiveYieldChart() {
                         <ComposedChart data={data} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="gradNet" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#8ab4f8" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#8ab4f8" stopOpacity={0} />
+                                    <stop offset="5%" stopColor="#17c3b2" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#17c3b2" stopOpacity={0} />
                                 </linearGradient>
                                 <filter id="glow">
                                     <feGaussianBlur stdDeviation="3" result="blur" />
@@ -200,13 +200,13 @@ export default function LiveYieldChart() {
                             </defs>
                             <CartesianGrid
                                 strokeDasharray="3 3"
-                                stroke="#444746"
+                                stroke="#23252a"
                                 opacity={0.2}
                                 vertical={false}
                             />
                             <XAxis
                                 dataKey="time"
-                                stroke="#8e918f"
+                                stroke="#383b3f"
                                 fontSize={10}
                                 fontFamily="JetBrains Mono"
                                 tickLine={false}
@@ -215,7 +215,7 @@ export default function LiveYieldChart() {
                                 minTickGap={30}
                             />
                             <YAxis
-                                stroke="#8e918f"
+                                stroke="#383b3f"
                                 fontSize={10}
                                 fontFamily="JetBrains Mono"
                                 tickFormatter={v => `${v}%`}
@@ -225,47 +225,47 @@ export default function LiveYieldChart() {
                                 tickMargin={8}
                                 width={42}
                             />
-                            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#8ab4f8', strokeWidth: 1, strokeDasharray: '4 4', opacity: 0.4 }} />
+                            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#17c3b2', strokeWidth: 1, strokeDasharray: '4 4', opacity: 0.4 }} />
 
                             {/* Zero reference line */}
-                            <ReferenceLine y={0} stroke="#8e918f" strokeDasharray="4 4" opacity={0.4} />
+                            <ReferenceLine y={0} stroke="#383b3f" strokeDasharray="4 4" opacity={0.4} />
 
                             {/* Net APY — primary area */}
                             <Area
                                 type="monotone"
                                 dataKey="netApy"
                                 name="Net APY"
-                                stroke="#8ab4f8"
+                                stroke="#17c3b2"
                                 strokeWidth={2.5}
                                 fill="url(#gradNet)"
                                 isAnimationActive={false}
                                 filter="url(#glow)"
                                 dot={false}
-                                activeDot={{ r: 5, fill: '#8ab4f8', stroke: '#1e1e1e', strokeWidth: 2 }}
+                                activeDot={{ r: 5, fill: '#17c3b2', stroke: '#0f1011', strokeWidth: 2 }}
                             />
                             {/* Pendle fixed APY */}
                             <Line
                                 type="monotone"
                                 dataKey="pendleApy"
                                 name="Pendle PT"
-                                stroke="#34a853"
+                                stroke="#27a644"
                                 strokeWidth={1.5}
                                 strokeDasharray="6 3"
                                 isAnimationActive={false}
                                 dot={false}
-                                activeDot={{ r: 4, fill: '#34a853', stroke: '#1e1e1e', strokeWidth: 2 }}
+                                activeDot={{ r: 4, fill: '#27a644', stroke: '#0f1011', strokeWidth: 2 }}
                             />
                             {/* Morpho borrow cost */}
                             <Line
                                 type="monotone"
                                 dataKey="morphoBorrow"
                                 name="Morpho Borrow"
-                                stroke="#f28b82"
+                                stroke="#eb5757"
                                 strokeWidth={1.5}
                                 strokeDasharray="3 3"
                                 isAnimationActive={false}
                                 dot={false}
-                                activeDot={{ r: 4, fill: '#f28b82', stroke: '#1e1e1e', strokeWidth: 2 }}
+                                activeDot={{ r: 4, fill: '#eb5757', stroke: '#0f1011', strokeWidth: 2 }}
                             />
                         </ComposedChart>
                     </ResponsiveContainer>
