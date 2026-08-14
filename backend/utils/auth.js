@@ -189,4 +189,4 @@ export function closeUserSockets(userId, socketsByUser) {
     }
 }
 
-export { deleteSessionsByUser, getUserById, logger };
+export { deleteSessionsByUser, getUserById, getSessionUser, logger };

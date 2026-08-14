@@ -93,7 +93,7 @@ describe('E9 auth (required mode)', () => {
         const fresh = `fresh_${Date.now()}`;
         const ok = await request(app).post('/api/auth/register').send({ username: fresh, password: 'Freshpass123' });
         expect(ok.status).toBe(201);
-        expect(ok.body.user.role).toBe('user'); // not first user → user
+        expect(ok.body.user.role).toBe('user'); // users already exist → user
         const dup = await request(app).post('/api/auth/register').send({ username: fresh, password: 'Freshpass123' });
         expect(dup.status).toBe(409);
         const bad = await request(app).post('/api/auth/register').send({ username: 'x', password: 'short' });
@@ -159,5 +159,18 @@ describe('E9 auth (required mode)', () => {
         expect(me.status).toBe(200);
         expect(me.body.user.username).toBe('local');
         expect(me.body.authRequired).toBe(false);
+    });
+
+    it('first real registration becomes admin (local seed excluded) — runs last', async () => {
+        // Simulate a fresh install: wipe every real user except the seeded
+        // 'local', then register — the account must get role 'admin'. Must run
+        // after the fixture-dependent tests, so it is declared last.
+        const { getAllUsers, deleteUserById } = await import('../db/database.js');
+        for (const u of getAllUsers()) deleteUserById(u.id);
+        const app = buildApp();
+        const first = `first_${Date.now()}`;
+        const res = await request(app).post('/api/auth/register').send({ username: first, password: 'FirstPass123' });
+        expect(res.status).toBe(201);
+        expect(res.body.user.role).toBe('admin');
     });
 });

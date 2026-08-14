@@ -7,10 +7,16 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - aegis_db_data:/app/db
+      - aegis_db_data:/app/data
     environment:
       - NODE_ENV=production
       - PORT=3001
+      # Database lives on the dedicated volume (source tree stays read-only).
+      - AEGIS_DB_PATH=/app/data/aegis.db
+      # Browser origin when served by the nginx frontend container (:80),
+      # plus the dev origin. apiClient defaults to http://localhost:3001,
+      # so cross-origin calls need both in the allowlist.
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:80,http://localhost:8080
     env_file:
       - ./backend/.env
     restart: unless-stopped
@@ -25,7 +31,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      # 80 is used on some hosts by other software and needs admin rights;
+      # 8080 avoids that while keeping the same nginx config.
+      - "8080:80"
     depends_on:
       backend:
         condition: service_healthy

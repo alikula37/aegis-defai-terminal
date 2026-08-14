@@ -10,7 +10,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Load backend/.env early so ENCRYPTION_KEY is available even when this
 // module is imported before server.js runs dotenv.config() (e.g. in tests).
 dotenv.config({ path: join(__dirname, '../.env') });
-const DB_PATH = join(__dirname, 'aegis.db');
+// AEGIS_DB_PATH lets containers keep the database file on a dedicated volume
+// instead of inside the source tree (docker-compose mounts it at /app/data).
+const DB_PATH = process.env.AEGIS_DB_PATH || join(__dirname, 'aegis.db');
 
 // Ensure directory exists
 mkdirSync(dirname(DB_PATH), { recursive: true });
@@ -52,6 +54,8 @@ try { db.exec('ALTER TABLE settings ADD COLUMN automation_rules TEXT;'); } catch
 try { db.exec('ALTER TABLE settings ADD COLUMN llm_tools_enabled INTEGER;'); } catch (e) { }
 // E9 — multi-user: owner column on user-facing resources.
 try { db.exec('ALTER TABLE settings ADD COLUMN user_id INTEGER;'); } catch (e) { }
+// simulations is created AFTER this block (see the big exec below), so the
+// ALTER below only serves old databases — fresh ones get user_id from CREATE.
 try { db.exec('ALTER TABLE simulations ADD COLUMN user_id INTEGER;'); } catch (e) { }
 
 db.exec(`
@@ -59,6 +63,7 @@ db.exec(`
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         status TEXT NOT NULL,
+        user_id INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -568,7 +573,9 @@ export function requireUserId(userId, fnName) {
 }
 
 export function countUsers() {
-    return Number(db.prepare('SELECT COUNT(*) AS c FROM users').get().c);
+    // E9 — the seeded 'local' user must not count: the FIRST real registration
+    // becomes admin (bootstrap), regardless of the local seed.
+    return Number(db.prepare("SELECT COUNT(*) AS c FROM users WHERE username != 'local'").get().c);
 }
 
 export function createUser(username, passwordHash, role = 'user') {

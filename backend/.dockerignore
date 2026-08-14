@@ -1,9 +1,7 @@
 node_modules
-dist
-.env
-.git
-.gitignore
-*.log
+logs
 coverage
-.vscode
-.DS_Store
+.env
+*.log
+db/aegis.db
+__tests__
