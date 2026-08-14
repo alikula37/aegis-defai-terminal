@@ -3,7 +3,10 @@ import request from 'supertest';
 import { WebSocket } from 'ws';
 import { app, server } from '../server.js';
 import db from '../db/database.js';
-import { updateSettings } from '../db/database.js';
+import { updateSettings, getLocalUserId } from '../db/database.js';
+
+// E9 — open-mode identity for direct DB writes in tests.
+const TEST_USER = () => getLocalUserId();
 
 const WS_URL = 'ws://localhost:3001';
 
@@ -130,7 +133,7 @@ describe('API Integration Tests', () => {
     });
 
     it('GET /api/simulation/export returns CSV with history and logs (B2.5-10)', async () => {
-        await updateSettings({ dataMode: 'SIM', dataScenario: 'stable' });
+        await updateSettings({ dataMode: 'SIM', dataScenario: 'stable' }, null, TEST_USER());
         const start = await request(app)
             .post('/api/simulation/start')
             .send({ initialBalance: 10000, simulationName: `Export Sim ${Date.now()}`, frequency: 'Low' });
@@ -148,7 +151,7 @@ describe('API Integration Tests', () => {
         const after = await request(app).get('/api/simulation/export');
         expect(after.status).toBe(200);
         expect(after.text).toContain('# Portfolio History');
-        await updateSettings({ dataMode: 'LIVE', dataScenario: 'stable' });
+        await updateSettings({ dataMode: 'LIVE', dataScenario: 'stable' }, null, TEST_USER());
     });
 
     it('GET /api/backtest/monte-carlo should return distribution stats', async () => {
@@ -230,7 +233,7 @@ describe('API Integration Tests', () => {
     it('full agent cycle runs end-to-end in SIM mode without crashing', async () => {
         // SIM mode → no external network. Bear scenario forces a critical path
         // (flash loan rescue) which exercises RiskEngine → DecisionEngine → SimulationExecution.
-        await updateSettings({ dataMode: 'SIM', dataScenario: 'bear' });
+        await updateSettings({ dataMode: 'SIM', dataScenario: 'bear' }, null, TEST_USER());
 
         const start = await request(app)
             .post('/api/simulation/start')
@@ -253,7 +256,7 @@ describe('API Integration Tests', () => {
 
         // Stop the simulation to avoid stray timers across the suite
         await request(app).post('/api/simulation/stop');
-        await updateSettings({ dataMode: 'LIVE', dataScenario: 'stable' });
+        await updateSettings({ dataMode: 'LIVE', dataScenario: 'stable' }, null, TEST_USER());
     }, 20000);
 
     it('GET /api/simulation/status reports the execution backend', async () => {

@@ -14,9 +14,9 @@ const DEFAULT_MODE = config.marketData.mode || 'LIVE';
  *   - SIM   → seeded scenario data (stress testing)
  */
 export class MarketDataSource {
-    static async resolveMode() {
+    static async resolveMode(userId = null) {
         try {
-            const settings = await getSettings();
+            const settings = await getSettings(userId);
             const mode = settings?.dataMode || DEFAULT_MODE;
             return { mode: mode.toUpperCase(), scenario: settings?.dataScenario || 'stable' };
         } catch (e) {
@@ -25,7 +25,7 @@ export class MarketDataSource {
     }
 
     static async getSnapshot(simulationState = {}, opts = {}) {
-        const { mode, scenario } = await this.resolveMode();
+        const { mode, scenario } = await this.resolveMode(opts.userId);
         if (mode === 'SIM') {
             return SimDataSource.getSnapshot(simulationState, { scenario, ...opts });
         }

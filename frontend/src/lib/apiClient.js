@@ -21,7 +21,8 @@ export async function apiFetch(path, options = {}) {
     if (options.body && !headers['Content-Type']) {
         headers['Content-Type'] = 'application/json';
     }
-    return fetch(BASE_URL + path, { ...options, headers });
+    // E9 — session cookie rides along on cross-origin dev calls (5173 → 3001).
+    return fetch(BASE_URL + path, { ...options, headers, credentials: 'include' });
 }
 
 // JSON fetch that treats non-2xx responses as errors — callers can no longer

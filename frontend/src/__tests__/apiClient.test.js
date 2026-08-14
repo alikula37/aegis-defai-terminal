@@ -45,4 +45,12 @@ describe('apiClient', () => {
         await apiFetch('/api/simulation/start', { method: 'POST', body: JSON.stringify({ a: 1 }) });
         expect(fetchMock.mock.calls[1][1].headers['Content-Type']).toBe('application/json');
     });
+
+    it('sends credentials so the session cookie rides along (E9)', async () => {
+        const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await apiFetch('/api/auth/me');
+        expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
+    });
 });

@@ -148,7 +148,7 @@ export class AegisAgent {
 
     async _broadcastOracle() {
         try {
-            const marketData = await withRetry(() => MarketDataSource.getSnapshot(simulationState, { simulationId: this.activeSimulationId }), { name: 'MarketDataSource.getSnapshot' });
+            const marketData = await withRetry(() => MarketDataSource.getSnapshot(simulationState, { simulationId: this.activeSimulationId, userId: this.ownerUserId }), { name: 'MarketDataSource.getSnapshot' });
             // Build a rich oracle payload (no DB write, just broadcast)
             const portfolio = await getLatestPortfolio(this.activeSimulationId);
             this.broadcast('portfolio_update', {
@@ -181,8 +181,14 @@ export class AegisAgent {
         }
     }
 
-    async startSimulation(initialBalance, settings = {}, simulationName = 'Default Simulation') {
+    async startSimulation(initialBalance, settings = {}, simulationName = 'Default Simulation', opts = {}) {
         if (this.isRunning) return;
+
+        // E9 — the simulation's owner binds every cycle's DB write + WS stream
+        // to one user. server.js always passes it; tests may omit (open mode).
+        if (opts.ownerUserId !== undefined) {
+            this.ownerUserId = opts.ownerUserId;
+        }
 
         this.simulationSettings = settings;
         this.startTime = Date.now();
@@ -202,7 +208,8 @@ export class AegisAgent {
         // not leave the agent wedged in a running-but-inert state (later
         // starts are silently ignored while isRunning=true).
         if (!settings.isResume) {
-            const result = await resetPortfolio(initialBalance, simulationName);
+            // E9 — prune/new simulation are scoped to the owner.
+            const result = await resetPortfolio(initialBalance, simulationName, null, this.ownerUserId);
             this.activeSimulationId = result.simulationId;
         }
 
@@ -406,7 +413,7 @@ export class AegisAgent {
             // 1. Fetch Real Market Data
             let marketData;
             try {
-                marketData = await withRetry(() => MarketDataSource.getSnapshot(simulationState, { simulationId: this.activeSimulationId }), { name: 'MarketDataSource.getSnapshot' });
+                marketData = await withRetry(() => MarketDataSource.getSnapshot(simulationState, { simulationId: this.activeSimulationId, userId: this.ownerUserId }), { name: 'MarketDataSource.getSnapshot' });
             } catch (error) {
                 this.logAndBroadcast('alert', `❌ Oracle API Error: ${error.message}. Postponing execution safely.`);
                 return; // Abort cycle safely
@@ -446,7 +453,7 @@ export class AegisAgent {
             }
 
             // 3. Decide (LLM + guardrails + deterministic fallback)
-            const settings = await getSettings();
+            const settings = await getSettings(this.ownerUserId);
             let response = await this._makeDecision(marketData, conditions, settings);
 
             const { response: validated, warnings } = validateLLMDecision(response, marketData, conditions, simulationState);
@@ -466,7 +473,7 @@ export class AegisAgent {
             // 4. Slippage / freshness check before executing
             if (['rebalance', 'claim', 'unwind', 'adjust_portfolio', 'reallocate_capital', 'flash_loan_rescue', 'migrate_borrow', 'cross_chain_migrate'].includes(response.decision)) {
                 try {
-                    const freshMarketData = await withRetry(() => MarketDataSource.getSnapshot(simulationState, { simulationId: this.activeSimulationId }), { name: 'fetchFreshMarketData' });
+                    const freshMarketData = await withRetry(() => MarketDataSource.getSnapshot(simulationState, { simulationId: this.activeSimulationId, userId: this.ownerUserId }), { name: 'fetchFreshMarketData' });
                     const hfDiff = Math.abs(freshMarketData.portfolio.healthFactor - marketData.portfolio.healthFactor);
 
                     // If HF changed by more than 0.05 (5%), abort execution

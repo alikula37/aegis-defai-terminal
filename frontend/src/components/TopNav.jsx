@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const pageTitles = {
     '/': 'Portfolio Overview',
@@ -12,6 +13,7 @@ const pageTitles = {
 export default function TopNav() {
     const location = useLocation();
     const { notifications, setNotifications, simulationName, isSimulationRunning, executionStatus } = useWebSocket();
+    const { user, authRequired, logout } = useAuth();
     const [showNotifications, setShowNotifications] = useState(false);
 
     const title = pageTitles[location.pathname] || 'Portfolio Overview';
@@ -103,6 +105,23 @@ export default function TopNav() {
                     )}
                 </div>
 
+                {authRequired && user && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-variant/50 border border-outline-variant">
+                        <span className="material-symbols-outlined text-[18px] text-on-surface-variant">person</span>
+                        <div className="flex flex-col leading-tight">
+                            <span className="text-[13px] font-medium text-on-surface">{user.username}</span>
+                            <span className="text-[11px] text-on-surface-variant">{user.role}</span>
+                        </div>
+                        <button
+                            onClick={() => logout()}
+                            title="Sign out"
+                            aria-label="Sign out"
+                            className="ml-1 text-on-surface-variant hover:text-error transition-colors"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">logout</span>
+                        </button>
+                    </div>
+                )}
                 <button
                     disabled
                     title="Wallet connection arrives in Phase 2 (onchain execution)."

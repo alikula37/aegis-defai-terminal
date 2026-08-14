@@ -1,11 +1,21 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
-import db, { insertLog, getLogs, insertPortfolioStats, getLatestPortfolio, resetPortfolio, updateSettings, getSettings, encrypt, decrypt } from '../db/database.js';
+import db, {
+    insertLog, getLogs, insertPortfolioStats, getLatestPortfolio, resetPortfolio,
+    updateSettings, getSettings, encrypt, decrypt,
+    getLocalUserId, createUser, getUserByUsername, getUserById, countUsers,
+    createSession, getSessionUser, deleteSession, incrementFailedAttempts, clearFailedAttempts,
+    deleteUserById, getAllSimulations, getSimulationById, getAllUsers,
+} from '../db/database.js';
 import crypto from 'crypto';
+
+// E9 — every user-scoped query needs an explicit owner; tests use the local
+// (open-mode) identity for backward-compatible behavior.
+const USER = () => getLocalUserId();
 
 describe('Database Operations', () => {
     beforeEach(async () => {
         // Reset DB before each test
-        await resetPortfolio(10000);
+        await resetPortfolio(10000, 'Default Simulation', null, USER());
     });
 
     afterAll(() => {
@@ -57,7 +67,7 @@ describe('Database Operations', () => {
     });
 
     it('should reset portfolio correctly', async () => {
-        await resetPortfolio(5000);
+        await resetPortfolio(5000, 'Default Simulation', null, USER());
         const latest = await getLatestPortfolio();
         expect(latest.tvl).toBe(5000);
         expect(latest.netApy).toBe(0);
@@ -78,8 +88,8 @@ describe('Database Operations', () => {
                 { id: 'r1', condition: 'HF < 1.2', action: 'Rebalance', enabled: true },
                 { id: 'r2', condition: 'Gas < 15 gwei', action: 'Claim Rewards', enabled: false },
             ],
-        });
-        const s = await getSettings();
+        }, null, USER());
+        const s = await getSettings(USER());
         expect(s.dataMode).toBe('SIM');
         expect(s.dataScenario).toBe('bull');
         expect(s.automationRules).toHaveLength(2);
@@ -88,9 +98,90 @@ describe('Database Operations', () => {
     });
 
     it('should default automation rules to empty array', async () => {
-        await updateSettings({ rpcUrl: '', slippage: '0.5' });
-        const s = await getSettings();
+        await updateSettings({ rpcUrl: '', slippage: '0.5' }, null, USER());
+        const s = await getSettings(USER());
         expect(Array.isArray(s.automationRules)).toBe(true);
         expect(s.automationRules).toHaveLength(0);
+    });
+
+    // ---- E9: users / sessions / isolation ----
+
+    it('getSettings requires an explicit userId (E9)', async () => {
+        await expect(getSettings()).rejects.toThrow(/userId is required/);
+        await expect(getSettings(null)).rejects.toThrow(/userId is required/);
+    });
+
+    it('creates and verifies sessions with expiry', async () => {
+        const username = `alice_${Date.now()}`;
+        const uid = createUser(username, 'hash', 'user');
+        const { token } = createSession(uid);
+        const session = getSessionUser(token);
+        expect(session).not.toBeNull();
+        expect(session.id).toBe(uid);
+        expect(session.username).toBe(username);
+        expect(session.role).toBe('user');
+        deleteSession(token);
+        expect(getSessionUser(token)).toBeNull();
+    });
+
+    it('rejects expired sessions', () => {
+        const uid = createUser(`bob_${Date.now()}`, 'hash', 'user');
+        const { token } = createSession(uid, -1); // already expired
+        expect(getSessionUser(token)).toBeNull();
+    });
+
+    it('counts users and reports lockout state (E9 brute-force)', () => {
+        const before = countUsers();
+        const username = `mallory_${Date.now()}`;
+        const uid = createUser(username, 'hash', 'user');
+        expect(countUsers()).toBe(before + 1);
+        expect(getUserByUsername(username).role).toBe('user');
+        for (let i = 0; i < 5; i++) incrementFailedAttempts(uid);
+        const locked = getUserById(uid);
+        expect(Number(locked.failed_attempts)).toBe(5);
+        expect(locked.locked_until).not.toBeNull();
+        clearFailedAttempts(uid);
+        expect(Number(getUserById(uid).failed_attempts)).toBe(0);
+        expect(getUserById(uid).locked_until).toBeNull();
+    });
+
+    it('isolates simulations per user and hides other users rows (E9)', async () => {
+        const uidA = createUser(`owner_a_${Date.now()}`, 'hash', 'user');
+        const uidB = createUser(`owner_b_${Date.now()}`, 'hash', 'user');
+        await resetPortfolio(1000, 'A Run', null, uidA);
+        const simsA = await getAllSimulations(uidA);
+        expect(simsA.length).toBeGreaterThan(0);
+        const simA = simsA[0];
+        // B cannot see or fetch A's simulation by id (404 semantics)
+        expect((await getAllSimulations(uidB)).find(s => s.id === simA.id)).toBeUndefined();
+        expect(await getSimulationById(simA.id, uidB)).toBeUndefined();
+        expect(await getSimulationById(simA.id, uidA)).toBeDefined();
+        // B's own simulations are untouched by A's prune
+        await resetPortfolio(2000, 'B Run', null, uidB);
+        expect((await getAllSimulations(uidB)).some(s => s.name === 'B Run')).toBe(true);
+        expect((await getAllSimulations(uidA)).some(s => s.name === 'A Run')).toBe(true);
+    });
+
+    it('scopes settings by user (E9)', async () => {
+        const uidA = createUser(`s_alice_${Date.now()}`, 'hash', 'user');
+        const uidB = createUser(`s_bob_${Date.now()}`, 'hash', 'user');
+        await updateSettings({ rpcUrl: 'https://a.example', slippage: '0.5' }, null, uidA);
+        await updateSettings({ rpcUrl: 'https://b.example', slippage: '0.9' }, null, uidB);
+        expect((await getSettings(uidA)).rpcUrl).toBe('https://a.example');
+        expect((await getSettings(uidB)).rpcUrl).toBe('https://b.example');
+    });
+
+    it('excludes the local user from admin listings', async () => {
+        const users = getAllUsers();
+        expect(users.some(u => u.username === 'local')).toBe(false);
+        expect(Array.isArray(users)).toBe(true);
+    });
+
+    it('deletes users (admin) including their sessions', async () => {
+        const uid = createUser(`doomed_${Date.now()}`, 'hash', 'user');
+        const { token } = createSession(uid);
+        deleteUserById(uid);
+        expect(getUserById(uid)).toBeUndefined();
+        expect(getSessionUser(token)).toBeNull();
     });
 });

@@ -67,7 +67,7 @@ export class LiveDataSource {
         let gasPrice = config.marketData.documentedConstants.simulatedGasPriceGwei;
         let blockNumber = null;
         try {
-            const settings = await getSettings();
+            const settings = await getSettings(opts.userId);
             const provider = getRpcProvider(settings.rpcUrl);
             if (provider) {
                 const feeData = await provider.getFeeData();

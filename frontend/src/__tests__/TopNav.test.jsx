@@ -11,6 +11,9 @@ vi.mock('react-router-dom', () => ({
 vi.mock('../contexts/WebSocketContext', () => ({
     useWebSocket: () => mockWs,
 }));
+vi.mock('../contexts/AuthContext', () => ({
+    useAuth: () => ({ user: null, authRequired: false, logout: vi.fn() }),
+}));
 
 describe('TopNav component', () => {
     beforeEach(() => {

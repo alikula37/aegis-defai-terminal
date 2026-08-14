@@ -6,34 +6,57 @@ import YieldStrategies from './pages/YieldStrategies';
 import AIAgentLogs from './pages/AIAgentLogs';
 import Settings from './pages/Settings';
 import LiveData from './pages/LiveData';
+import LoginPage from './pages/LoginPage';
 import { WebSocketProvider } from './contexts/WebSocketContext';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 
-function App() {
-  return (
-    <ErrorBoundary>
-      <SettingsProvider>
-        <WebSocketProvider>
-          <Router>
-            <div className="flex min-h-screen bg-background text-on-background antialiased">
-              <Sidebar />
-              <main className="flex-1 ml-0 md:ml-[280px] w-full md:w-[calc(100%-280px)] flex flex-col min-h-screen">
+function AppShell() {
+    const { authRequired, user, loading } = useAuth();
+    // Open mode (AUTH_REQUIRED=false): me() resolves to the local user, so the
+    // login screen never appears. Required mode: block until identity resolves.
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background text-muted">
+                Loading…
+            </div>
+        );
+    }
+    if (authRequired && !user) {
+        return <LoginPage />;
+    }
+    return (
+        <div className="flex min-h-screen bg-background text-on-background antialiased">
+            <Sidebar />
+            <main className="flex-1 ml-0 md:ml-[280px] w-full md:w-[calc(100%-280px)] flex flex-col min-h-screen">
                 <TopNav />
                 <Routes>
-                  <Route path="/" element={<Overview />} />
-                  <Route path="/yield-strategies" element={<YieldStrategies />} />
-                  <Route path="/ai-agent-logs" element={<AIAgentLogs />} />
-                  <Route path="/live-data" element={<LiveData />} />
-                  <Route path="/settings" element={<Settings />} />
+                    <Route path="/" element={<Overview />} />
+                    <Route path="/yield-strategies" element={<YieldStrategies />} />
+                    <Route path="/ai-agent-logs" element={<AIAgentLogs />} />
+                    <Route path="/live-data" element={<LiveData />} />
+                    <Route path="/settings" element={<Settings />} />
                 </Routes>
-              </main>
-            </div>
-          </Router>
-        </WebSocketProvider>
-      </SettingsProvider>
-    </ErrorBoundary>
-  );
+            </main>
+        </div>
+    );
+}
+
+function App() {
+    return (
+        <ErrorBoundary>
+            <AuthProvider>
+                <SettingsProvider>
+                    <WebSocketProvider>
+                        <Router>
+                            <AppShell />
+                        </Router>
+                    </WebSocketProvider>
+                </SettingsProvider>
+            </AuthProvider>
+        </ErrorBoundary>
+    );
 }
 
 export default App;
