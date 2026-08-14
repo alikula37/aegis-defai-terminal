@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+@theme {
+  /* ---- Colors ---- */
+  --color-surface-container-high: #272a31;
+  --color-on-secondary-container: #d6a9ff;
+  --color-on-primary-container: #00285d;
+  --color-tertiary-fixed: #ffdcc6;
+  --color-secondary-fixed: #f0dbff;
+  --color-error: #ffb4ab;
+  --color-inverse-surface: #e1e2ec;
+  --color-inverse-primary: #005ac2;
+  --color-on-primary-fixed: #001a42;
+  --color-surface-variant: #32353c;
+  --color-primary-fixed: #d8e2ff;
+  --color-surface-dim: #10131a;
+  --color-inverse-on-surface: #2e3038;
+  --color-on-secondary-fixed-variant: #6900b3;
+  --color-on-error-container: #ffdad6;
+  --color-on-tertiary-container: #461f00;
+  --color-on-surface-variant: #c2c6d6;
+  --color-secondary-fixed-dim: #ddb7ff;
+  --color-surface-container-low: #191b23;
+  --color-surface: #10131a;
+  --color-primary-fixed-dim: #adc6ff;
+  --color-surface-tint: #adc6ff;
+  --color-secondary: #ddb7ff;
+  --color-error-container: #93000a;
+  --color-outline-variant: #424754;
+  --color-on-tertiary-fixed-variant: #723600;
+  --color-surface-bright: #363941;
+  --color-tertiary-fixed-dim: #ffb786;
+  --color-primary: #adc6ff;
+  --color-on-tertiary: #502400;
+  --color-primary-container: #4d8eff;
+  --color-background: #10131a;
+  --color-surface-container-lowest: #0b0e15;
+  --color-outline: #8c909f;
+  --color-surface-container: #1d2027;
+  --color-on-error: #690005;
+  --color-on-surface: #e1e2ec;
+  --color-tertiary: #ffb786;
+  --color-on-primary: #002e6a;
+  --color-secondary-container: #6f00be;
+  --color-on-tertiary-fixed: #311400;
+  --color-tertiary-container: #df7412;
+  --color-on-secondary-fixed: #2c0051;
+  --color-on-background: #e1e2ec;
+  --color-on-primary-fixed-variant: #004395;
+  --color-on-secondary: #490080;
+  --color-surface-container-highest: #32353c;
+  --color-success: #4ade80;
+  --color-warning: #facc15;
+
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
+  --color-green-400: #4ade80;
+  --color-green-900: #14532d;
+  --color-amber-400: #fbbf24;
+  --color-red-900: #7f1d1d;
+
+  /* ---- Spacing ---- */
+  --spacing-stack-default: 1rem;
+  --spacing-stack-compact: 0.5rem;
+  --spacing-section-margin: 2rem;
+  --spacing-container-padding: 1.5rem;
+  --spacing-card-gap: 1rem;
+
+  /* ---- Font Family ---- */
+  --font-inter: "Inter", sans-serif;
+  --font-jetbrains: "JetBrains Mono", monospace;
+}
+
+/* ---- Global body ---- */
+body {
+  background-color: #0b0e15;
+  color: var(--color-on-background);
+  font-family: var(--font-inter);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---- Custom Animations ---- */
+.pulse-animation {
+  animation: pulse-ring-anim 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-ring-anim {
+  0% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.5); opacity: 0.2; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+.pulse-ring {
+  animation: pulse-ring-slow 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+@keyframes pulse-ring-slow {
+  0% { transform: scale(1); opacity: 0.5; }
+  80%, 100% { transform: scale(2.5); opacity: 0; }
+}
+
+.glow-active {
+  box-shadow: 0 0 15px rgba(77, 142, 255, 0.15);
+}
+
+/* ---- Scrollbar Styling ---- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #424754;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8c909f;
+}

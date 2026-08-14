@@ -1,0 +1,9 @@
+.env
+node_modules/
+*.db
+# Test/coverage artifacts and logs — never commit these
+coverage/
+logs/
+*.log
+.migrations_history.json
+

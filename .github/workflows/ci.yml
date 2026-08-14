@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [22.x]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: |
+          backend/package-lock.json
+          frontend/package-lock.json
+
+    - name: Install Backend Dependencies
+      run: |
+        cd backend
+        npm ci
+
+    - name: Run Backend Tests
+      run: |
+        cd backend
+        npm test
+
+    - name: Run Backend Lint
+      run: |
+        cd backend
+        npm run lint
+
+    - name: Install Frontend Dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Run Frontend Tests
+      run: |
+        cd frontend
+        npm test
+
+    - name: Run Frontend Lint
+      run: |
+        cd frontend
+        npm run lint
+
+    - name: Build Frontend
+      run: |
+        cd frontend
+        npm run build
