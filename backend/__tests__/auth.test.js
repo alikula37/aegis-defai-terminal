@@ -153,6 +153,49 @@ describe('E9 auth (required mode)', () => {
         expect(ok.status).toBe(200);
     });
 
+    // ---- Data-detailed: credential boundary table ----
+    // Valid rows get a uniqueness suffix appended (staying within 32 chars);
+    // invalid rows fail validation BEFORE uniqueness is checked, so they are
+    // used as-is. 'a'*25 + '_' + 6 digits = exactly 32 chars (max length).
+    it.each([
+        // [username, password, expectedStatus]
+        ['ab', 'Password1', 400],              // username too short (min 3)
+        ['abc', 'Password1', 201],             // username at min length
+        ['a'.repeat(25), 'Password1', 201],    // username at max length (32)
+        ['a'.repeat(33), 'Password1', 400],    // username too long
+        ['valid_user.name-1', 'Password1', 201], // allowed charset
+        ['türkçe', 'Password1', 400],          // non-ASCII username
+        ['has space', 'Password1', 400],       // space in username
+        ['abc', 'Passwor', 400],               // password too short (min 8)
+        ['abc', 'Password', 201],              // password at min length
+        ['abc', 'p'.repeat(128), 201],         // password at max length
+        ['abc', 'p'.repeat(129), 400],         // password too long
+    ])('register(%j, pass-len=%s) → %s', async (username, password, expectedStatus) => {
+        const app = buildApp();
+        const finalUsername = expectedStatus === 201
+            ? `${username}_${Date.now() % 100000}`
+            : username;
+        const res = await request(app).post('/api/auth/register')
+            .send({ username: finalUsername, password });
+        expect(res.status).toBe(expectedStatus);
+        if (expectedStatus === 201) {
+            expect(res.body.user.role).toBe('user');
+        }
+    });
+
+    // ---- Data-detailed: login input matrix ----
+    it.each([
+        [{}, 401],
+        [{ username: userU }, 401],
+        [{ password: 'Userpass123' }, 401],
+        [{ username: '', password: '' }, 401],
+        [{ username: '   ', password: 'Userpass123' }, 401],
+    ])('login(%j) → 401 generic', async (payload, expected) => {
+        const res = await request(buildApp()).post('/api/auth/login').send(payload);
+        expect(res.status).toBe(expected);
+        expect(res.body.error).toBe('Invalid username or password');
+    });
+
     it('open mode attaches the local user without a session', async () => {
         const app = buildApp({ authRequired: false });
         const me = await request(app).get('/api/auth/me');
@@ -173,4 +216,6 @@ describe('E9 auth (required mode)', () => {
         expect(res.status).toBe(201);
         expect(res.body.user.role).toBe('admin');
     });
-});
+// scrypt (N=2^17) is deliberately expensive; under parallel CI load a
+// login+verify can take several seconds, so the suite gets a 30s budget.
+}, 30000);

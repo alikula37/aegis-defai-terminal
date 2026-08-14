@@ -88,6 +88,30 @@ describe('assertSlippage', () => {
     it('fails on non-numeric input', () => {
         expect(assertSlippage(NaN, 10, 100)).toBe(false);
     });
+
+    // ---- Data-detailed: slippage matrix (expected 100, bps 0..100) ----
+    it.each([
+        // [expected, actual, bps, result]
+        [100, 100, 0, true],     // no slippage allowed, exact match
+        [100, 99.999, 0, false], // below 100 even by a hair
+        [100, 99.5, 50, true],   // 0.5% tolerance, 0.5% slip → edge pass
+        [100, 99.49, 50, false], // 0.5% tolerance, just over → fail
+        [100, 95, 50, false],    // 5% slip way over 0.5%
+        [100, 99, 100, true],    // 1% tolerance, 1% slip → edge pass
+        [100, 98.99, 100, false],
+        [100, 90, 100, false],
+        [100, 101, 100, true],   // overshooting the expected is allowed
+        [1000, 999, 100, true],
+        [1000, 990, 100, true],  // exactly at the 1% tolerance edge
+        [1000, 989, 100, false], // just past the edge
+        [1000, 900, 10, false],
+        [0, 0, 50, true],        // zero expected: anything matches? assertSlippage allows
+        [100, Infinity, 50, false],
+        [100, -Infinity, 50, false],
+        [100, -5, 50, false],
+    ])('expected=%s actual=%s bps=%s → %s', (expected, actual, bps, result) => {
+        expect(assertSlippage(expected, actual, bps)).toBe(result);
+    });
 });
 
 describe('OnchainExecution', () => {

@@ -251,6 +251,9 @@ export class AegisAgent {
         this.broadcast('simulation_status', { isRunning: false, startTime: null });
         if (this.cycleTimeoutId) {
             clearTimeout(this.cycleTimeoutId);
+            // Stress/hygiene: a cleared timer must not be mistaken for a live
+            // one on the next start (startSimulation re-schedules).
+            this.cycleTimeoutId = null;
         };
         // Cancel pending deferred portfolio writes from the previous run
         this.executionLayer?.dispose?.();

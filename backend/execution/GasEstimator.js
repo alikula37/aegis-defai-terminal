@@ -13,9 +13,11 @@ export const GAS_LIMITS = {
 export const MULTICALL_SAVINGS_FACTOR = 0.52; // batched gas = 52% of sequential
 
 export function estimateGasUsd({ gasPriceGwei, ethPrice, gasLimit = GAS_LIMITS.standard }) {
-    const gwei = Number(gasPriceGwei) || 0;
-    const price = Number(ethPrice) || 0;
-    const limit = Number(gasLimit) || GAS_LIMITS.standard;
+    // Negative/NaN inputs must never produce a negative cost: a negative
+    // estimate could pass the gas-budget slippage guard or corrupt PnL math.
+    const gwei = Math.max(Number(gasPriceGwei) || 0, 0);
+    const price = Math.max(Number(ethPrice) || 0, 0);
+    const limit = Math.max(Number(gasLimit) || GAS_LIMITS.standard, 0);
     // gwei * 1e-9 = ETH, gasLimit applied, then multiplied by ETH/USD price
     return (gwei * limit * 1e-9) * price;
 }

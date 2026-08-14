@@ -96,6 +96,37 @@ describe('validateLLMDecision', () => {
         expect(response).toEqual(decision);
         expect(warnings).toHaveLength(0);
     });
+
+    // ---- Data-detailed: guardrail matrix (decision × zone × profitability) ----
+    it.each([
+        // [decision, target_ltv, conditions, expectedDecision]
+        ['flash_loan_rescue', undefined, 'critical', 'flash_loan_rescue'],
+        ['flash_loan_rescue', undefined, 'safe', 'hold'],
+        ['flash_loan_rescue', undefined, 'warning', 'hold'],
+        ['adjust_portfolio', 0.2, 'safe', 'hold'],          // drastic cut while safe
+        ['adjust_portfolio', 0.2, 'warning', 'adjust_portfolio'],
+        ['adjust_portfolio', 0.2, 'critical', 'adjust_portfolio'],
+        ['adjust_portfolio', 0.75, 'safe', 'adjust_portfolio'], // mild cut (≥ -0.1) passes
+        ['adjust_portfolio', 0.75, 'warning', 'adjust_portfolio'],
+        ['claim', undefined, 'safe-profitable', 'claim'],
+        ['claim', undefined, 'safe-not-profitable', 'hold'],
+        ['claim', undefined, 'warning-profitable', 'claim'],
+        ['rebalance', undefined, 'safe', 'rebalance'],
+        ['unwind', undefined, 'critical', 'unwind'],
+        ['hold', undefined, 'critical', 'hold'],
+        ['migrate_borrow', undefined, 'warning', 'migrate_borrow'],
+    ])('%s (ltv=%s, zone=%s) → %s', (decision, targetLtv, zone, expected) => {
+        const conds = zone === 'critical'
+            ? criticalConditions
+            : zone === 'warning'
+                ? warningConditions
+                : zone.includes('not-profitable')
+                    ? { ...safeConditions, isClaimProfitable: false }
+                    : safeConditions;
+        const payload = { decision, ...(targetLtv !== undefined ? { target_ltv: targetLtv } : {}) };
+        const { response } = validateLLMDecision(payload, marketData, conds, state);
+        expect(response.decision).toBe(expected);
+    });
 });
 
 describe('shouldCallLLM', () => {

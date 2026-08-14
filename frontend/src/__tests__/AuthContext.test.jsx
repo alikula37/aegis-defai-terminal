@@ -105,4 +105,52 @@ describe('AuthContext + LoginPage (E9)', () => {
         fireEvent.click(screen.getByText('logout'));
         await waitFor(() => expect(screen.getByTestId('user').textContent).toBe('none'));
     });
+
+    // ---- Data-detailed: login outcome matrix ----
+    it.each([
+        // [server response, expected user state]
+        [{ user: { id: 1, username: 'alice', role: 'user' }, authRequired: true }, 'alice'],
+        [{ user: { id: 2, username: 'admin', role: 'admin' }, authRequired: true }, 'admin'],
+        [null, 'none'], // server returned 200 with no user (should not happen, but must not crash)
+    ])('login with server result %j → user=%s', async (serverResult, expectedUser) => {
+        if (serverResult) {
+            vi.mocked(fetchJson).mockResolvedValue(serverResult);
+        } else {
+            vi.mocked(fetchJson).mockResolvedValue({});
+        }
+        function LoginProbe() {
+            const auth = useAuth();
+            return (
+                <div>
+                    <span data-testid="who">{auth.user ? auth.user.username : 'none'}</span>
+                    <button onClick={() => auth.login('alice', 'secret123')}>login</button>
+                </div>
+            );
+        }
+        render(<AuthProvider><LoginProbe /></AuthProvider>);
+        fireEvent.click(screen.getByText('login'));
+        await waitFor(() => expect(screen.getByTestId('who').textContent).toBe(expectedUser));
+    });
+
+    it.each([
+        ['Invalid username or password', 401],
+        ['Server exploded', 500],
+        ['Network error', 0],
+    ])('failed login (%s) keeps user logged out and surfaces the error', async (message, status) => {
+        vi.mocked(fetchJson).mockRejectedValue(Object.assign(new Error(message), { status }));
+        function LoginProbe() {
+            const auth = useAuth();
+            return (
+                <div>
+                    <span data-testid="who">{auth.user ? auth.user.username : 'none'}</span>
+                    <span data-testid="err">{auth.error}</span>
+                    <button onClick={() => auth.login('alice', 'wrong')}>login</button>
+                </div>
+            );
+        }
+        render(<AuthProvider><LoginProbe /></AuthProvider>);
+        fireEvent.click(screen.getByText('login'));
+        await waitFor(() => expect(screen.getByTestId('who').textContent).toBe('none'));
+        await waitFor(() => expect(screen.getByTestId('err').textContent).toBe(message));
+    });
 });

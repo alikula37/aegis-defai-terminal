@@ -21,6 +21,9 @@ export function assertSlippage(expectedMin, actual, bps) {
     const min = Number(expectedMin);
     const value = Number(actual);
     if (Number.isNaN(min) || Number.isNaN(value)) return false;
+    // Fail-closed on non-finite values: Infinity/overflow must never pass the
+    // gas-budget slippage guard (a corrupted estimate would bypass the cap).
+    if (!Number.isFinite(min) || !Number.isFinite(value)) return false;
     const allowed = min * (1 - bps / 10000);
     return value >= allowed;
 }

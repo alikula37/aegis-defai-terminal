@@ -184,4 +184,31 @@ describe('Database Operations', () => {
         expect(getUserById(uid)).toBeUndefined();
         expect(getSessionUser(token)).toBeNull();
     });
+
+    // ---- Data-detailed: prune boundary (5 most recent per user + new sim) ----
+    // resetPortfolio prunes to the 5 most recent THEN inserts a new one →
+    // steady state is 6 sims, with the oldest dropped each time.
+    it('prune drops the oldest once the user exceeds 5+1', async () => {
+        const uid = createUser(`pruner_${Date.now()}`, 'hash', 'user');
+        for (let i = 1; i <= 7; i++) {
+            await resetPortfolio(1000 * i, `Prune Run ${i}`, null, uid);
+        }
+        const sims = await getAllSimulations(uid);
+        expect(sims.length).toBe(6); // 5 kept + 1 new
+        expect(sims.some(s => s.name === 'Prune Run 1')).toBe(false); // oldest dropped
+        expect(sims.some(s => s.name === 'Prune Run 7')).toBe(true);  // newest kept
+        // the surviving batch is contiguous (runs 2..7)
+        expect(sims.map(s => s.name)).toEqual([
+            'Prune Run 7', 'Prune Run 6', 'Prune Run 5', 'Prune Run 4', 'Prune Run 3', 'Prune Run 2',
+        ]);
+    });
+
+    it('prune under the limit keeps everything', async () => {
+        const uid = createUser(`pruner2_${Date.now()}`, 'hash', 'user');
+        for (let i = 1; i <= 4; i++) {
+            await resetPortfolio(1000, `Small ${i}`, null, uid);
+        }
+        const sims = await getAllSimulations(uid);
+        expect(sims.length).toBe(4);
+    });
 });

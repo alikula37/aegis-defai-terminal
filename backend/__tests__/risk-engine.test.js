@@ -75,3 +75,63 @@ describe('estimateMulticallGas', () => {
         expect(r.saved).toBeCloseTo(3 - 3 * MULTICALL_SAVINGS_FACTOR, 6);
     });
 });
+
+// ---- Data-detailed: health-factor classification matrix ----
+// targetHf 1.25 → warning 1.21, critical 1.15. Every 0.01 step from 1.00 to
+// 1.50 is pinned to exactly one zone so threshold edges are locked down.
+const HF_MATRIX = [];
+for (let hundredths = 100; hundredths <= 150; hundredths += 1) {
+    const hf = hundredths / 100;
+    const expected = hf >= 1.21 ? 'safe' : hf >= 1.15 ? 'warning' : 'critical';
+    HF_MATRIX.push([hf, expected]);
+}
+
+describe('evaluateMarketConditions — HF classification matrix (51 points)', () => {
+    it.each(HF_MATRIX)('HF %s → %s', (hf, expectedZone) => {
+        const c = evaluateMarketConditions({ ...marketData, portfolio: { ...marketData.portfolio, healthFactor: hf } }, { targetHf: 1.25 });
+        expect(c.isSafe).toBe(expectedZone === 'safe');
+        expect(c.isWarning).toBe(expectedZone === 'warning');
+        expect(c.isCritical).toBe(expectedZone === 'critical');
+        // zone exclusivity: exactly one flag is true
+        expect([c.isSafe, c.isWarning, c.isCritical].filter(Boolean)).toHaveLength(1);
+    });
+
+    it('applies conservative thresholds consistently across the matrix', () => {
+        for (const hf of [1.24, 1.25, 1.26, 1.29, 1.30, 1.31, 1.39, 1.40]) {
+            const c = evaluateMarketConditions({ ...marketData, portfolio: { ...marketData.portfolio, healthFactor: hf } }, { riskAppetite: 'Conservative' });
+            expect(c.isSafe).toBe(hf >= 1.30);
+            expect(c.isWarning).toBe(hf >= 1.25 && hf < 1.30);
+            expect(c.isCritical).toBe(hf < 1.25);
+        }
+    });
+
+    it('applies aggressive thresholds consistently across the matrix', () => {
+        for (const hf of [1.09, 1.10, 1.11, 1.14, 1.15, 1.16, 1.19, 1.20]) {
+            const c = evaluateMarketConditions({ ...marketData, portfolio: { ...marketData.portfolio, healthFactor: hf } }, { riskAppetite: 'Aggressive' });
+            expect(c.isSafe).toBe(hf >= 1.15);
+            expect(c.isWarning).toBe(hf >= 1.10 && hf < 1.15);
+            expect(c.isCritical).toBe(hf < 1.10);
+        }
+    });
+});
+
+// ---- Data-detailed: spread (yield-inversion) matrix ----
+describe('evaluateMarketConditions — spread matrix', () => {
+    it.each([
+        [-3.0, true], [-1.0, true], [-0.01, true],
+        [0.0, false], [0.01, false], [1.0, false], [2.0, false], [5.0, false],
+    ])('baseSpread %s → isCritical=%s', (spread, critical) => {
+        const c = evaluateMarketConditions({ ...marketData, baseSpread: spread }, { targetHf: 1.25 });
+        expect(c.isCritical).toBe(critical);
+    });
+});
+
+// ---- Data-detailed: claim profitability boundary ----
+describe('evaluateMarketConditions — claim profitability boundary', () => {
+    it.each([
+        [1, true], [19, true], [19.99, true], [20, false], [20.01, false], [40, false],
+    ])('gasPrice %s gwei (maxGasClaim 20) → isClaimProfitable=%s', (gasPrice, profitable) => {
+        const c = evaluateMarketConditions({ ...marketData, gasPrice }, { maxGasClaim: 20 });
+        expect(c.isClaimProfitable).toBe(profitable);
+    });
+});
