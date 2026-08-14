@@ -8,7 +8,7 @@ const PointItem = ({ icon, label, apy, color, description, negative = false }) =
                 <span className="text-sm font-semibold text-white/90 truncate">{label}</span>
                 {/* Tailwind v4 only emits literal class names — map the dynamic
                     color to a fixed lookup so text-violet-400 & co. are generated */}
-                <span className={`text-sm font-mono font-bold flex-shrink-0 ${negative ? 'text-red-400' : POINT_COLORS[color] || 'text-white/80'}`}>
+                <span className={`text-sm font-mono font-bold flex-shrink-0 ${negative ? 'text-error' : POINT_COLORS[color] || 'text-white/80'}`}>
                     {negative ? '' : '+'}{typeof apy === 'number' ? apy.toFixed(2) : '—'}%
                 </span>
             </div>
@@ -21,8 +21,8 @@ const POINT_COLORS = {
     violet: 'text-violet-400',
     blue: 'text-blue-400',
     cyan: 'text-cyan-400',
-    green: 'text-green-400',
-    amber: 'text-amber-400',
+    green: 'text-success',
+    amber: 'text-warning',
     rose: 'text-rose-400',
 };
 
@@ -52,7 +52,7 @@ export default function PointsTracker() {
                 </h3>
                 <div className="flex items-center gap-2">
                     <span className="text-xs text-white/40">Total Bonus:</span>
-                    <span className={`text-sm font-mono font-bold ${totalBonus > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span className={`text-sm font-mono font-bold ${totalBonus > 0 ? 'text-emerald-400' : 'text-error'}`}>
                         {totalBonus > 0 ? '+' : ''}{totalBonus.toFixed(2)}% APY
                     </span>
                 </div>

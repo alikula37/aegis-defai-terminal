@@ -52,12 +52,12 @@ export default function AIAgentLogs() {
     });
 
     const typeColor = (type) => {
-        const map = { scan: 'text-on-surface', flash_loan: 'text-primary', rebalance: 'text-green-400', claim: 'text-success', alert: 'text-amber-400', system: 'text-on-surface-variant' };
+        const map = { scan: 'text-on-surface', flash_loan: 'text-primary', rebalance: 'text-success', claim: 'text-success', alert: 'text-warning', system: 'text-on-surface-variant' };
         return map[type] || 'text-on-surface';
     };
 
     const typeBadgeColor = (type) => {
-        const map = { scan: 'bg-surface-variant text-on-surface-variant', flash_loan: 'bg-primary/10 text-primary border-primary/20', rebalance: 'bg-green-400/10 text-green-400 border-green-400/20', claim: 'bg-success/10 text-success border-success/20', alert: 'bg-amber-400/10 text-amber-400 border-amber-400/20', system: 'bg-surface-variant text-on-surface-variant' };
+        const map = { scan: 'bg-surface-variant text-on-surface-variant', flash_loan: 'bg-primary/10 text-primary border-primary/20', rebalance: 'bg-success/10 text-success border-green-400/20', claim: 'bg-success/10 text-success border-success/20', alert: 'bg-warning/10 text-warning border-amber-400/20', system: 'bg-surface-variant text-on-surface-variant' };
         return map[type] || 'bg-surface-variant text-on-surface-variant';
     };
 

@@ -132,7 +132,7 @@ export default function BacktestPanel() {
             </div>
 
             {error && (
-                <p className="font-[JetBrains_Mono] text-[12px] text-red-400 mb-3">⚠ {error}</p>
+                <p className="font-[JetBrains_Mono] text-[12px] text-error mb-3">⚠ {error}</p>
             )}
 
             {/* Results */}
@@ -227,7 +227,7 @@ function Metric({ label, value, plain, small }) {
     return (
         <div className="bg-surface-container-lowest border border-outline-variant/50 rounded-lg p-3">
             <p className="font-[JetBrains_Mono] text-[10px] text-on-surface-variant mb-1">{label}</p>
-            <p className={`font-[Inter] font-bold ${small ? 'text-[13px]' : 'text-[18px]'} ${plain ? 'text-on-surface' : value.startsWith('-') ? 'text-red-400' : value.startsWith('+') ? 'text-green-400' : 'text-on-surface'}`}>
+            <p className={`font-[Inter] font-bold ${small ? 'text-[13px]' : 'text-[18px]'} ${plain ? 'text-on-surface' : value.startsWith('-') ? 'text-error' : value.startsWith('+') ? 'text-success' : 'text-on-surface'}`}>
                 {value}
             </p>
         </div>

@@ -22,8 +22,8 @@ export default function StrategyMarketplace({ strategies = [] }) {
             iconColor = 'text-tertiary';
         } else if (s.name.includes('syrup') || s.name.includes('RWA')) {
             icon = 'account_balance';
-            iconBg = 'bg-green-500/10 border-green-500/20';
-            iconColor = 'text-green-400';
+            iconBg = 'bg-success/10 border-green-500/20';
+            iconColor = 'text-success';
         } else if (s.name.includes('Boros')) {
             icon = 'swap_horiz';
             iconBg = 'bg-orange-500/10 border-orange-500/20';
@@ -83,7 +83,7 @@ export default function StrategyMarketplace({ strategies = [] }) {
                                 const apyNum = Number(s.apy);
                                 const apy = Number.isFinite(apyNum) ? apyNum : 0;
                                 const apyFormatted = `${apy > 0 ? '+' : ''}${apy.toFixed(2)}%`;
-                                const apyColor = apy > 0 ? 'text-green-400' : 'text-red-500';
+                                const apyColor = apy > 0 ? 'text-success' : 'text-error';
 
                                 return (
                                     <tr

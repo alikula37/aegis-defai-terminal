@@ -10,7 +10,7 @@ export default function RiskAlerts() {
     return (
         <div className="bg-surface-container border border-outline-variant rounded-md p-6 flex flex-col">
             <h3 className="font-[Inter] text-[20px] leading-[28px] font-semibold text-on-surface mb-6 pb-4 border-b border-outline-variant flex items-center gap-2">
-                <span className="material-symbols-outlined text-amber-400 text-[20px]">warning</span> Risk Alerts
+                <span className="material-symbols-outlined text-warning text-[20px]">warning</span> Risk Alerts
             </h3>
             <div className="flex flex-col gap-3">
                 {alerts.map((alert, i) => (

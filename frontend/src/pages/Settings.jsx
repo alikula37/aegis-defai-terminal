@@ -109,9 +109,9 @@ export default function Settings() {
 
                 {/* Data Source */}
                 <div className="bg-surface-container border border-outline-variant rounded-xl p-6 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-amber-400"></div>
+                    <div className="absolute top-0 left-0 w-1 h-full bg-warning"></div>
                     <h3 className="font-[Inter] text-[18px] font-semibold text-on-surface mb-4 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-amber-400 text-[20px]">database</span>
+                        <span className="material-symbols-outlined text-warning text-[20px]">database</span>
                         Market Data Source
                     </h3>
                     <div className="space-y-4">
@@ -181,7 +181,7 @@ export default function Settings() {
                                 </div>
                             )}
                             <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 flex items-start gap-2">
-                                <span className="material-symbols-outlined text-amber-400 text-[16px] mt-0.5">info</span>
+                                <span className="material-symbols-outlined text-warning text-[16px] mt-0.5">info</span>
                                 <p className="font-[JetBrains_Mono] text-[11px] leading-[16px] text-on-surface-variant">
                                     The execution backend is chosen at server startup: <span className="text-primary">EXECUTION_MODE=onchain</span> (default <span className="text-primary">simulation</span>).
                                     Onchain mode needs <span className="text-primary">EVM_PROVIDER_URL</span> + <span className="text-primary">EVM_PRIVATE_KEY</span> (testnet only) in <span className="text-primary">backend/.env</span>.
@@ -229,7 +229,7 @@ export default function Settings() {
                             </select>
                         </div>
                         <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 flex items-start gap-2">
-                            <span className="material-symbols-outlined text-amber-400 text-[16px] mt-0.5">info</span>
+                            <span className="material-symbols-outlined text-warning text-[16px] mt-0.5">info</span>
                             <p className="font-[JetBrains_Mono] text-[11px] leading-[16px] text-on-surface-variant">
                                 <strong className="text-on-surface">Cost Optimization:</strong> The agent uses <span className="text-success">Llama 3.1 70B</span> for routine market scans and <span className="text-primary">Claude 3.5 Sonnet</span> for critical rebalance decisions.
                             </p>

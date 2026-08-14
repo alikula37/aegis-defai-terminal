@@ -18,12 +18,12 @@ function formatMetric(metric, rawValue, targetHf) {
         const numValue = Number(rawValue);
         if (numValue > 0) {
             out.displayValue = `+${numValue.toFixed(2)}%`;
-            out.valueColor = 'text-green-400';
-            out.iconColor = 'text-green-400/70';
+            out.valueColor = 'text-success';
+            out.iconColor = 'text-success/70';
         } else {
             out.displayValue = `${numValue.toFixed(2)}%`;
-            out.valueColor = 'text-red-500';
-            out.iconColor = 'text-red-500/70';
+            out.valueColor = 'text-error';
+            out.iconColor = 'text-error/70';
         }
     } else if (metric.key === 'healthFactor') {
         out.displayValue = Number(rawValue).toFixed(2);
@@ -39,7 +39,7 @@ const DEFAULT_METRICS = [
         defaultValue: '$40,000.00',
         icon: 'account_balance',
         iconColor: 'text-primary/70',
-        valueColor: 'text-on-surface',
+        valueColor: 'text-paper',
         hoverBg: 'group-hover:bg-primary/5',
         badge: { text: 'Leveraged Position', style: 'bg-primary-container/20 text-primary border border-primary/20' },
         bar: null,
@@ -49,9 +49,9 @@ const DEFAULT_METRICS = [
         key: 'netApy',
         defaultValue: '+42.5%',
         icon: 'trending_up',
-        iconColor: 'text-green-400/70',
-        valueColor: 'text-green-400',
-        hoverBg: 'group-hover:bg-green-400/5',
+        iconColor: 'text-success/70',
+        valueColor: 'text-success',
+        hoverBg: 'group-hover:bg-success/5',
         badge: { text: 'Realized Yield', style: 'bg-surface-variant text-on-surface-variant' },
         bar: null,
     },
@@ -60,9 +60,9 @@ const DEFAULT_METRICS = [
         key: 'healthFactor',
         defaultValue: '1.35',
         icon: 'vital_signs',
-        iconColor: 'text-amber-400/70',
-        valueColor: 'text-amber-400',
-        hoverBg: 'group-hover:bg-amber-400/5',
+        iconColor: 'text-warning/70',
+        valueColor: 'text-warning',
+        hoverBg: 'group-hover:bg-warning/5',
         badge: { text: 'Target: >1.25', style: 'bg-surface-variant text-on-surface-variant' },
         bar: true,
     },
@@ -89,7 +89,7 @@ export default function DashboardMetrics() {
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-6 bg-surface-container border border-outline-variant rounded-md p-4">
+            <div className="flex items-center gap-6 bg-surface-container border border-outline rounded-lg p-4">
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">lan</span>
                     <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">Active Chain:</span>
@@ -124,7 +124,7 @@ export default function DashboardMetrics() {
                                 if (isApyCard) setIsApyModalOpen(true);
                                 if (isTvlCard) setIsTvlModalOpen(true);
                             }}
-                            className={`bg-surface-container border border-outline-variant rounded-md p-6 relative overflow-hidden group ${isApyCard || isTvlCard ? 'cursor-pointer hover:border-primary/50' : ''}`}
+                            className={`bg-surface-container border border-outline rounded-lg p-5 relative overflow-hidden group ${isApyCard || isTvlCard ? 'cursor-pointer hover:border-primary/50' : ''}`}
                         >
                             <div className={`absolute inset-0 ${m.hoverBg} transition-colors duration-300 pointer-events-none`}></div>
                             <div className="flex justify-between items-start mb-4">
@@ -136,9 +136,9 @@ export default function DashboardMetrics() {
                                 <div className="flex items-baseline gap-2">
                                     <p className={`font-[Inter] text-[48px] leading-[56px] tracking-[-0.02em] font-bold ${valueColor}`}>{displayValue}</p>
                                     <div className="w-16 h-2 bg-surface-variant rounded-full overflow-hidden flex">
-                                        <div className="h-full bg-red-500 w-[20%]"></div>
-                                        <div className="h-full bg-amber-400 w-[60%]"></div>
-                                        <div className="h-full bg-green-400 w-[20%]"></div>
+                                        <div className="h-full bg-error w-[20%]"></div>
+                                        <div className="h-full bg-warning w-[60%]"></div>
+                                        <div className="h-full bg-success w-[20%]"></div>
                                     </div>
                                 </div>
                             ) : (
@@ -164,7 +164,7 @@ export default function DashboardMetrics() {
                                 <span className="material-symbols-outlined">close</span>
                             </button>
 
-                            <h2 className="font-[Inter] text-[20px] font-semibold text-on-surface mb-6 flex items-center gap-2">
+                            <h2 className="font-[Inter] text-[20px] font-[510] text-paper mb-6 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary">analytics</span>
                                 Yield Breakdown (4x Looping)
                             </h2>
@@ -172,15 +172,15 @@ export default function DashboardMetrics() {
                             <div className="space-y-4 font-[JetBrains_Mono] text-[14px]">
                                 <div className="flex justify-between items-center pb-3 border-b border-outline-variant/50">
                                     <span className="text-on-surface-variant">Base sUSDe Staking Yield</span>
-                                    <span className="text-green-400">+{liveData?.susdeApy?.toFixed(2) || '15.50'}%</span>
+                                    <span className="text-success">+{liveData?.susdeApy?.toFixed(2) || '15.50'}%</span>
                                 </div>
                                 <div className="flex justify-between items-center pb-3 border-b border-outline-variant/50">
                                     <span className="text-on-surface-variant">USDC Borrow Cost</span>
-                                    <span className="text-red-500">-{liveData?.morphoBorrowApy?.toFixed(2) || '7.20'}%</span>
+                                    <span className="text-error">-{liveData?.morphoBorrowApy?.toFixed(2) || '7.20'}%</span>
                                 </div>
                                 <div className="flex justify-between items-center pb-3 border-b border-outline-variant/50">
                                     <span className="text-on-surface-variant">Base Spread</span>
-                                    <span className={liveData?.baseSpread > 0 ? 'text-green-400' : 'text-red-500'}>
+                                    <span className={liveData?.baseSpread > 0 ? 'text-success' : 'text-error'}>
                                         {liveData?.baseSpread > 0 ? '+' : ''}{liveData?.baseSpread?.toFixed(2) || '8.30'}%
                                     </span>
                                 </div>
@@ -190,7 +190,7 @@ export default function DashboardMetrics() {
                                 </div>
                                 <div className="flex justify-between items-center pt-2">
                                     <span className="text-on-surface font-bold">Net APY</span>
-                                    <span className={`font-bold text-[18px] ${liveData?.netApy > 0 ? 'text-green-400' : 'text-red-500'}`}>
+                                    <span className={`font-bold text-[18px] ${liveData?.netApy > 0 ? 'text-success' : 'text-error'}`}>
                                         {liveData?.netApy > 0 ? '+' : ''}{liveData?.netApy?.toFixed(2) || '42.50'}%
                                     </span>
                                 </div>

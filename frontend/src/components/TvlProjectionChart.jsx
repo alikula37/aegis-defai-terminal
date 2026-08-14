@@ -48,7 +48,7 @@ export default function TvlProjectionChart() {
                 </div>
                 <div className="flex justify-between items-center gap-4 mt-1">
                     <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">Est. Profit:</span>
-                    <span className="font-[Inter] text-[13px] font-bold text-green-400">
+                    <span className="font-[Inter] text-[13px] font-bold text-success">
                         +${(data.tvl - currentTvl).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                 </div>
@@ -70,7 +70,7 @@ export default function TvlProjectionChart() {
                 </div>
                 <div className="text-right">
                     <p className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Projected 1-Year Yield</p>
-                    <p className="font-[Inter] text-[20px] font-bold text-green-400">
+                    <p className="font-[Inter] text-[20px] font-bold text-success">
                         +${projected1YearYield.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                 </div>

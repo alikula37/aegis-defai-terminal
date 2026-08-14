@@ -42,7 +42,7 @@ const LiveLogEntry = ({ log }) => {
         scan: 'text-primary',
         alert: 'text-error',
         flash_loan: 'text-tertiary',
-        rebalance: 'text-amber-400',
+        rebalance: 'text-warning',
         claim: 'text-success',
         system: 'text-on-surface-variant',
     };
@@ -116,7 +116,7 @@ export default function LiveData() {
     }, [logs]);
 
     const hf = portfolioData?.healthFactor || portfolioData?.health_factor;
-    const hfColor = hf >= 1.25 ? 'text-success' : hf >= 1.21 ? 'text-amber-400' : 'text-error';
+    const hfColor = hf >= 1.25 ? 'text-success' : hf >= 1.21 ? 'text-warning' : 'text-error';
 
     return (
         <div className="flex-1 overflow-y-auto p-[2rem] bg-background">
@@ -199,14 +199,14 @@ export default function LiveData() {
                     <DataBadge
                         label="Morpho USDC Borrow"
                         value={portfolioData?.morphoBorrowApy ? `${Number(portfolioData.morphoBorrowApy).toFixed(2)}%` : '—'}
-                        color="text-amber-400"
+                        color="text-warning"
                         icon="account_balance"
                         sub="Borrow cost on Morpho Blue"
                     />
                 </DataCard>
 
                 {/* 3. Strategy Metrics */}
-                <DataCard title="Strategy Metrics" icon="analytics" badge="Computed" badgeColor="text-amber-400">
+                <DataCard title="Strategy Metrics" icon="analytics" badge="Computed" badgeColor="text-warning">
                     <DataBadge
                         label="Yield Spread"
                         value={portfolioData?.baseSpread !== undefined ? `${Number(portfolioData.baseSpread).toFixed(2)}%` : '—'}
@@ -260,7 +260,7 @@ export default function LiveData() {
                     <DataBadge
                         label="Gas Price"
                         value={portfolioData?.gasPrice ? `${Number(portfolioData.gasPrice).toFixed(1)} gwei` : '—'}
-                        color={portfolioData?.gasPrice < 20 ? 'text-success' : portfolioData?.gasPrice < 45 ? 'text-amber-400' : 'text-error'}
+                        color={portfolioData?.gasPrice < 20 ? 'text-success' : portfolioData?.gasPrice < 45 ? 'text-warning' : 'text-error'}
                         icon="local_gas_station"
                         sub={portfolioData?.gasPrice < 20 ? 'Low — good for claiming' : portfolioData?.gasPrice < 45 ? 'Moderate' : 'High — avoid transactions'}
                     />
@@ -274,7 +274,7 @@ export default function LiveData() {
                     <DataBadge
                         label="RPC Status"
                         value={portfolioData?.blockNumber ? 'Connected' : 'Simulated'}
-                        color={portfolioData?.blockNumber ? 'text-success' : 'text-amber-400'}
+                        color={portfolioData?.blockNumber ? 'text-success' : 'text-warning'}
                         icon="cast_connected"
                         sub={portfolioData?.blockNumber ? 'Reading live on-chain data' : 'Configure in Settings → RPC URL'}
                     />

@@ -97,7 +97,7 @@ export default function YieldStrategies() {
             label: 'Net APY',
             value: netApy,
             glowColor: 'bg-success/5 group-hover:bg-success/10',
-            valueColor: Number(liveData?.netApy) > 0 ? 'text-green-400' : 'text-red-500',
+            valueColor: Number(liveData?.netApy) > 0 ? 'text-success' : 'text-error',
             sub: { icon: 'info', text: 'Aggregated return', color: 'text-on-surface-variant' },
             bar: null,
         },

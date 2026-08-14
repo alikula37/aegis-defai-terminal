@@ -67,7 +67,7 @@ export default function CrossChainArbitrage() {
                     label="Ethereum L1 (best of Morpho / Aave V4)"
                     apy={l1Borrow}
                     maxApy={maxRate}
-                    color="bg-red-500"
+                    color="bg-error"
                     badge={null}
                 />
                 <RateBar

@@ -67,7 +67,7 @@ export default function StrategyDetailsModal({ isOpen, onClose, strategy }) {
                         </div>
                         <div className="p-4 rounded-xl bg-surface-container border border-outline-variant">
                             <p className="font-[Inter] text-[13px] text-on-surface-variant mb-1">Net APY (live)</p>
-                            <p className={`font-[JetBrains_Mono] text-[24px] font-bold ${netApy >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            <p className={`font-[JetBrains_Mono] text-[24px] font-bold ${netApy >= 0 ? 'text-success' : 'text-error'}`}>
                                 {formatPct(netApy)}
                             </p>
                         </div>
@@ -87,19 +87,19 @@ export default function StrategyDetailsModal({ isOpen, onClose, strategy }) {
                         <div className="p-4 rounded-xl bg-surface-container border border-outline-variant space-y-3">
                             <div className="flex justify-between items-center">
                                 <span className="font-[Inter] text-[14px] text-on-surface-variant">Base Yield</span>
-                                <span className="font-[JetBrains_Mono] text-[14px] text-green-400">{formatPct(baseYield)}</span>
+                                <span className="font-[JetBrains_Mono] text-[14px] text-success">{formatPct(baseYield)}</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="font-[Inter] text-[14px] text-on-surface-variant">Points / Airdrop Est.</span>
-                                <span className="font-[JetBrains_Mono] text-[14px] text-green-400">{formatPct(pointsApy)}</span>
+                                <span className="font-[JetBrains_Mono] text-[14px] text-success">{formatPct(pointsApy)}</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="font-[Inter] text-[14px] text-on-surface-variant">Borrow Cost</span>
-                                <span className="font-[JetBrains_Mono] text-[14px] text-red-400">{formatPct(-borrowApy)}</span>
+                                <span className="font-[JetBrains_Mono] text-[14px] text-error">{formatPct(-borrowApy)}</span>
                             </div>
                             <div className="pt-3 border-t border-outline-variant flex justify-between items-center">
                                 <span className="font-[Inter] text-[14px] font-semibold text-on-surface">Net APY</span>
-                                <span className={`font-[JetBrains_Mono] text-[16px] font-bold ${netApy >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                <span className={`font-[JetBrains_Mono] text-[16px] font-bold ${netApy >= 0 ? 'text-success' : 'text-error'}`}>
                                     {formatPct(netApy)}
                                 </span>
                             </div>

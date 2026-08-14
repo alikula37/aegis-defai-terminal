@@ -19,10 +19,10 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-background text-on-background">
-            <form onSubmit={submit} className="w-full max-w-sm p-8 rounded-2xl bg-surface/50 border border-outline shadow-xl space-y-5">
+            <form onSubmit={submit} className="w-full max-w-sm p-8 rounded-xl bg-surface border border-graphite space-y-5">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Aegis DeFAI Terminal</h1>
-                    <p className="text-sm text-muted mt-1">Sign in to access your terminal.</p>
+                    <h1 className="text-2xl font-[510] tracking-[-0.022em] text-paper">Aegis DeFAI Terminal</h1>
+                    <p className="text-sm text-fog mt-1">Sign in to access your terminal.</p>
                 </div>
                 {error && (
                     <div className="rounded-lg bg-error/10 border border-error/40 px-3 py-2 text-sm text-error" role="alert">
@@ -30,7 +30,7 @@ export default function LoginPage() {
                     </div>
                 )}
                 <div className="space-y-1">
-                    <label htmlFor="login-username" className="text-sm font-medium">Username</label>
+                    <label htmlFor="login-username" className="text-sm font-medium text-mist">Username</label>
                     <input
                         id="login-username"
                         type="text"
@@ -38,11 +38,11 @@ export default function LoginPage() {
                         required
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        className="w-full rounded-lg border border-outline bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="w-full rounded-md border border-graphite bg-obsidian px-3 py-2 text-sm text-mist"
                     />
                 </div>
                 <div className="space-y-1">
-                    <label htmlFor="login-password" className="text-sm font-medium">Password</label>
+                    <label htmlFor="login-password" className="text-sm font-medium text-mist">Password</label>
                     <input
                         id="login-password"
                         type="password"
@@ -50,17 +50,17 @@ export default function LoginPage() {
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full rounded-lg border border-outline bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="w-full rounded-md border border-graphite bg-obsidian px-3 py-2 text-sm text-mist"
                     />
                 </div>
                 <button
                     type="submit"
                     disabled={submitting}
-                    className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-on-primary hover:opacity-90 disabled:opacity-50"
+                    className="w-full rounded-md bg-primary py-2.5 text-sm font-[510] text-on-primary hover:opacity-90 disabled:opacity-50"
                 >
                     {submitting ? 'Signing in…' : 'Sign in'}
                 </button>
-                <p className="text-xs text-muted text-center">
+                <p className="text-xs text-fog text-center">
                     The first account created on a fresh install becomes an administrator.
                     {authRequired && ' This terminal requires authentication.'}
                 </p>

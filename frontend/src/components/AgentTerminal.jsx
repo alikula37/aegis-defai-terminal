@@ -9,9 +9,9 @@ const INITIAL_LOGS = [
 const typeColorMap = {
     scan: 'text-on-surface',
     flash_loan: 'text-primary',
-    rebalance: 'text-green-400',
+    rebalance: 'text-success',
     claim: 'text-success',
-    alert: 'text-amber-400',
+    alert: 'text-warning',
     system: 'text-on-surface-variant',
     decision: 'text-cyan-300',
     tool: 'text-on-surface-variant',

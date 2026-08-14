@@ -65,7 +65,7 @@ export default function Sidebar() {
                     <span className="material-symbols-outlined text-on-primary-container text-sm">terminal</span>
                 </div>
                 <div>
-                    <h1 className="font-[Inter] text-[24px] leading-[32px] font-bold text-primary tracking-tight">AEGIS DeFAI</h1>
+                    <h1 className="font-[Inter] text-[24px] leading-[32px] font-[510] text-paper tracking-tight">AEGIS DeFAI</h1>
                     <p className="font-[JetBrains_Mono] text-[12px] leading-[18px] text-success flex items-center gap-1">
                         <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-success' : 'bg-outline'} relative`}>
                             {isRunning && <span className="absolute inset-0 rounded-full bg-success pulse-ring"></span>}
@@ -83,14 +83,14 @@ export default function Sidebar() {
                         to={item.to}
                         end={item.to === '/'}
                         className={({ isActive }) =>
-                            `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${isActive
-                                ? 'text-primary font-bold bg-surface-variant border-r-2 border-primary brightness-110 glow-active'
+                            `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isActive
+                                ? 'text-primary font-[510] bg-primary/10'
                                 : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant'
                             }`
                         }
                     >
                         <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-                        <span className="font-[Inter] text-[16px] leading-[24px]">{item.label}</span>
+                        <span className="font-[Inter] text-[14px] leading-[20px] tracking-[-0.01em]">{item.label}</span>
                     </NavLink>
                 ))}
             </nav>
@@ -105,8 +105,8 @@ export default function Sidebar() {
                             Simulation Control
                         </h3>
                         {/* Status Badge */}
-                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-[JetBrains_Mono] font-bold ${isRunning ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></span>
+                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-[JetBrains_Mono] font-bold ${isRunning ? 'bg-success/10 text-success border border-success/20' : 'bg-error/10 text-error border border-error/20'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-success animate-pulse' : 'bg-error'}`}></span>
                             {isRunning ? 'RUNNING' : 'STOPPED'}
                         </div>
                     </div>

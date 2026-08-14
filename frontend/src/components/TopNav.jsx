@@ -50,7 +50,7 @@ export default function TopNav() {
     const currentDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
     return (
-        <header className="flex justify-between items-center h-16 px-[1.5rem] border-b border-outline-variant bg-surface-container-low sticky top-0 z-40 w-full shadow-[0_4px_20px_-10px_rgba(0,0,0,0.5)]">
+        <header className="flex justify-between items-center h-16 px-[1.5rem] border-b border-outline-variant bg-surface-container-low sticky top-0 z-40 w-full">
             <div className="flex items-center gap-3">
                 {/* E10 — mobile hamburger (desktop keeps the fixed sidebar) */}
                 <button
@@ -62,7 +62,7 @@ export default function TopNav() {
                 </button>
                 <div className="flex flex-col">
                     <div className="flex items-center gap-3">
-                        <h2 className="font-[Inter] text-[20px] leading-[28px] font-semibold text-on-surface">{title}</h2>
+                        <h2 className="font-[Inter] text-[20px] leading-[28px] font-[510] text-paper tracking-[-0.02em]">{title}</h2>
                         {isSimulationRunning && (
                             <span className="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-md text-[12px] font-[JetBrains_Mono] flex items-center gap-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>

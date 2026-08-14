@@ -82,13 +82,13 @@ export default function TransactionAnalytics() {
                 <p className="font-[Inter] text-[13px] text-on-surface mb-2">{data.action}</p>
                 <div className="flex justify-between items-center gap-4">
                     <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">Status:</span>
-                    <span className={`font-[Inter] text-[13px] font-bold ${data.isSuccessful ? 'text-green-400' : 'text-red-500'}`}>
+                    <span className={`font-[Inter] text-[13px] font-bold ${data.isSuccessful ? 'text-success' : 'text-error'}`}>
                         {data.isSuccessful ? 'Executed (Closed)' : 'Executed (Net Loss)'}
                     </span>
                 </div>
                 <div className="flex justify-between items-center gap-4">
                     <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">Est. Tx Impact:</span>
-                    <span className={`font-[Inter] text-[13px] font-bold ${data.pnl >= 0 ? 'text-green-400' : 'text-red-500'}`}>
+                    <span className={`font-[Inter] text-[13px] font-bold ${data.pnl >= 0 ? 'text-success' : 'text-error'}`}>
                         ${data.pnl.toFixed(2)}
                     </span>
                 </div>
@@ -125,21 +125,21 @@ export default function TransactionAnalytics() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-[1rem]">
                 <div className="bg-surface-container border border-outline-variant rounded-xl p-5 flex flex-col justify-center">
                     <span className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Total Yield Accrued</span>
-                    <span className={`font-[Inter] text-[24px] font-bold ${totalYieldAccrued >= 0 ? 'text-green-400' : 'text-red-500'}`}>
+                    <span className={`font-[Inter] text-[24px] font-bold ${totalYieldAccrued >= 0 ? 'text-success' : 'text-error'}`}>
                         {formatCurrency(totalYieldAccrued)}
                     </span>
                     <span className="font-[Inter] text-[11px] text-on-surface-variant mt-1">Realized portfolio growth</span>
                 </div>
                 <div className="bg-surface-container border border-outline-variant rounded-xl p-5 flex flex-col justify-center">
                     <span className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Total Execution Costs</span>
-                    <span className="font-[Inter] text-[24px] font-bold text-red-500">
+                    <span className="font-[Inter] text-[24px] font-bold text-error">
                         -${Math.abs(totalTxCosts).toFixed(2)}
                     </span>
                     <span className="font-[Inter] text-[11px] text-on-surface-variant mt-1">Gas, bridge fees & rebalances</span>
                 </div>
                 <div className="bg-surface-container border border-outline-variant rounded-xl p-5 flex flex-col justify-center">
                     <span className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Estimated Value Created</span>
-                    <span className="font-[Inter] text-[24px] font-bold text-green-400">
+                    <span className="font-[Inter] text-[24px] font-bold text-success">
                         +${totalTxProfits.toFixed(2)}
                     </span>
                     <span className="font-[Inter] text-[11px] text-on-surface-variant mt-1">Projected savings & arb profits</span>
