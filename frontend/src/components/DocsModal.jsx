@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 export default function DocsModal({ isOpen, onClose }) {
+    const { modalRef } = useModalA11y({ isOpen, onClose });
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="docs-modal-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-surface-container border border-outline-variant rounded-xl p-6 w-full max-w-2xl shadow-2xl relative max-h-[80vh] flex flex-col">
                 <button
                     onClick={onClose}
@@ -13,7 +15,7 @@ export default function DocsModal({ isOpen, onClose }) {
                     <span className="material-symbols-outlined">close</span>
                 </button>
 
-                <h2 className="font-[Inter] text-[20px] font-semibold text-on-surface mb-6 flex items-center gap-2">
+                <h2 id="docs-modal-title" className="font-[Inter] text-[20px] font-semibold text-on-surface mb-6 flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">description</span>
                     Documentation & Changelog
                 </h2>

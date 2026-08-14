@@ -1,7 +1,9 @@
-import { fetchJson } from '../lib/apiClient';
+import { apiFetch, fetchJson } from '../lib/apiClient';
 import { useState, useEffect } from 'react';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 export default function SimulationResumeModal({ isOpen, onClose, onResume }) {
+    const { modalRef } = useModalA11y({ isOpen, onClose });
     const [simulations, setSimulations] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedSimId, setSelectedSimId] = useState(null);
@@ -48,10 +50,10 @@ export default function SimulationResumeModal({ isOpen, onClose, onResume }) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="resume-modal-title" className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
             <div className="bg-surface-container border border-outline-variant rounded-xl p-6 max-w-md w-full shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="font-[Inter] text-[20px] font-bold text-on-surface">Resume Simulation</h2>
+                    <h2 id="resume-modal-title" className="font-[Inter] text-[20px] font-bold text-on-surface">Resume Simulation</h2>
                     <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">
                         <span className="material-symbols-outlined">close</span>
                     </button>

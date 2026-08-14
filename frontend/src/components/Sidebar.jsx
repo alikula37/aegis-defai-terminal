@@ -5,7 +5,7 @@ import { useWebSocket } from '../contexts/WebSocketContext';
 import DocsModal from './DocsModal';
 import SupportModal from './SupportModal';
 
-const navItems = [
+export const navItems = [
     { to: '/', icon: 'dashboard', label: 'Overview' },
     { to: '/yield-strategies', icon: 'account_balance_wallet', label: 'Yield Strategies' },
     { to: '/live-data', icon: 'sensors', label: 'Live Data' },

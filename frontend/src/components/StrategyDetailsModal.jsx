@@ -1,8 +1,10 @@
 import React from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { useModalA11y } from '../hooks/useModalA11y';
 import { deriveStrategyBreakdown, deriveAgentTimeline } from './strategyDetailsLogic';
 
 export default function StrategyDetailsModal({ isOpen, onClose, strategy }) {
+    const { modalRef } = useModalA11y({ isOpen: Boolean(isOpen && strategy), onClose });
     const { portfolioData, agentLogs } = useWebSocket();
 
     if (!isOpen || !strategy) return null;
@@ -21,7 +23,7 @@ export default function StrategyDetailsModal({ isOpen, onClose, strategy }) {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+        <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="strategy-modal-title" className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose}></div>
 
             <div className="relative w-full max-w-2xl bg-surface-container-high border border-outline-variant rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -32,7 +34,7 @@ export default function StrategyDetailsModal({ isOpen, onClose, strategy }) {
                             <span className="material-symbols-outlined text-on-primary-container">analytics</span>
                         </div>
                         <div>
-                            <h2 className="font-[Inter] text-[20px] leading-[28px] font-bold text-on-surface">{strategy.name}</h2>
+                            <h2 id="strategy-modal-title" className="font-[Inter] text-[20px] leading-[28px] font-bold text-on-surface">{strategy.name}</h2>
                             <p className="font-[JetBrains_Mono] text-[13px] text-on-surface-variant flex items-center gap-2">
                                 <span>{strategy.protocol}</span>
                                 {strategy.borrowProtocol && (

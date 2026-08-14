@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 export default function SupportModal({ isOpen, onClose }) {
+    const { modalRef } = useModalA11y({ isOpen, onClose });
     const [isSubmitted, setIsSubmitted] = useState(false);
 
     if (!isOpen) return null;
@@ -15,7 +17,7 @@ export default function SupportModal({ isOpen, onClose }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="support-modal-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-surface-container border border-outline-variant rounded-xl p-6 w-full max-w-md shadow-2xl relative">
                 <button
                     onClick={onClose}
@@ -24,7 +26,7 @@ export default function SupportModal({ isOpen, onClose }) {
                     <span className="material-symbols-outlined">close</span>
                 </button>
 
-                <h2 className="font-[Inter] text-[20px] font-semibold text-on-surface mb-6 flex items-center gap-2">
+                <h2 id="support-modal-title" className="font-[Inter] text-[20px] font-semibold text-on-surface mb-6 flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">help</span>
                     Support
                 </h2>

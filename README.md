@@ -103,14 +103,30 @@ You have two options to configure the terminal:
 
 ### 4. Optional security (exposed deployments)
 
-For deployments exposed beyond `localhost`, set these environment variables in `backend/.env`:
+For deployments exposed beyond `localhost`:
+
+**Multi-user auth (Phase 4 / E9):** set `AUTH_REQUIRED=true` in `backend/.env`
+(default in production). Login is then mandatory; the first registered account
+becomes **admin**. Data (simulations, settings, logs) is isolated per user and
+the WebSocket stream only reaches the simulation owner. See
+[docs/AUTH.md](docs/AUTH.md) for the full model (sessions, lockout, CSRF,
+admin API). In open mode (`AUTH_REQUIRED=false`, dev default) everything runs
+as the seeded `local` user — no login screen.
+
+Additional hardening:
 
 | Variable | Effect |
 |---|---|
-| `AEGIS_API_KEY` | When set, every REST `/api/*` request must send `x-api-key: <key>`. The browser key is entered on the **Settings → API Access Key** page (stored locally). |
-| `WS_API_KEY` | WebSocket auth key. The browser presents it as a `Sec-WebSocket-Protocol` subprotocol (not a query string). In `NODE_ENV=production` handshakes without the exact key are rejected. |
+| `AEGIS_API_KEY` | When set, every REST `/api/*` request must send `x-api-key: <key>`. The browser key is entered on the **Settings → API Access Key** page (stored locally). With session auth active this is an optional extra layer. |
+| `WS_API_KEY` | WebSocket auth key (open mode only). With `AUTH_REQUIRED=true` the session cookie authenticates the socket instead. |
 
-Monitoring: Prometheus metrics are exposed at `GET /metrics` (HTTP request count/duration, WS clients, portfolio TVL, agent running state).
+Monitoring: Prometheus metrics are exposed at `GET /metrics` (HTTP request
+count/duration, WS clients, portfolio TVL, agent running state, LLM/tool
+calls, OTel span durations). With `OTEL_ENABLED=true` agent/LLM/onchain spans
+fold into the same endpoint — see [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md).
+
+Notifications: critical agent events can fan out to Telegram/email — see
+[docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md).
 
 ## Architecture
 - **Backend:** Node.js, Express, node:sqlite (built-in SQLite), WebSocket, Prometheus.

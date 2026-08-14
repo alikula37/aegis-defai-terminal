@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useAuth } from '../contexts/AuthContext';
+import MobileNav from './MobileNav';
 
 const pageTitles = {
     '/': 'Portfolio Overview',
@@ -15,6 +16,8 @@ export default function TopNav() {
     const { notifications, setNotifications, simulationName, isSimulationRunning, executionStatus } = useWebSocket();
     const { user, authRequired, logout } = useAuth();
     const [showNotifications, setShowNotifications] = useState(false);
+    const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+    const closeMobileNav = useCallback(() => setIsMobileNavOpen(false), []);
 
     const title = pageTitles[location.pathname] || 'Portfolio Overview';
     const currentDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -27,17 +30,27 @@ export default function TopNav() {
 
     return (
         <header className="flex justify-between items-center h-16 px-[1.5rem] border-b border-outline-variant bg-surface-container-low sticky top-0 z-40 w-full shadow-[0_4px_20px_-10px_rgba(0,0,0,0.5)]">
-            <div className="flex flex-col">
-                <div className="flex items-center gap-3">
-                    <h2 className="font-[Inter] text-[20px] leading-[28px] font-semibold text-on-surface">{title}</h2>
-                    {isSimulationRunning && (
-                        <span className="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-md text-[12px] font-[JetBrains_Mono] flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                            {simulationName}
-                        </span>
-                    )}
+            <div className="flex items-center gap-3">
+                {/* E10 — mobile hamburger (desktop keeps the fixed sidebar) */}
+                <button
+                    onClick={() => setIsMobileNavOpen(true)}
+                    className="md:hidden text-on-surface-variant hover:text-on-surface p-1.5 rounded-lg hover:bg-surface-variant transition-colors"
+                    aria-label="Open navigation menu"
+                >
+                    <span className="material-symbols-outlined">menu</span>
+                </button>
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-3">
+                        <h2 className="font-[Inter] text-[20px] leading-[28px] font-semibold text-on-surface">{title}</h2>
+                        {isSimulationRunning && (
+                            <span className="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-md text-[12px] font-[JetBrains_Mono] flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                                {simulationName}
+                            </span>
+                        )}
+                    </div>
+                    <span className="font-[Inter] text-[14px] leading-[20px] text-on-surface-variant">{currentDate}</span>
                 </div>
-                <span className="font-[Inter] text-[14px] leading-[20px] text-on-surface-variant">{currentDate}</span>
             </div>
             <div className="flex items-center gap-4">
                 {executionStatus && (
@@ -131,6 +144,7 @@ export default function TopNav() {
                     Connect Wallet
                 </button>
             </div>
+            <MobileNav isOpen={isMobileNavOpen} onClose={closeMobileNav} />
         </header>
     );
 }

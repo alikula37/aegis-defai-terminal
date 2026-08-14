@@ -1,6 +1,7 @@
 import { apiFetch } from '../lib/apiClient';
 import { useState, useEffect } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 export default function SimulationStartModal({ isOpen, onClose, onStart }) {
     const { isStarting, executionStatus } = useWebSocket();
@@ -41,6 +42,10 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                 .finally(() => setIsLoadingSettings(false));
         }
     }, [isOpen]);
+
+    // E10 — a11y: role=dialog + Esc + focus trap. Called unconditionally
+    // (rules-of-hooks): the hook no-ops when isOpen is false.
+    const { modalRef } = useModalA11y({ isOpen, onClose });
 
     if (!isOpen) return null;
 
@@ -88,16 +93,17 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="start-modal-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-surface-container border border-outline-variant rounded-xl p-6 w-full max-w-md shadow-2xl relative">
                 <button
                     onClick={onClose}
+                    aria-label="Close start simulation dialog"
                     className="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface transition-colors"
                 >
                     <span className="material-symbols-outlined">close</span>
                 </button>
 
-                <h2 className="font-[Inter] text-[20px] font-semibold text-on-surface mb-6 flex items-center gap-2">
+                <h2 id="start-modal-title" className="font-[Inter] text-[20px] font-semibold text-on-surface mb-6 flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">play_circle</span>
                     Start Simulation
                 </h2>

@@ -1,4 +1,5 @@
 import { apiFetch } from '../lib/apiClient';
+import { useModalA11y } from '../hooks/useModalA11y';
 import { useState, useEffect } from 'react';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -26,6 +27,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default function TvlHistoryModal({ isOpen, onClose }) {
+    const { modalRef } = useModalA11y({ isOpen, onClose });
     const [data, setData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -51,7 +53,7 @@ export default function TvlHistoryModal({ isOpen, onClose }) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="tvl-modal-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-surface-container border border-outline-variant rounded-xl p-6 w-full max-w-2xl shadow-2xl relative">
                 <button
                     onClick={onClose}
@@ -60,7 +62,7 @@ export default function TvlHistoryModal({ isOpen, onClose }) {
                     <span className="material-symbols-outlined">close</span>
                 </button>
 
-                <h2 className="font-[Inter] text-[20px] font-semibold text-on-surface mb-6 flex items-center gap-2">
+                <h2 id="tvl-modal-title" className="font-[Inter] text-[20px] font-semibold text-on-surface mb-6 flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">account_balance</span>
                     Total Value Locked (History)
                 </h2>
