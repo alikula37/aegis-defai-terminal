@@ -1,0 +1,65 @@
+# Dependabot version updates — see
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+version: 2
+updates:
+  # Backend npm dependencies (Node 22, express, ethers, vitest, …)
+  - package-ecosystem: "npm"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      # Minor + patch bumps are grouped into one PR per ecosystem to keep the
+      # pre-1.0 churn manageable; security updates are never grouped/ignored.
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+    ignore:
+      # Pre-1.0: major bumps are reviewed manually (breaking API risk).
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
+  # Frontend npm dependencies (React, Vite, Tailwind, …)
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
+  # Base images (node:22-alpine, nginx:alpine)
+  - package-ecosystem: "docker"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: "docker"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+
+  # GitHub Actions (checkout, setup-node, docker actions, …)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
