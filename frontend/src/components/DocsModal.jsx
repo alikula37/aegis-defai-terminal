@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useModalA11y } from '../hooks/useModalA11y';
 
 export default function DocsModal({ isOpen, onClose }) {

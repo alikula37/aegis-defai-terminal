@@ -446,7 +446,7 @@ export class AegisAgent {
     // 4 — slippage / freshness guard: re-fetch market data before executing a
     // trade decision and abort if the health factor moved more than 5%.
     // Returns the fresh { marketData, conditions } or null to abort.
-    async _checkFreshness(marketData, conditions) {
+    async _checkFreshness(marketData, _conditions) {
         const freshMarketData = await this._fetchMarketData('fetchFreshMarketData');
         if (!freshMarketData) {
             this.logAndBroadcast('alert', `⚠️ [Slippage Check] Failed to fetch fresh market data. Aborting trade for safety.`);

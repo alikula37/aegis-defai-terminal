@@ -2,7 +2,7 @@ import { apiFetch } from '../lib/apiClient';
 import { useState, useEffect } from 'react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    ScatterChart, Scatter, ZAxis, Legend, Cell
+    ScatterChart, Scatter, ZAxis, Cell
 } from 'recharts';
 
 function fmtTime(iso) {
@@ -71,7 +71,7 @@ export default function TransactionAnalytics() {
         );
     }
 
-    const CustomTooltip = ({ active, payload, label }) => {
+    const CustomTooltip = ({ active, payload, _label }) => {
         if (!active || !payload || !payload.length) return null;
         const data = payload[0].payload;
         return (

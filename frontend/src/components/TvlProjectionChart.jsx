@@ -32,7 +32,7 @@ export default function TvlProjectionChart() {
     const projected1YearTvl = projectionData.length > 0 ? projectionData[projectionData.length - 1].tvl : currentTvl;
     const projected1YearYield = projected1YearTvl - currentTvl;
 
-    const CustomTooltip = ({ active, payload, label }) => {
+    const CustomTooltip = ({ active, payload, _label }) => {
         if (!active || !payload || !payload.length) return null;
         const data = payload[0].payload;
         return (

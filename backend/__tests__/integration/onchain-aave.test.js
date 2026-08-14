@@ -38,8 +38,6 @@ let WETH = null;
 let provider;
 let wallet;
 let pool;
-let weth;
-let usdc;
 
 async function probeReserves() {
     // Retry once after a short pause: RPC hiccups on free-tier endpoints would

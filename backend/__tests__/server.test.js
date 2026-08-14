@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import { WebSocket } from 'ws';
 import { app, server } from '../server.js';
@@ -108,7 +108,7 @@ describe('API Integration Tests', () => {
     });
 
     it('POST /api/simulation/start should validate input', async () => {
-        const res = await request(app)
+        await request(app)
             .post('/api/simulation/start')
             .send({ initialBalance: 'invalid_number' });
 

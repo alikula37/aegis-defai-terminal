@@ -2,7 +2,7 @@ import { apiFetch } from '../lib/apiClient';
 import { useState, useEffect, useRef } from 'react';
 import {
     ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid,
-    Tooltip, Legend, ResponsiveContainer, ReferenceLine
+    Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
 import { useWebSocket } from '../contexts/WebSocketContext';
 

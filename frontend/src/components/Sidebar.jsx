@@ -14,7 +14,7 @@ export const navItems = [
 ];
 
 export default function Sidebar() {
-    const { isSimulationRunning: isRunning, setIsSimulationRunning, hasData, setHasData, setIsStartModalOpen, setIsResumeModalOpen, simulationStartTime } = useWebSocket();
+    const { isSimulationRunning: isRunning, setIsSimulationRunning, setIsStartModalOpen, setIsResumeModalOpen, simulationStartTime } = useWebSocket();
     const [isDocsOpen, setIsDocsOpen] = useState(false);
     const [isSupportOpen, setIsSupportOpen] = useState(false);
     const [uptime, setUptime] = useState('00:00:00');
