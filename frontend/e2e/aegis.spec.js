@@ -48,4 +48,17 @@ test.describe('Aegis DeFAI Terminal', () => {
         await stopButton.click();
         await expect(page.getByRole('button', { name: /Start New/i }).first()).toBeVisible({ timeout: 20000 });
     });
+
+    test('every route renders without a runtime error', async ({ page }) => {
+        // Regression guard: catches ReferenceError/undefined-var crashes that
+        // unit tests miss (e.g. a removed context field still used in a page).
+        const routes = ['/', '/yield-strategies', '/live-data', '/ai-agent-logs', '/settings'];
+        for (const route of routes) {
+            await page.goto(route);
+            // The app shell mounts (logo in the sidebar)
+            await expect(page.getByText('AEGIS DeFAI').first()).toBeVisible({ timeout: 15000 });
+            // …and the error boundary never takes over
+            await expect(page.locator('text=/Something went wrong/i')).toHaveCount(0);
+        }
+    });
 });

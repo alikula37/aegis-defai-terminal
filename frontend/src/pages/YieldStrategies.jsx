@@ -17,7 +17,7 @@ const PLACEHOLDER_STRATEGIES = [
 ];
 
 export default function YieldStrategies() {
-    const { portfolioData: liveData, isSimulationRunning, setIsStartModalOpen, setIsResumeModalOpen } = useWebSocket();
+    const { portfolioData: liveData, isSimulationRunning, hasData, setIsStartModalOpen, setIsResumeModalOpen } = useWebSocket();
     const [isLoading, setIsLoading] = useState(true);
 
     // Show brief loading indicator, then show placeholder/live data
