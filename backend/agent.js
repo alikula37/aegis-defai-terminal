@@ -14,6 +14,7 @@ import { runToolAgent } from './core/tools/agentLoop.js';
 import { createExecutionLayer } from './execution/ExecutionLayer.js';
 import { resolveOnchainDeps, resolveExecutionMode } from './execution/onchainSetup.js';
 import aegisConfig from './aegis.config.js';
+import { notificationService } from './utils/NotificationService.js';
 
 // ---- Retry utility ----
 async function withRetry(fn, { maxRetries = 3, baseDelay = 1000, name = '' } = {}) {
@@ -74,6 +75,14 @@ export class AegisAgent {
         this.executionWarningShown = false;
         this._lastReasoningDetails = null;
         this._lastMarketData = null;
+
+        // Phase 4 (C7) — external notification fan-out (Telegram/email). Injected
+        // in tests; defaults to the env-driven singleton. Fire-and-forget.
+        // Guard: a broken injected notifier must never throw out of the
+        // watchdog callback (which uses raw logAndBroadcast).
+        this.notifier = options.notifier && typeof options.notifier.notify === 'function'
+            ? options.notifier
+            : notificationService;
 
         this.executionLayer = createExecutionLayer(this.executionMode, this._buildExecutionCtx(), {
             provider: this.executionDeps.provider,
@@ -258,6 +267,8 @@ export class AegisAgent {
             details
         });
         logger.info(`[${type.toUpperCase()}] ${message}`);
+        // C7 — fan out critical events to external channels (no-op when unconfigured).
+        this.notifier.notify(type, message, details).catch(() => {});
     }
 
     // Error-path variant: a DB hiccup must never throw out of a catch handler
@@ -355,11 +366,14 @@ export class AegisAgent {
                 this._recordLLMMetric(settings.activeModel, 'plain');
                 return response;
             } catch (error) {
+                const message = `OpenRouter API Error: ${error.message}`;
                 this.broadcast('notification', {
                     type: 'error',
-                    message: `OpenRouter API Error: ${error.message}`,
+                    message,
                     timestamp: new Date().toISOString()
                 });
+                // C7 — LLM outage is a critical operational event
+                this.notifier.notify('error', message).catch(() => {});
                 return deterministicFallback(marketData, conditions, simulationState);
             }
         }
