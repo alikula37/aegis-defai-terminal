@@ -117,14 +117,15 @@ suite('Sepolia on-chain integration (read-only)', () => {
         const marketData = { portfolio: { tvl: 10000, currentLtv: 0.8 }, gasPrice: 15, ethPrice: 2500, leverage: 5 };
 
         // migrate_borrow → morpho.repay is skipped (Morpho absent on Sepolia),
-        // leaving an Aave-only plan (supply + borrow). The PT collateral must be
-        // resolvable for the plan to build (fail-closed otherwise).
+        // leaving an Aave-only plan (approve + supply + borrow). The PT
+        // collateral must be resolvable for the plan to build (fail-closed).
         const plan = await exec._buildPlan({ decision: 'migrate_borrow' }, {
             ...marketData,
             strategies: [{ id: 'pendle-pt-susde', tokenAddress: '0x000000000000000000000000000000000000dEaD' }],
         });
-        expect(plan.length).toBe(2);
-        expect(plan.every(p => p.tx.to.toLowerCase() === aavePool.toLowerCase())).toBe(true);
+        expect(plan.length).toBe(3);
+        expect(plan.map(p => p.name)).toEqual(['aave.approve-usdc', 'aave.supply', 'aave.borrow']);
+        expect(plan.filter(p => p.name !== 'aave.approve-usdc').every(p => p.tx.to.toLowerCase() === aavePool.toLowerCase())).toBe(true);
 
         // real on-chain gas price is readable (validates RPC + provider wiring)
         const feeData = await provider.getFeeData();

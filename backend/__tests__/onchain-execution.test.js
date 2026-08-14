@@ -10,11 +10,13 @@ function buildMockDeps() {
             repay: vi.fn(async () => makeTx('morpho.repay')),
             withdraw: vi.fn(async () => makeTx('morpho.withdraw')),
             flashLoan: vi.fn(async () => makeTx('morpho.flashLoan')),
+            approve: vi.fn(async () => makeTx('morpho.approve')),
         },
         aave: {
             supply: vi.fn(async () => makeTx('aave.supply')),
             borrow: vi.fn(async () => makeTx('aave.borrow')),
             repay: vi.fn(async () => makeTx('aave.repay')),
+            approve: vi.fn(async () => makeTx('aave.approve')),
         },
         ethena: {
             redeem: vi.fn(async () => makeTx('ethena.redeem')),
@@ -22,6 +24,7 @@ function buildMockDeps() {
         },
         pendle: {
             swapExactTokenForPt: vi.fn(async () => makeTx('pendle.swap')),
+            approveToken: vi.fn(async () => makeTx('pendle.approve')),
         },
     };
     const provider = {
@@ -49,7 +52,13 @@ const conditions = {};
 
 function makeExecution(overrides = {}) {
     const deps = buildMockDeps();
-    const config = { gas: {}, slippageBps: 50, maxGasLimitUsd: 10 };
+    const config = {
+        gas: {},
+        slippageBps: 50,
+        maxGasLimitUsd: 100,
+        // A2 — Morpho plans require the full market triple (fail-closed without it)
+        morphoMarket: { collateralToken: '0x000000000000000000000000000000000000dEaD', oracle: '0x1', irm: '0x2', lltv: 860000n },
+    };
     const exec = new OnchainExecution({
         provider: deps.provider,
         signer: deps.signer,
@@ -149,13 +158,63 @@ describe('OnchainExecution', () => {
     });
 
     it('sends each tx and broadcasts hashes on success', async () => {
-        const { exec, signer, broadcast } = makeExecution();
+        const { exec, connectors, signer, broadcast } = makeExecution();
+        // sync reports an open Morpho debt → unwind = approve + repay + withdraw
+        connectors.morpho.getPosition = vi.fn(async () => ({
+            supplyShares: 0n, borrowShares: 500n, collateral: 12n, marketId: '0x' + 'c'.repeat(64),
+        }));
         await exec.execute({ decision: 'unwind' }, marketData, conditions);
-        expect(signer.sendTransaction).toHaveBeenCalledTimes(2);
+        expect(signer.sendTransaction).toHaveBeenCalledTimes(3);
         expect(broadcast).toHaveBeenCalled();
         const infoMessages = broadcast.mock.calls.filter(([type]) => type === 'notification');
-        expect(infoMessages.length).toBe(2);
-        expect(infoMessages[0][1].message).toContain('Onchain morpho.repay submitted');
+        expect(infoMessages.length).toBe(3);
+        expect(infoMessages[0][1].message).toContain('Onchain morpho.approve-usdc submitted');
+    });
+
+    it('skips the repay leg when live positions show zero Morpho debt (A2)', async () => {
+        const { exec, connectors, signer } = makeExecution();
+        // sync resolves a real zero-debt position (market configured)
+        connectors.morpho.getPosition = vi.fn(async () => ({
+            supplyShares: 0n, borrowShares: 0n, collateral: 12n, marketId: '0x' + 'b'.repeat(64),
+        }));
+        const md = { ...marketData, strategies: [] };
+        await exec.execute({ decision: 'unwind' }, md, conditions);
+        expect(connectors.morpho.repay).not.toHaveBeenCalled();
+        expect(connectors.morpho.approve).not.toHaveBeenCalled();
+        // only the withdraw step
+        expect(signer.sendTransaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('refuses Morpho plans when the market triple is not configured (A2)', async () => {
+        const { exec, connectors, signer } = makeExecution();
+        exec.config.morphoMarket = undefined;
+        await exec.execute({ decision: 'unwind' }, marketData, conditions);
+        expect(connectors.morpho.repay).not.toHaveBeenCalled();
+        expect(signer.sendTransaction).not.toHaveBeenCalled();
+        expect(exec.log.mock.calls.some(([, m]) => /morphoMarket/.test(m))).toBe(true);
+    });
+
+    it('refuses the unwind repay when the debt position is unknown (A2 fail-closed)', async () => {
+        const { exec, connectors, signer } = makeExecution();
+        // no getPosition mock → sync yields no morpho position → debt unknown
+        await exec.execute({ decision: 'unwind' }, marketData, conditions);
+        expect(connectors.morpho.repay).not.toHaveBeenCalled();
+        expect(connectors.morpho.approve).not.toHaveBeenCalled();
+        // only the withdraw step is sent
+        expect(signer.sendTransaction).toHaveBeenCalledTimes(1);
+        expect(exec.log.mock.calls.some(([, m]) => /debt position unavailable/.test(m))).toBe(true);
+    });
+
+    it('includes approval steps for borrow/repay/migrate/reallocate plans (A2)', async () => {
+        const { exec, connectors } = makeExecution();
+        await exec.execute({ decision: 'adjust_portfolio', target_ltv: 0.9 }, marketData, conditions); // borrow
+        expect(connectors.morpho.approve).toHaveBeenCalledTimes(1);
+        await exec.execute({ decision: 'adjust_portfolio', target_ltv: 0.7 }, marketData, conditions); // repay
+        expect(connectors.morpho.approve).toHaveBeenCalledTimes(2);
+
+        const md = { ...marketData, positions: { sUSDe: { shares: 1000000 } } };
+        await exec.execute({ decision: 'reallocate_capital', target_allocations: { loop: 0.5, basis: 0.5, jit: 0 } }, md, conditions);
+        expect(connectors.pendle.approveToken).toHaveBeenCalledTimes(1);
     });
 
     it('routes high-risk execution via private mempool messaging', async () => {
@@ -187,5 +246,68 @@ describe('OnchainExecution', () => {
         await exec.execute({ decision: 'unwind' }, marketData, conditions);
         expect(deps.signer.sendTransaction).not.toHaveBeenCalled();
         expect(logs.some(m => /not available/.test(m))).toBe(true);
+    });
+
+    // ---- A1: live position sync ----
+
+    it('syncs live positions and uses them to resolve plan collateral/amounts (A1)', async () => {
+        const deps = buildMockDeps();
+        // connectors expose the new read methods
+        deps.connectors.morpho.getPosition = vi.fn(async () => ({
+            supplyShares: 5n, borrowShares: 900n, collateral: 12n, marketId: '0x' + 'a'.repeat(64),
+        }));
+        deps.connectors.ethena.getBalance = vi.fn(async () => 2500000n);
+        deps.connectors.aave.getATokenBalance = vi.fn(async () => 0n);
+        deps.connectors.aave.getVariableDebt = vi.fn(async () => 0n);
+
+        const exec = new OnchainExecution({
+            provider: deps.provider,
+            signer: deps.signer,
+            chainId: 1,
+            connectors: deps.connectors,
+            config: {
+                maxGasLimitUsd: 100, slippageBps: 50,
+                morphoMarket: { collateralToken: '0x000000000000000000000000000000000000dEaD', oracle: '0x1', irm: '0x2', lltv: 860000n },
+            },
+            log: deps.log,
+            broadcast: deps.broadcast,
+        });
+
+        const md = { portfolio: { tvl: 10000 }, gasPrice: 15, ethPrice: 2500, leverage: 5 };
+        await exec._syncLivePositions(md);
+
+        expect(md.livePositions.morpho.borrowShares).toBe(900n);
+        expect(md.livePositions.morpho.collateralToken).toBe('0x000000000000000000000000000000000000dEaD');
+        expect(md.livePositions.sUSDe.shares).toBe(2500000n);
+        expect(md.livePositions.aave.usdcAToken).toBe(0n);
+
+        // _ptToken prefers the live Morpho collateral; _sharesForTvl the live sUSDe
+        expect(exec._ptToken(md)).toBe('0x000000000000000000000000000000000000dEaD');
+        expect(exec._sharesForTvl(md)).toBe(2500000n);
+    });
+
+    it('skips position legs that are not configured or fail (A1)', async () => {
+        const deps = buildMockDeps();
+        deps.connectors.ethena.getBalance = vi.fn(async () => { throw new Error('rpc down'); });
+        const exec = new OnchainExecution({
+            provider: deps.provider,
+            signer: deps.signer,
+            chainId: 1,
+            connectors: deps.connectors,
+            config: { maxGasLimitUsd: 100, slippageBps: 50 }, // no morphoMarket → morpho leg skipped
+            log: deps.log,
+            broadcast: deps.broadcast,
+        });
+        const md = { portfolio: { tvl: 10000 }, gasPrice: 15, ethPrice: 2500, leverage: 5 };
+        await exec._syncLivePositions(md); // must not throw
+        expect(md.livePositions).toEqual({}); // all legs skipped gracefully
+        expect(exec._ptToken(md)).toBeNull();
+        expect(exec._sharesForTvl(md)).toBeNull();
+    });
+
+    it('resolves PT/shares from legacy snapshot positions when no live sync ran (A1)', () => {
+        const { exec } = makeExecution();
+        const md = { positions: { sUSDe: { shares: 1000000 } } };
+        expect(exec._sharesForTvl(md)).toBe(1000000n);
     });
 });

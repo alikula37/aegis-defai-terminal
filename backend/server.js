@@ -7,11 +7,12 @@ import { getLogs, getLatestPortfolio, getInitialPortfolio, getPortfolioHistory, 
 import { AegisAgent } from './agent.js';
 import { Backtester } from './backtest/Backtester.js';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import logger from './utils/logger.js';
 import { validateWsSubprotocol, expectedWsKey } from './utils/wsAuth.js';
 import { createMetrics } from './monitoring/metrics.js';
+import { apiKeyMiddleware } from './utils/apiAuth.js';
+import { createRateLimiter } from './utils/rateLimit.js';
 
 dotenv.config();
 
@@ -45,23 +46,27 @@ app.use(cors({
 
 app.use(helmet());
 
-const apiLimiter = rateLimit({
+const apiLimiter = createRateLimiter({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per `window`
-    standardHeaders: true,
-    legacyHeaders: false,
+    max: Number(process.env.RATE_LIMIT_API_MAX) || 300, // per IP
 });
 app.use('/api/', apiLimiter);
+
+// Stricter ceiling on state-changing endpoints (B6) — brute-force / abuse guard.
+const writeLimiter = createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: Number(process.env.RATE_LIMIT_WRITE_MAX) || 50,
+});
+app.use('/api/', (req, res, next) => {
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) return writeLimiter(req, res, next);
+    return next();
+});
 
 // ---- Optional API key auth (B2.5-2) ----
 // Enabled by setting AEGIS_API_KEY. When set, every /api request must carry
 // `x-api-key: <AEGIS_API_KEY>`. When unset the API stays open (local dev).
-const apiKeyMiddleware = (req, res, next) => {
-    const expected = process.env.AEGIS_API_KEY;
-    if (!expected) return next();
-    if (req.headers['x-api-key'] === expected) return next();
-    return res.status(401).json({ error: 'Unauthorized: missing or invalid x-api-key' });
-};
+// In production writes fail closed. (Middleware lives in utils/apiAuth.js so
+// it can be unit-tested without booting the HTTP server.)
 app.use('/api/', apiKeyMiddleware);
 
 // Request logging + metrics middleware
@@ -179,7 +184,15 @@ const startSimulationSchema = z.object({
     riskAppetite: z.string().optional(),
     simulationName: z.string().optional(),
     seed: z.union([z.string(), z.number()]).optional(),
-}).passthrough();
+}).passthrough()
+    // B6 — reject NaN/Infinity/negative/absurd balances at the schema layer
+    .superRefine((val, ctx) => {
+        if (val.initialBalance === undefined) return;
+        const num = typeof val.initialBalance === 'number' ? val.initialBalance : parseFloat(val.initialBalance);
+        if (Number.isNaN(num) || num <= 0 || num > 1e12) {
+            ctx.addIssue({ code: 'custom', path: ['initialBalance'], message: 'initialBalance must be > 0 and ≤ 1e12' });
+        }
+    });
 
 app.post('/api/simulation/start', async (req, res) => {
     try {
@@ -497,18 +510,27 @@ const settingsSchema = z.object({
     slippage: z.union([z.string(), z.number()]).optional(),
     openRouterKey: z.string().optional(),
     activeModel: z.string().optional(),
-}).passthrough();
+}).passthrough()
+    // B6 — numeric bounds on money-adjacent settings (reject NaN/Infinity/absurd)
+    .superRefine((val, ctx) => {
+        const num = typeof val.slippage === 'number' ? val.slippage : parseFloat(val.slippage);
+        if (val.slippage !== undefined && (Number.isNaN(num) || num < 0 || num > 100)) {
+            ctx.addIssue({ code: 'custom', path: ['slippage'], message: 'slippage must be 0–100' });
+        }
+    });
 
 app.post('/api/settings', async (req, res) => {
     try {
         const settings = settingsSchema.parse(req.body);
-        // A masked/empty secret on save means "keep the stored value" — never
-        // overwrite the real key with the masked placeholder.
+        // The settings table appends rows (latest wins). A masked/empty secret
+        // on save means "keep the stored value" — carry the current decrypted
+        // value into the new row instead of dropping it (which would clear it).
+        const current = await getSettings();
         if (settings.openRouterKey === undefined || EMPTY_SECRETS.has(settings.openRouterKey)) {
-            delete settings.openRouterKey;
+            settings.openRouterKey = current.openRouterKey || undefined;
         }
         if (settings.rpcUrl === undefined || EMPTY_SECRETS.has(settings.rpcUrl)) {
-            delete settings.rpcUrl;
+            settings.rpcUrl = current.rpcUrl || undefined;
         }
         await updateSettings(settings, agent.activeSimulationId);
         const newSettings = await getSettings();
@@ -531,7 +553,7 @@ app.delete('/api/settings', async (req, res) => {
 });
 
 // Global Error Handler
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
     logger.error(`[EXPRESS ERROR] ${err.stack}`);
     res.status(500).json({ error: 'Internal Server Error' });
 });

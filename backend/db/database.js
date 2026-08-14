@@ -361,7 +361,13 @@ if (!ENCRYPTION_KEY) {
 
 let encryptionKeyBuffer = Buffer.from(ENCRYPTION_KEY);
 if (encryptionKeyBuffer.length !== 32) {
-    logger.warn('[WARNING] ENCRYPTION_KEY is not 32 bytes. Truncating/padding to 32 bytes.');
+    if (process.env.NODE_ENV === 'production') {
+        // B5 — a padded AES-128 key is a real weakness; refuse to run in prod.
+        logger.error('[FATAL ERROR] ENCRYPTION_KEY must be exactly 32 bytes (64 hex chars) in production.');
+        logger.error('Generate with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+        process.exit(1);
+    }
+    logger.warn('[WARNING] ENCRYPTION_KEY is not 32 bytes. Truncating/padding to 32 bytes (dev only).');
     if (encryptionKeyBuffer.length > 32) {
         encryptionKeyBuffer = encryptionKeyBuffer.slice(0, 32);
     } else {
@@ -372,7 +378,8 @@ if (encryptionKeyBuffer.length !== 32) {
 }
 const IV_LENGTH = 16;
 
-function encrypt(text) {
+// Exported for unit tests (B5) — the production callers use updateSettings.
+export function encrypt(text) {
     if (!text) return text;
     try {
         let iv = crypto.randomBytes(IV_LENGTH);
@@ -381,12 +388,14 @@ function encrypt(text) {
         encrypted = Buffer.concat([encrypted, cipher.final()]);
         return iv.toString('hex') + ':' + encrypted.toString('hex');
     } catch (e) {
-        logger.error(`Encryption failed: ${e.message} `);
-        return text;
+        // B5 — never persist a secret in plaintext: on cipher failure the value
+        // is NOT stored (null) instead of silently saving the raw key.
+        logger.error(`Encryption failed, value NOT stored: ${e.message}`);
+        return null;
     }
 }
 
-function decrypt(text) {
+export function decrypt(text) {
     if (!text) return text;
     try {
         let textParts = text.split(':');

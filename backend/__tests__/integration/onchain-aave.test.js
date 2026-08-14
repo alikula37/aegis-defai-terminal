@@ -74,95 +74,111 @@ try {
     pool = new Contract(getAddress(PROTOCOLS.aavePool.markets[CHAIN_ID]), POOL_ABI, provider);
 
     const list = await probeReserves();
-    if (reservesActive) {
-        weth = new Contract(WETH, WETH_ABI, wallet);
-        usdc = new Contract(USDC, ERC20_ABI, provider);
-    }
     console.log(`[aave] reserves probe: ${list.length} active (USDC=${reservesActive ? getAddress(USDC).slice(0, 8) : 'missing'}, WETH=${reservesActive ? getAddress(WETH).slice(0, 8) : 'missing'})`);
 } catch (err) {
     console.log(`[aave] reserves probe failed: ${err.message.slice(0, 100)}`);
+}
+
+// The shared funded wallet is only a gas funder now. Each run spins a FRESH
+// sub-wallet funded with SepETH, so a leftover debt on the shared wallet (a
+// documented MaxUint256-repay trap) can never poison the suite again.
+let subWallet = null;
+const subFundAmount = parseEther('0.05');
+async function getSubWallet() {
+    if (subWallet) return subWallet;
+    subWallet = Wallet.createRandom().connect(provider);
+    const funding = await wallet.sendTransaction({
+        to: subWallet.address,
+        value: subFundAmount,
+    });
+    const receipt = await funding.wait();
+    if (receipt.status !== 1) throw new Error('Failed to fund sub-wallet');
+    console.log(`[aave] fresh sub-wallet ${subWallet.address.slice(0, 10)}… funded with ${formatUnits(subFundAmount, 18)} SepETH`);
+    return subWallet;
 }
 
 const suite = reservesActive ? describe : describe.skip;
 
 suite('Aave V3 Sepolia — supply/borrow lifecycle (real transactions)', () => {
     it('wraps ETH, supplies WETH, borrows USDC, repays and withdraws (full loop)', async () => {
-        const aave = new AavePoolConnector({ provider, signer: wallet, chainId: CHAIN_ID });
+        const signer = await getSubWallet();
+        const aave = new AavePoolConnector({ provider, signer, chainId: CHAIN_ID });
+        const subWeth = new Contract(WETH, WETH_ABI, signer);
+        const subUsdc = new Contract(USDC, ERC20_ABI, signer);
 
-        // Pre-flight: the wallet MUST be debt-free. repay(MaxUint256) in this
-        // pool pulls the entire current debt from the wallet, so a residual
-        // debt (from an interrupted previous run) can never be repaid without
-        // external USDC — the suite must not poison the wallet further.
+        // Pre-flight: the FRESH wallet is debt-free by construction (no
+        // MaxUint256-repay trap — a residual debt can never be repaid without
+        // external USDC).
         const preUsdcReserve = await pool.getReserveData(USDC);
         const preDebtToken = new Contract(preUsdcReserve.variableDebtTokenAddress, ERC20_ABI, provider);
-        const preDebt = await preDebtToken.balanceOf(wallet.address);
+        const preDebt = await preDebtToken.balanceOf(signer.address);
         expect(preDebt).toBe(0n);
 
         const wrapAmount = parseEther('0.004');
         const borrowAmount = parseUnits('2', 6); // 2 USDC (6 decimals)
 
-        const ethBefore = await provider.getBalance(wallet.address);
-        const wethBefore = await weth.balanceOf(wallet.address);
-        const usdcBefore = await usdc.balanceOf(wallet.address);
+        const ethBefore = await provider.getBalance(signer.address);
+        const wethBefore = await subWeth.balanceOf(signer.address);
+        const usdcBefore = await subUsdc.balanceOf(signer.address);
         expect(wethBefore).toBe(0n);
         expect(usdcBefore).toBe(0n);
 
         // 1. wrap ETH → WETH
-        const wrapTx = await weth.deposit({ value: wrapAmount });
+        const wrapTx = await subWeth.deposit({ value: wrapAmount });
         const wrapReceipt = await wrapTx.wait();
         expect(wrapReceipt.status).toBe(1);
 
         // 2. approve the pool for WETH
-        const approveTx = await weth.approve(pool.target, MaxUint256);
+        const approveTx = await subWeth.approve(pool.target, MaxUint256);
         const approveReceipt = await approveTx.wait();
         expect(approveReceipt.status).toBe(1);
-        expect(await weth.allowance(wallet.address, pool.target)).toBe(MaxUint256);
+        expect(await subWeth.allowance(signer.address, pool.target)).toBe(MaxUint256);
 
         // 3. supply WETH via the agent connector
-        const supplyTx = await wallet.sendTransaction(await aave.supply({ asset: WETH, amount: wrapAmount }));
+        const supplyTx = await signer.sendTransaction(await aave.supply({ asset: WETH, amount: wrapAmount }));
         const supplyReceipt = await supplyTx.wait();
         expect(supplyReceipt.status).toBe(1);
 
         // 4. verify the aToken balance arrived on-chain
         const wethReserve = await pool.getReserveData(WETH);
         const aToken = new Contract(wethReserve.aTokenAddress, ERC20_ABI, provider);
-        const aBalance = await aToken.balanceOf(wallet.address);
+        const aBalance = await aToken.balanceOf(signer.address);
         expect(aBalance).toBeGreaterThan(0n);
-        expect(await weth.balanceOf(wallet.address)).toBe(0n);
+        expect(await subWeth.balanceOf(signer.address)).toBe(0n);
 
         // 5. borrow USDC via the agent connector
-        const borrowTx = await wallet.sendTransaction(await aave.borrow({ asset: USDC, amount: borrowAmount }));
+        const borrowTx = await signer.sendTransaction(await aave.borrow({ asset: USDC, amount: borrowAmount }));
         const borrowReceipt = await borrowTx.wait();
         expect(borrowReceipt.status).toBe(1);
-        const usdcAfterBorrow = await usdc.balanceOf(wallet.address);
+        const usdcAfterBorrow = await subUsdc.balanceOf(signer.address);
         expect(usdcAfterBorrow).toBeGreaterThanOrEqual(borrowAmount);
 
         // 6. approve + repay the full debt
-        const usdcApprove = await (new Contract(USDC, ERC20_ABI, wallet)).approve(pool.target, MaxUint256);
+        const usdcApprove = await (new Contract(USDC, ERC20_ABI, signer)).approve(pool.target, MaxUint256);
         expect((await usdcApprove.wait()).status).toBe(1);
-        const repayTx = await wallet.sendTransaction(await aave.repay({ asset: USDC, amount: MaxUint256 }));
+        const repayTx = await signer.sendTransaction(await aave.repay({ asset: USDC, amount: MaxUint256 }));
         const repayReceipt = await repayTx.wait();
         expect(repayReceipt.status).toBe(1);
         const usdcReserve = await pool.getReserveData(USDC);
         const debtToken = new Contract(usdcReserve.variableDebtTokenAddress, ERC20_ABI, provider);
-        expect(await debtToken.balanceOf(wallet.address)).toBe(0n);
-        expect(await usdc.balanceOf(wallet.address)).toBeLessThan(borrowAmount); // only dust interest stays
+        expect(await debtToken.balanceOf(signer.address)).toBe(0n);
+        expect(await subUsdc.balanceOf(signer.address)).toBeLessThan(borrowAmount); // only dust interest stays
 
         // 7. withdraw the WETH supply
-        const withdrawTx = await wallet.sendTransaction(await aave.withdraw({ asset: WETH, amount: wrapAmount, to: wallet.address }));
+        const withdrawTx = await signer.sendTransaction(await aave.withdraw({ asset: WETH, amount: wrapAmount, to: signer.address }));
         const withdrawReceipt = await withdrawTx.wait();
         expect(withdrawReceipt.status).toBe(1);
-        expect(await weth.balanceOf(wallet.address)).toBeGreaterThanOrEqual(wrapAmount - 10n); // dust tolerance
+        expect(await subWeth.balanceOf(signer.address)).toBeGreaterThanOrEqual(wrapAmount - 10n); // dust tolerance
 
         // 8. unwrap WETH → ETH
-        const unwrapTx = await weth.withdraw(wrapAmount);
+        const unwrapTx = await subWeth.withdraw(wrapAmount);
         const unwrapReceipt = await unwrapTx.wait();
         expect(unwrapReceipt.status).toBe(1);
 
         // 9. final on-chain state: only gas was spent
-        const ethAfter = await provider.getBalance(wallet.address);
-        const wethAfter = await weth.balanceOf(wallet.address);
-        const usdcFinal = await usdc.balanceOf(wallet.address);
+        const ethAfter = await provider.getBalance(signer.address);
+        const wethAfter = await subWeth.balanceOf(signer.address);
+        const usdcFinal = await subUsdc.balanceOf(signer.address);
         expect(ethAfter).toBeGreaterThan(ethBefore - parseEther('0.0015'));
         expect(ethAfter).toBeLessThan(ethBefore);
         expect(wethAfter).toBe(0n);

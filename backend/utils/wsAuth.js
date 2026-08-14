@@ -6,7 +6,12 @@
 export const DEFAULT_WS_KEY = 'aegis-default-ws-key';
 
 export function expectedWsKey() {
-    return process.env.WS_API_KEY || DEFAULT_WS_KEY;
+    const key = process.env.WS_API_KEY;
+    // B4 — in production a hardcoded default key is never acceptable: an
+    // operator that didn't configure WS_API_KEY gets the handshake rejected
+    // (fail closed) instead of silently trusting the repo-known default.
+    if (process.env.NODE_ENV === 'production') return key || null;
+    return key || DEFAULT_WS_KEY;
 }
 
 /**

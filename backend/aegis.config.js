@@ -64,7 +64,19 @@ export default {
         maxGasLimitUsd: 10,// işlem planı başına azami gaz maliyeti (USD)
         gas: {
             defaultGasLimit: 100000,
-        }
+        },
+        // Faz 4 (A2) — Morpho Blue marketi: Morpho plan'ları (borrow/repay/unwind)
+        // marketi oracle/irm/lltv üçlüsüyle tanımlar. Boş bırakılırsa Morpho
+        // plan'ları fail-closed reddedilir (zincire geçersiz market çağrısı gitmez).
+        // Canlı mainnet öncesi gerçek strateji marketinin oracle/irm/lltv adresleri
+        // buraya (veya env'den) girilmelidir:
+        //   morphoMarket: {
+        //       collateralToken: '<PT address>',
+        //       oracle: '<chainlink oracle>',
+        //       irm: '<morpho irm>',
+        //       lltv: 860000n, // 86%
+        //   }
+        morphoMarket: null,
     },
     marketData: {
         // Data source used by the agent when no per-user setting is stored:

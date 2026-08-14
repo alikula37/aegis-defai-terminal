@@ -3,7 +3,7 @@
 // and PT/YT minting go through the Pendle Router. This connector exposes the
 // router interaction and standard ERC-20 helpers for PT collateral.
 
-import { Contract } from 'ethers';
+import { Contract, MaxUint256 } from 'ethers';
 import { PROTOCOLS, ERC20_ABI } from './protocolConfig.js';
 
 const PENDLE_ROUTER_ABI = [
@@ -41,5 +41,10 @@ export class PendleConnector {
     async approvePt({ ptTokenAddress, spender, amount }) {
         const pt = this.ptContract(ptTokenAddress);
         return pt.approve.populateTransaction(spender, amount);
+    }
+
+    /** A2 — ERC-20 approve to the Pendle Router (swap pulls tokenIn). */
+    async approveToken({ token, amount = MaxUint256 }) {
+        return new Contract(token, ERC20_ABI, this.signer).approve.populateTransaction(this.routerAddress, amount);
     }
 }

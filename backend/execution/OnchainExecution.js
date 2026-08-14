@@ -4,7 +4,6 @@
 // provider; otherwise it refuses to act (no silent fallback). Gas estimation,
 // slippage enforcement and MEV routing happen here before any broadcast.
 
-import { MaxUint256 } from 'ethers';
 import { evaluateSandwichRisk } from './MEVGuard.js';
 import { estimateGasUsd, GAS_LIMITS } from './GasEstimator.js';
 import { MorphoConnector } from './connectors/MorphoConnector.js';
@@ -73,6 +72,20 @@ export class OnchainExecution {
         return true;
     }
 
+    /**
+     * A2 — Morpho plans need the full market triple (oracle/irm/lltv) because
+     * Morpho Blue identifies a market by them; without it a populated call
+     * would reference a non-existent market and revert. Fail closed.
+     */
+    _requireMorphoMarket() {
+        const mkt = this.config.morphoMarket;
+        if (!mkt || !mkt.oracle || !mkt.irm || mkt.lltv === undefined) {
+            this.log('alert', `❌ [Onchain] Morpho market not configured (need execution.morphoMarket { oracle, irm, lltv }). Plan refused.`);
+            return null;
+        }
+        return mkt;
+    }
+
     _requireReady() {
         if (!this.provider || !this.signer || !this.connectors) {
             throw new Error('[OnchainExecution] Signer/provider not configured. Set execution.mode="simulation" or configure a wallet + RPC.');
@@ -97,6 +110,10 @@ export class OnchainExecution {
         } else {
             this.log('scan', `🔓 [MEV] Low sandwich risk (score: ${mev.score.toFixed(2)}). Public mempool acceptable.`);
         }
+
+        // A1 — sync real on-chain positions so plan builders resolve actual
+        // amounts / collateral instead of failing closed (or guessing).
+        await this._syncLivePositions(marketData);
 
         let plan;
         try {
@@ -136,6 +153,8 @@ export class OnchainExecution {
 
     async _planAdjustPortfolio(response, marketData) {
         if (!this._requireConnector('morpho')) return [];
+        const mkt = this._requireMorphoMarket();
+        if (!mkt) return [];
         const usdc = TOKENS.usdc[this.chainId];
         if (!usdc) {
             this.log('alert', `❌ [Onchain] USDC not configured for chain ${this.chainId}. Plan refused.`);
@@ -152,20 +171,24 @@ export class OnchainExecution {
         const amount = this._approxAmount(marketData.portfolio.tvl, marketData.leverage || 1);
 
         if (increaseLtv) {
-            // borrow more USDC against PT collateral on Morpho
+            // borrow more USDC against PT collateral on Morpho — the market
+            // pulls the collateral, so it must be approved first.
+            plan.push({ name: 'morpho.approve-collateral', tx: await this.connectors.morpho.approve({ token: pt }) });
             plan.push({
                 name: 'morpho.borrow',
                 tx: await this.connectors.morpho.borrow({
                     loanToken: usdc,
                     collateralToken: pt,
                     assets: amount,
+                    ...mkt,
                 }),
             });
         } else {
-            // repay part of the loan
+            // repay part of the loan — the loan token is pulled, so approve it
+            plan.push({ name: 'morpho.approve-usdc', tx: await this.connectors.morpho.approve({ token: usdc }) });
             plan.push({
                 name: 'morpho.repay',
-                tx: await this.connectors.morpho.repay({ loanToken: usdc, collateralToken: pt, assets: amount }),
+                tx: await this.connectors.morpho.repay({ loanToken: usdc, collateralToken: pt, ...mkt }),
             });
         }
         return plan;
@@ -199,13 +222,23 @@ export class OnchainExecution {
         const plan = [];
         const amount = this._approxAmount(marketData.portfolio.tvl, marketData.leverage || 1);
         if (this.connectors.morpho) {
-            plan.push({
-                name: 'morpho.repay',
-                tx: await this.connectors.morpho.repay({ loanToken: usdc, collateralToken: pt, assets: amount }),
-            });
+            const mkt = this._requireMorphoMarket();
+            if (!mkt) return [];
+            const debtShares = marketData?.livePositions?.morpho?.borrowShares;
+            if (debtShares === undefined) {
+                this.log('alert', `❌ [Onchain] Morpho debt position unavailable — migrate repay refused (fail-closed).`);
+            } else if (Number(debtShares) > 0) {
+                plan.push(
+                    { name: 'morpho.approve-usdc', tx: await this.connectors.morpho.approve({ token: usdc }) },
+                    { name: 'morpho.repay', tx: await this.connectors.morpho.repay({ loanToken: usdc, collateralToken: pt, ...mkt }) },
+                );
+            } else {
+                this.log('scan', `ℹ️ [Onchain] No Morpho debt — skipping repay leg.`);
+            }
         }
         if (this.connectors.aave) {
             plan.push(
+                { name: 'aave.approve-usdc', tx: await this.connectors.aave.approve({ asset: usdc }) },
                 { name: 'aave.supply', tx: await this.connectors.aave.supply({ asset: usdc, amount }) },
                 { name: 'aave.borrow', tx: await this.connectors.aave.borrow({ asset: usdc, amount }) },
             );
@@ -237,13 +270,16 @@ export class OnchainExecution {
         const plan = [];
         const alloc = response.target_allocations || {};
         if (alloc.loop > 0 && this.connectors.pendle) {
-            plan.push({
-                name: 'pendle.swapExactTokenForPt',
-                tx: await this.connectors.pendle.swapExactTokenForPt({
-                    tokenIn: usdc,
-                    amountTokenIn: this._approxAmount(marketData.portfolio.tvl * alloc.loop, 1),
-                }),
-            });
+            plan.push(
+                { name: 'pendle.approve-usdc', tx: await this.connectors.pendle.approveToken({ token: usdc }) },
+                {
+                    name: 'pendle.swapExactTokenForPt',
+                    tx: await this.connectors.pendle.swapExactTokenForPt({
+                        tokenIn: usdc,
+                        amountTokenIn: this._approxAmount(marketData.portfolio.tvl * alloc.loop, 1),
+                    }),
+                },
+            );
         }
         if (alloc.jit > 0 && this.connectors.ethena) {
             plan.push({
@@ -257,6 +293,8 @@ export class OnchainExecution {
 
     async _planUnwind(marketData) {
         if (!this._requireConnector('morpho')) return [];
+        const mkt = this._requireMorphoMarket();
+        if (!mkt) return [];
         const usdc = TOKENS.usdc[this.chainId];
         if (!usdc) {
             this.log('alert', `❌ [Onchain] USDC not configured for chain ${this.chainId}. Plan refused.`);
@@ -267,11 +305,23 @@ export class OnchainExecution {
             this.log('alert', `❌ [Onchain] Pendle PT collateral not resolvable for this position. Plan refused (needs live position data — Phase 4).`);
             return [];
         }
-        return [
-            { name: 'morpho.repay', tx: await this.connectors.morpho.repay({ loanToken: usdc, collateralToken: pt, assets: this._approxAmount(marketData.portfolio.tvl, marketData.leverage || 1) }) },
-            // shares = MaxUint256 → withdraw the ENTIRE position (never a no-op 0)
-            { name: 'morpho.withdraw', tx: await this.connectors.morpho.withdraw({ loanToken: usdc, collateralToken: pt, assets: 0, shares: MaxUint256 }) },
-        ];
+        const plan = [];
+        // Debt-aware: when the live position is known and there is no debt,
+        // skip the repay leg entirely (repay-all via MaxUint256 shares).
+        // When the debt is UNKNOWN (sync leg failed/unconfigured), fail closed —
+        // a blind repay-all could revert after the approve gas is spent.
+        const debtShares = marketData?.livePositions?.morpho?.borrowShares;
+        if (debtShares === undefined) {
+            this.log('alert', `❌ [Onchain] Morpho debt position unavailable — unwind repay refused (fail-closed).`);
+        } else if (Number(debtShares) > 0) {
+            plan.push({ name: 'morpho.approve-usdc', tx: await this.connectors.morpho.approve({ token: usdc }) });
+            plan.push({ name: 'morpho.repay', tx: await this.connectors.morpho.repay({ loanToken: usdc, collateralToken: pt, ...mkt }) });
+        } else {
+            this.log('scan', `ℹ️ [Onchain] No Morpho debt — skipping repay leg.`);
+        }
+        // withdraw-all via MaxUint256 shares (never a no-op 0)
+        plan.push({ name: 'morpho.withdraw', tx: await this.connectors.morpho.withdraw({ loanToken: usdc, collateralToken: pt, ...mkt }) });
+        return plan;
     }
 
     async _executePlan(plan, marketData, response) {
@@ -289,7 +339,10 @@ export class OnchainExecution {
             return;
         }
 
-        // Estimate total gas and enforce the cost ceiling (F2-4)
+        // Estimate total gas and enforce the cost ceiling (F2-4). The ceiling
+        // is enforced through the slippage guard (A2): assertSlippage returns
+        // false when the estimate exceeds the budget with the configured
+        // tolerance — abort before broadcasting anything.
         let totalGasUsd = 0;
         for (const step of plan) {
             const gas = await this.provider.estimateGas(step.tx).catch(() => GAS_LIMITS.standard);
@@ -297,7 +350,8 @@ export class OnchainExecution {
             totalGasUsd += stepUsd;
         }
 
-        if (totalGasUsd > maxGasUsd) {
+        const tolerance = this.config.slippageBps ?? 50;
+        if (!assertSlippage(totalGasUsd, maxGasUsd, tolerance)) {
             this.log('alert', `⚠️ [Gas Guard] Estimated execution cost $${totalGasUsd.toFixed(2)} exceeds limit $${maxGasUsd.toFixed(2)}. Aborting (no broadcast).`);
             return;
         }
@@ -336,19 +390,69 @@ export class OnchainExecution {
         return BigInt(Math.round(tvlUsd * Math.min(leverage, 10) * 1e6)); // USDC = 6 decimals
     }
 
-    // Resolves the Pendle PT collateral from live position data. Returns null
-    // when unresolved — plan builders refuse rather than guess (Phase 4 wires
-    // the real position source).
+    /**
+     * A1 — read the wallet's real on-chain positions (Morpho market, sUSDe,
+     * Aave aToken/debt) and attach them to marketData.livePositions. Every leg
+     * is optional: missing connectors, unconfigured market triples or RPC
+     * hiccups just skip that leg — a cycle must never fail on a position read.
+     */
+    async _syncLivePositions(marketData) {
+        const positions = {};
+        const usdc = TOKENS.usdc[this.chainId];
+
+        const mkt = this.config.morphoMarket;
+        if (this.connectors.morpho && usdc && mkt && mkt.collateralToken && mkt.oracle && mkt.irm && mkt.lltv) {
+            try {
+                const pos = await this.connectors.morpho.getPosition({
+                    loanToken: usdc,
+                    collateralToken: mkt.collateralToken,
+                    oracle: mkt.oracle,
+                    irm: mkt.irm,
+                    lltv: mkt.lltv,
+                });
+                positions.morpho = { ...pos, loanToken: usdc, collateralToken: mkt.collateralToken };
+            } catch (err) {
+                this.log('scan', `⚠️ [Onchain] Morpho position read failed: ${String(err.message).slice(0, 80)}`);
+            }
+        }
+
+        if (this.connectors.aave && usdc) {
+            try {
+                positions.aave = {
+                    usdcAToken: await this.connectors.aave.getATokenBalance(usdc),
+                    usdcVariableDebt: await this.connectors.aave.getVariableDebt(usdc),
+                };
+            } catch { /* Aave read unavailable — leg skipped */ }
+        }
+
+        if (this.connectors.ethena) {
+            try {
+                positions.sUSDe = { shares: await this.connectors.ethena.getBalance() };
+            } catch { /* sUSDe read unavailable — leg skipped */ }
+        }
+
+        marketData.livePositions = positions;
+        return marketData;
+    }
+
+    // Resolves the Pendle PT collateral: prefer the real Morpho market
+    // collateral from livePositions, then the strategy token address. Returns
+    // null when unresolved — plan builders refuse rather than guess.
     _ptToken(marketData) {
+        const live = marketData?.livePositions?.morpho;
+        if (live?.collateralToken) return live.collateralToken;
         const strategy = (marketData?.strategies || []).find(s => /pendle/i.test(`${s.id || ''}${s.name || ''}`));
         const addr = strategy?.tokenAddress || strategy?.ptAddress;
         return addr || null;
     }
 
-    // Resolves the sUSDe share amount to redeem for a claim. Returns null when
-    // no live position is known — the claim plan is then refused.
+    // Resolves the sUSDe share amount to redeem for a claim. Prefers the live
+    // position; falls back to snapshot positions. Returns null when unresolved
+    // (or genuinely zero) — the claim plan is then refused.
     _sharesForTvl(marketData) {
-        const position = marketData?.positions?.sUSDe?.shares;
-        return position ? BigInt(position) : null;
+        const live = marketData?.livePositions?.sUSDe?.shares;
+        const legacy = marketData?.positions?.sUSDe?.shares;
+        const shares = live ?? legacy;
+        return shares && Number(shares) > 0 ? BigInt(shares) : null;
     }
 }

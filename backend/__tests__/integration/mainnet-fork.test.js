@@ -17,6 +17,7 @@ import dotenv from 'dotenv';
 import { JsonRpcProvider, Wallet, Contract, parseEther, parseUnits, formatUnits, MaxUint256, getAddress } from 'ethers';
 import { AavePoolConnector } from '../../execution/connectors/AavePoolConnector.js';
 import { SafeConnector } from '../../execution/connectors/SafeConnector.js';
+import { OnchainExecution } from '../../execution/OnchainExecution.js';
 import { PROTOCOLS, TOKENS, ERC20_ABI } from '../../execution/connectors/protocolConfig.js';
 
 dotenv.config();
@@ -181,6 +182,18 @@ suite('Ethereum MAINNET — fork verification (anvil)', () => {
         // 5. borrow USDC via the agent connector
         await sendAndWait(await aave.borrow({ asset: USDC, amount: borrowAmount }), 500000n);
         expect(await usdc.balanceOf(wallet.address)).toBeGreaterThanOrEqual(borrowAmount);
+
+        // 5.5 A1 — live position sync reads the real on-chain debt from the fork
+        const syncExec = new OnchainExecution({
+            provider, signer: wallet, chainId: CHAIN_ID,
+            log: () => {}, broadcast: () => {},
+            config: { maxGasLimitUsd: 100, slippageBps: 50 },
+        });
+        const md = { portfolio: { tvl: 1000 }, gasPrice: 1, ethPrice: 2500, leverage: 1 };
+        await syncExec._syncLivePositions(md);
+        expect(md.livePositions.aave.usdcVariableDebt).toBeGreaterThan(0n);
+        expect(md.livePositions.aave.usdcAToken).toBeGreaterThanOrEqual(0n);
+        console.log(`[fork] A1 live positions: USDC debt=${md.livePositions.aave.usdcVariableDebt} aUSDC=${md.livePositions.aave.usdcAToken}`);
 
         // 6. repay full debt (MaxUint256 pulls the current debt — wallet must be solvent)
         const usdcContract = new Contract(USDC, ERC20_ABI, wallet);

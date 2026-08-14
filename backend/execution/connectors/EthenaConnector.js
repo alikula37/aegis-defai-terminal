@@ -28,4 +28,10 @@ export class EthenaConnector {
     async approve({ spender, amount }) {
         return this.contract.approve.populateTransaction(spender, amount);
     }
+
+    /** A1 — live sUSDe balance (shares held by the signer). */
+    async getBalance(user) {
+        const owner = user || await this.signer.getAddress();
+        return this.contract.balanceOf(owner);
+    }
 }

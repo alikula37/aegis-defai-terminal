@@ -91,11 +91,22 @@ export const ERC20_ABI = [
 ];
 
 export const MORPHO_ABI = [
-    'function supply(address loanToken, address collateralToken, uint256 loanAmount, uint256 collateralAmount, address onBehalf, bytes data)',
-    'function borrow(address loanToken, address collateralToken, uint256 assets, uint256 shares, address onBehalf, address receiver)',
-    'function repay(address loanToken, address collateralToken, uint256 assets, uint256 shares, address onBehalf, bytes data)',
-    'function withdraw(address loanToken, address collateralToken, uint256 assets, uint256 shares, address onBehalf, address receiver)',
+    'function supply(address loanToken, address collateralToken, address oracle, address irm, uint256 lltv, uint256 loanAmount, uint256 collateralAmount, address onBehalf, bytes data)',
+    'function borrow(address loanToken, address collateralToken, address oracle, address irm, uint256 lltv, uint256 assets, uint256 shares, address onBehalf, address receiver)',
+    'function repay(address loanToken, address collateralToken, address oracle, address irm, uint256 lltv, uint256 assets, uint256 shares, address onBehalf, bytes data)',
+    'function withdraw(address loanToken, address collateralToken, address oracle, address irm, uint256 lltv, uint256 assets, uint256 shares, address onBehalf, address receiver)',
     'function flashLoan(address token, uint256 assets, bytes data)',
+];
+
+// Read-only fragments used for live position sync (A1). `id()` computes the
+// keccak market id Morpho Blue uses; `position()` returns the wallet's position.
+export const MORPHO_READ_ABI = [
+    'function id(address loanToken, address collateralToken, address oracle, address irm, uint256 lltv) view returns (bytes32)',
+    'function position(bytes32 id, address user) view returns (uint128 supplyShares, uint128 borrowShares, uint128 collateral)',
+];
+
+export const AAVE_POOL_READ_ABI = [
+    'function getReserveData(address asset) view returns (tuple(uint256 configuration, uint128 liquidityIndex, uint128 variableBorrowIndex, uint128 currentLiquidityRate, uint128 currentVariableBorrowRate, uint128 currentStableBorrowRate, uint40 lastUpdateTimestamp, uint16 id, address aTokenAddress, address stableDebtTokenAddress, address variableDebtTokenAddress, address interestRateStrategyAddress, uint128 accruedToTreasury, uint128 unbacked, uint128 isolationModeTotalDebt) data)',
 ];
 
 export const AAVE_POOL_ABI = [

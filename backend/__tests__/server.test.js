@@ -187,6 +187,46 @@ describe('API Integration Tests', () => {
         expect(fetched.body.automationRules[0].id).toBe('api-1');
     });
 
+    it('never exposes stored secrets via /api/settings (B5 masking)', async () => {
+        const secret = 'sk-masking-check';
+        const post = await request(app).post('/api/settings').send({
+            rpcUrl: 'https://alchemy.example/v2/alch_secret',
+            openRouterKey: secret,
+        });
+        expect(post.status).toBe(200);
+
+        const get = await request(app).get('/api/settings');
+        expect(get.body.openRouterKey).not.toBe(secret);
+        expect(get.body.rpcUrl).not.toContain('alch_secret');
+        expect(get.body.hasOpenRouterKey).toBe(true);
+        expect(get.body.hasRpcUrl).toBe(true);
+        // the masked placeholder is never persisted back
+        const post2 = await request(app).post('/api/settings').send({
+            openRouterKey: '••••••••••••••••',
+            rpcUrl: '••••••••••••••••',
+        });
+        expect(post2.status).toBe(200);
+        const get2 = await request(app).get('/api/settings');
+        expect(get2.body.hasOpenRouterKey).toBe(true);
+        expect(get2.body.hasRpcUrl).toBe(true);
+    });
+
+    it('rejects out-of-range money-adjacent settings (B6 schema)', async () => {
+        const badSlippage = await request(app).post('/api/settings').send({ slippage: 150 });
+        expect(badSlippage.status).toBe(400);
+        const badSlippage2 = await request(app).post('/api/settings').send({ slippage: 'Infinity' });
+        expect(badSlippage2.status).toBe(400);
+    });
+
+    it('rejects invalid initial balances (B6 schema)', async () => {
+        const bad = await request(app).post('/api/simulation/start').send({ initialBalance: -1000 });
+        expect(bad.status).toBe(400);
+        const bad2 = await request(app).post('/api/simulation/start').send({ initialBalance: 'Infinity' });
+        expect(bad2.status).toBe(400);
+        const nan = await request(app).post('/api/simulation/start').send({ initialBalance: 'abc' });
+        expect(nan.status).toBe(400);
+    });
+
     it('full agent cycle runs end-to-end in SIM mode without crashing', async () => {
         // SIM mode → no external network. Bear scenario forces a critical path
         // (flash loan rescue) which exercises RiskEngine → DecisionEngine → SimulationExecution.

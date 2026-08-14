@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
-import db, { insertLog, getLogs, insertPortfolioStats, getLatestPortfolio, resetPortfolio, updateSettings, getSettings } from '../db/database.js';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
+import db, { insertLog, getLogs, insertPortfolioStats, getLatestPortfolio, resetPortfolio, updateSettings, getSettings, encrypt, decrypt } from '../db/database.js';
+import crypto from 'crypto';
 
 describe('Database Operations', () => {
     beforeEach(async () => {
@@ -9,6 +10,32 @@ describe('Database Operations', () => {
 
     afterAll(() => {
         db.close();
+    });
+
+    // ---- B5: secret encryption hardening ----
+
+    it('encrypts secrets to iv:ciphertext and decrypts round-trip', () => {
+        const ct = encrypt('sk-super-secret');
+        expect(typeof ct).toBe('string');
+        expect(ct).not.toBe('sk-super-secret');
+        expect(ct.split(':').length).toBe(2);
+        expect(decrypt(ct)).toBe('sk-super-secret');
+    });
+
+    it('returns empty values untouched (no plaintext persistence for falsy)', () => {
+        expect(encrypt('')).toBe('');
+        expect(encrypt(null)).toBeNull();
+        expect(decrypt('')).toBe('');
+    });
+
+    it('NEVER persists a secret in plaintext when encryption fails (B5)', () => {
+        const spy = vi.spyOn(crypto, 'randomBytes').mockImplementationOnce(() => {
+            throw new Error('no entropy');
+        });
+        const ct = encrypt('sk-must-not-leak');
+        spy.mockRestore();
+        expect(ct).toBeNull();
+        expect(ct).not.toBe('sk-must-not-leak');
     });
 
     it('should insert and retrieve logs', async () => {
