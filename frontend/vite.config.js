@@ -11,5 +11,10 @@ export default defineConfig({
     setupFiles: './src/setupTests.js',
     include: ['src/**/*.{test,spec}.{js,jsx}'],
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
+    coverage: {
+      // lcov feeds SonarQube/SonarCloud; text-summary for the terminal.
+      reporter: ['lcov', 'text-summary'],
+      reportsDirectory: 'coverage',
+    },
   }
 })

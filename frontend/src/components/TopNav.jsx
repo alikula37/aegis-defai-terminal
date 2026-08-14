@@ -11,6 +11,33 @@ const pageTitles = {
     '/settings': 'Settings',
 };
 
+// Execution-backend status pill (simulation vs onchain ready/not-ready).
+function ExecutionBadge({ executionStatus }) {
+    if (!executionStatus) return null;
+    const isOnchain = executionStatus.mode === 'onchain';
+    const onchainReady = isOnchain && executionStatus.ready;
+    const walletShort = executionStatus.signerAddress
+        ? `${executionStatus.signerAddress.slice(0, 6)}…${executionStatus.signerAddress.slice(-4)}`
+        : null;
+
+    const title = isOnchain
+        ? onchainReady
+            ? `Onchain execution · chain ${executionStatus.chainId} · wallet ${executionStatus.signerAddress}`
+            : 'Onchain mode is not ready: configure EVM_PROVIDER_URL + EVM_PRIVATE_KEY, or switch execution.mode="simulation". Agent runs read-only.'
+        : 'Simulation execution — no real transactions broadcast';
+    const pillClass = isOnchain
+        ? onchainReady ? 'bg-success/10 text-success border-success/25' : 'bg-error/10 text-error border-error/25'
+        : 'bg-surface-variant/50 text-on-surface-variant border-outline-variant';
+    const dotClass = isOnchain ? (onchainReady ? 'bg-success animate-pulse' : 'bg-error') : 'bg-on-surface-variant';
+
+    return (
+        <span title={title} className={`px-2 py-0.5 rounded-md text-[12px] font-[JetBrains_Mono] flex items-center gap-1 border ${pillClass}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${dotClass}`}></span>
+            {isOnchain ? `Onchain · ${walletShort || 'no wallet'}` : 'Simulation'}
+        </span>
+    );
+}
+
 export default function TopNav() {
     const location = useLocation();
     const { notifications, setNotifications, simulationName, isSimulationRunning, executionStatus } = useWebSocket();
@@ -21,12 +48,6 @@ export default function TopNav() {
 
     const title = pageTitles[location.pathname] || 'Portfolio Overview';
     const currentDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-    const isOnchain = executionStatus?.mode === 'onchain';
-    const onchainReady = isOnchain && executionStatus?.ready;
-    const walletShort = executionStatus?.signerAddress
-        ? `${executionStatus.signerAddress.slice(0, 6)}…${executionStatus.signerAddress.slice(-4)}`
-        : null;
 
     return (
         <header className="flex justify-between items-center h-16 px-[1.5rem] border-b border-outline-variant bg-surface-container-low sticky top-0 z-40 w-full shadow-[0_4px_20px_-10px_rgba(0,0,0,0.5)]">
@@ -53,19 +74,7 @@ export default function TopNav() {
                 </div>
             </div>
             <div className="flex items-center gap-4">
-                {executionStatus && (
-                    <span
-                        title={isOnchain
-                            ? onchainReady
-                                ? `Onchain execution · chain ${executionStatus.chainId} · wallet ${executionStatus.signerAddress}`
-                                : 'Onchain mode is not ready: configure EVM_PROVIDER_URL + EVM_PRIVATE_KEY, or switch execution.mode="simulation". Agent runs read-only.'
-                            : 'Simulation execution — no real transactions broadcast'}
-                        className={`px-2 py-0.5 rounded-md text-[12px] font-[JetBrains_Mono] flex items-center gap-1 border ${isOnchain ? (onchainReady ? 'bg-success/10 text-success border-success/25' : 'bg-error/10 text-error border-error/25') : 'bg-surface-variant/50 text-on-surface-variant border-outline-variant'}`}
-                    >
-                        <span className={`w-1.5 h-1.5 rounded-full ${isOnchain ? (onchainReady ? 'bg-success animate-pulse' : 'bg-error') : 'bg-on-surface-variant'}`}></span>
-                        {isOnchain ? `Onchain · ${walletShort || 'no wallet'}` : 'Simulation'}
-                    </span>
-                )}
+                <ExecutionBadge executionStatus={executionStatus} />
                 <div className="relative">
                     <button
                         onClick={() => setShowNotifications(!showNotifications)}

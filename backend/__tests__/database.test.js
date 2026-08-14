@@ -24,12 +24,27 @@ describe('Database Operations', () => {
 
     // ---- B5: secret encryption hardening ----
 
-    it('encrypts secrets to iv:ciphertext and decrypts round-trip', () => {
+    it('encrypts secrets to gcm:iv:tag:ciphertext and decrypts round-trip', () => {
         const ct = encrypt('sk-super-secret');
         expect(typeof ct).toBe('string');
         expect(ct).not.toBe('sk-super-secret');
-        expect(ct.split(':').length).toBe(2);
+        expect(ct.startsWith('gcm:')).toBe(true);
+        expect(ct.split(':').length).toBe(4); // gcm:iv:tag:ct
         expect(decrypt(ct)).toBe('sk-super-secret');
+        // tamper detection: flipping a ciphertext byte must fail (GCM tag)
+        const parts = ct.split(':');
+        const tampered = parts[0] + ':' + parts[1] + ':' + parts[2] + ':' + (parts[3].slice(0, -1) === '0' ? '1' + parts[3].slice(1) : '0' + parts[3].slice(1));
+        expect(decrypt(tampered)).not.toBe('sk-super-secret');
+    });
+
+    it('decrypts legacy AES-256-CBC rows (pre-GCM compatibility)', () => {
+        // Simulate a row written by the old CBC format: iv:ciphertext
+        const key = Buffer.from(process.env.ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32));
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+        const ct = Buffer.concat([cipher.update('legacy-secret', 'utf8'), cipher.final()]);
+        const legacy = `${iv.toString('hex')}:${ct.toString('hex')}`;
+        expect(decrypt(legacy)).toBe('legacy-secret');
     });
 
     it('returns empty values untouched (no plaintext persistence for falsy)', () => {

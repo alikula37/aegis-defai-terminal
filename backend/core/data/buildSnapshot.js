@@ -4,6 +4,37 @@ import { getLatestPortfolio } from '../../db/database.js';
 
 const LIQUIDATION_THRESHOLD = 0.94; // sUSDe liquidation threshold on Morpho
 
+function computeElapsedMinutes(portfolio) {
+    if (!portfolio.timestamp) return 0;
+    const lastTime = new Date(portfolio.timestamp + 'Z').getTime();
+    const now = Date.now();
+    if (isNaN(lastTime) || now <= lastTime) return 0;
+    // Floor to whole minutes: keeps yield accrual deterministic within
+    // the same minute (needed for reproducible SIM runs) and avoids
+    // sub-second drift between snapshot calls.
+    return Math.floor((now - lastTime) / 60000);
+}
+
+function computeHealthFactor(tvl, leverage, susdePrice) {
+    const collateralValue = tvl * leverage * susdePrice;
+    const debtValue = tvl * (leverage - 1);
+    if (debtValue <= 0) return 1.5;
+    return (collateralValue * LIQUIDATION_THRESHOLD) / debtValue;
+}
+
+function computeRwaApy(ptSyrupUsdcApy, aaveV4BorrowApy) {
+    const rwaSpread = ptSyrupUsdcApy - aaveV4BorrowApy;
+    if (rwaSpread <= 0) return { rwaSpread, rwaLeverage: 1, rwaNetApy: ptSyrupUsdcApy };
+    const rwaLeverage = 4;
+    return {
+        rwaSpread,
+        rwaLeverage,
+        rwaNetApy: (ptSyrupUsdcApy * rwaLeverage) - (aaveV4BorrowApy * (rwaLeverage - 1)),
+    };
+}
+
+
+
 /**
  * Shared snapshot assembly used by every data source (LIVE, SIM).
  * Takes raw market inputs + the simulation state and produces the exact
@@ -102,19 +133,10 @@ export async function buildSnapshot(inputs, simulationState = {}, simulationId =
 
     const ethenaNetApy = (susdeApy * 4) - (morphoBorrowApy * 3) - gasImpactApy;
 
-    const rwaSpread = ptSyrupUsdcApy - aaveV4BorrowApy;
-    const rwaLeverage = rwaSpread > 0 ? 4 : 1;
-    const rwaNetApy = rwaSpread > 0
-        ? (ptSyrupUsdcApy * rwaLeverage) - (aaveV4BorrowApy * (rwaLeverage - 1))
-        : ptSyrupUsdcApy;
+    const { rwaNetApy } = computeRwaApy(ptSyrupUsdcApy, aaveV4BorrowApy);
 
     // Dynamic Health Factor
-    const collateralValue = currentPortfolio.tvl * leverage * susdePrice;
-    const debtValue = currentPortfolio.tvl * (leverage - 1);
-    let newHealthFactor = 1.5;
-    if (debtValue > 0) {
-        newHealthFactor = (collateralValue * LIQUIDATION_THRESHOLD) / debtValue;
-    }
+    const newHealthFactor = computeHealthFactor(currentPortfolio.tvl, leverage, susdePrice);
 
     const marketData = { netApy, bestBorrowApy, aaveV4BorrowApy, rwaNetApy, ethenaNetApy, morphoBorrowApy, morphoPoolApy: susdeApy };
     const pointsData = { morphoPointsApy, enaPointsApy, borosFundingYield };
@@ -123,17 +145,7 @@ export async function buildSnapshot(inputs, simulationState = {}, simulationId =
     const totalPointsApy = (morphoPointsApy * 0.75) + (enaPointsApy * 0.70) + corkHedgeCost;
     const effectiveApy = netApy + totalPointsApy * 0.5;
 
-    let elapsedMinutes = 0;
-    if (currentPortfolio.timestamp) {
-        const lastTime = new Date(currentPortfolio.timestamp + 'Z').getTime();
-        const now = Date.now();
-        if (!isNaN(lastTime) && now > lastTime) {
-            // Floor to whole minutes: keeps yield accrual deterministic within
-            // the same minute (needed for reproducible SIM runs) and avoids
-            // sub-second drift between snapshot calls.
-            elapsedMinutes = Math.floor((now - lastTime) / 60000);
-        }
-    }
+    const elapsedMinutes = computeElapsedMinutes(currentPortfolio);
 
     const yieldPerMinute = (effectiveApy / 100) * currentPortfolio.tvl / (365 * 24 * 60);
     const earnedYield = yieldPerMinute * elapsedMinutes;

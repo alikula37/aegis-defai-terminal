@@ -54,48 +54,48 @@ export class OracleService {
         morphoCache.clear();
     }
 
+    static async fetchWithFreshCache(cacheRef, url, validate, cacheWriter, statusRef, { timeoutMs = 5000, maxBytes = 0 } = {}) {
+        // cacheRef is a closure-getter because module-level caches are reassigned.
+        const { data, isFresh } = cacheRef();
+        if (isFresh) return { data, status: statusRef.status };
+        try {
+            const res = await fetchWithTimeout(url, timeoutMs, maxBytes);
+            if (res.status === 429) statusRef.status = 'API LIMIT';
+            if (!res.ok) throw new Error(`Oracle API Error: failed ${url}`);
+            const raw = await res.json();
+            if (!validate(raw)) throw new Error('Oracle API Error: invalid payload');
+            cacheWriter(raw);
+            return { data: raw, status: statusRef.status };
+        } catch (e) {
+            if (data) {
+                statusRef.status = statusRef.status === 'API LIMIT' ? 'API LIMIT' : 'DEGRADED';
+                return { data, status: statusRef.status };
+            }
+            throw e;
+        }
+    }
+
     static async fetchRawData() {
-        let pricesData = pricesCache.data;
-        let yieldsData = yieldsCache.data;
-        let status = 'LIVE';
+        const statusRef = { status: 'LIVE' };
 
-        try {
-            if (!isCacheValid(pricesCache, PRICES_CACHE_TTL_MS)) {
-                const pricesRes = await fetchWithTimeout('https://coins.llama.fi/prices/current/coingecko:ethereum,coingecko:usd-coin');
-                if (pricesRes.status === 429) status = 'API LIMIT';
-                if (!pricesRes.ok) throw new Error("Oracle API Error: Failed to fetch prices.");
-                const raw = await pricesRes.json();
-                if (!isValidPricesPayload(raw)) throw new Error("Oracle API Error: Invalid price data structure received.");
-                pricesData = raw;
-                pricesCache = { data: pricesData, fetchedAt: Date.now() };
-            }
-        } catch (e) {
-            if (pricesData) {
-                status = status === 'API LIMIT' ? 'API LIMIT' : 'DEGRADED';
-            } else {
-                throw e;
-            }
-        }
+        const prices = await this.fetchWithFreshCache(
+            () => ({ data: pricesCache.data, isFresh: isCacheValid(pricesCache, PRICES_CACHE_TTL_MS) }),
+            'https://coins.llama.fi/prices/current/coingecko:ethereum,coingecko:usd-coin',
+            isValidPricesPayload,
+            (raw) => { pricesCache = { data: raw, fetchedAt: Date.now() }; },
+            statusRef,
+        );
 
-        try {
-            if (!isCacheValid(yieldsCache, YIELDS_CACHE_TTL_MS)) {
-                const yieldsRes = await fetchWithTimeout('https://yields.llama.fi/pools', 15000, YIELDS_MAX_BYTES);
-                if (yieldsRes.status === 429) status = 'API LIMIT';
-                if (!yieldsRes.ok) throw new Error("Oracle API Error: Failed to fetch yields.");
-                const raw = await yieldsRes.json();
-                if (!isValidYieldsPayload(raw)) throw new Error("Oracle API Error: Invalid yields data structure received.");
-                yieldsData = raw;
-                yieldsCache = { data: yieldsData, fetchedAt: Date.now() };
-            }
-        } catch (e) {
-            if (yieldsData) {
-                status = status === 'API LIMIT' ? 'API LIMIT' : 'DEGRADED';
-            } else {
-                throw e;
-            }
-        }
+        const yields = await this.fetchWithFreshCache(
+            () => ({ data: yieldsCache.data, isFresh: isCacheValid(yieldsCache, YIELDS_CACHE_TTL_MS) }),
+            'https://yields.llama.fi/pools',
+            isValidYieldsPayload,
+            (raw) => { yieldsCache = { data: raw, fetchedAt: Date.now() }; },
+            statusRef,
+            { timeoutMs: 15000, maxBytes: YIELDS_MAX_BYTES },
+        );
 
-        return { pricesData, yieldsData, status };
+        return { pricesData: prices.data, yieldsData: yields.data, status: statusRef.status };
     }
 
     /**

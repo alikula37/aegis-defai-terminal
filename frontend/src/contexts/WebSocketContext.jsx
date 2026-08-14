@@ -162,6 +162,27 @@ export const WebSocketProvider = ({ children }) => {
         }
     };
 
+// Exponential backoff for reconnect attempts (1s, 2s, … capped at 30s).
+function reconnectDelayMs(retryCount, baseDelay = 1000) {
+    return Math.min(baseDelay * Math.pow(2, retryCount), 30000);
+}
+
+// Dispatch one parsed WS message to the context setters.
+function applyWsMessage(data, setters) {
+    if (data.type === 'portfolio_update') {
+        setters.setPortfolioData(normalizePortfolio(data.payload));
+    } else if (data.type === 'agent_log') {
+        setters.setAgentLogs(prev => [data.payload, ...prev].slice(0, 100));
+    } else if (data.type === 'simulation_status') {
+        setters.setIsSimulationRunning(data.payload.isRunning);
+        setters.setSimulationStartTime(data.payload.startTime);
+        if (data.payload.simulationName) setters.setSimulationName(data.payload.simulationName);
+        if (data.payload.execution) setters.setExecutionStatus(data.payload.execution);
+    } else if (data.type === 'notification') {
+        setters.setNotifications(prev => [data.payload, ...prev].slice(0, 10));
+    }
+}
+
     useEffect(() => {
         let ws;
         let reconnectInterval;
@@ -170,7 +191,9 @@ export const WebSocketProvider = ({ children }) => {
 
         let disposed = false;
 
-        const connect = (retryCount = 0) => {
+        const connect = (initialRetry = 0) => {
+            // Local counter — never reassign the parameter (S1226).
+            let retryCount = initialRetry;
             try {
                 const wsUrl = new URL(import.meta.env.VITE_WS_URL || defaultWsUrl());
                 const wsKey = import.meta.env.VITE_WS_API_KEY || 'aegis-default-ws-key';
@@ -186,18 +209,15 @@ export const WebSocketProvider = ({ children }) => {
                 ws.onmessage = (event) => {
                     try {
                         const data = JSON.parse(event.data);
-                        if (data.type === 'portfolio_update') {
-                            setPortfolioData(normalizePortfolio(data.payload));
-                        } else if (data.type === 'agent_log') {
-                            setAgentLogs(prev => [data.payload, ...prev].slice(0, 100));
-                        } else if (data.type === 'simulation_status') {
-                            setIsSimulationRunning(data.payload.isRunning);
-                            setSimulationStartTime(data.payload.startTime);
-                            if (data.payload.simulationName) setSimulationName(data.payload.simulationName);
-                            if (data.payload.execution) setExecutionStatus(data.payload.execution);
-                        } else if (data.type === 'notification') {
-                            setNotifications(prev => [data.payload, ...prev].slice(0, 10));
-                        }
+                        applyWsMessage(data, {
+                            setPortfolioData,
+                            setAgentLogs,
+                            setIsSimulationRunning,
+                            setSimulationStartTime,
+                            setSimulationName,
+                            setExecutionStatus,
+                            setNotifications,
+                        });
                     } catch (e) {
                         console.error('Error parsing WebSocket message:', e);
                     }
@@ -208,7 +228,7 @@ export const WebSocketProvider = ({ children }) => {
                     setIsConnected(false);
                     if (disposed) return; // unmounted — do not schedule a reconnect
                     if (retryCount < MAX_RETRIES) {
-                        const delay = Math.min(BASE_DELAY * Math.pow(2, retryCount), 30000);
+                        const delay = reconnectDelayMs(retryCount, BASE_DELAY);
                         console.log(`[WS] Reconnecting in ${delay}ms (attempt ${retryCount + 1})...`);
                         reconnectInterval = setTimeout(() => connect(retryCount + 1), delay);
                     } else {

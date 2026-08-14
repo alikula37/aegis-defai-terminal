@@ -32,10 +32,9 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                     // Secrets are masked server-side (never returned to the
                     // browser); only the "is it set?" flags come back. Empty
                     // fields mean "keep the stored value" on save.
-                    setSystemConfig({
-                        rpcUrl: data.hasRpcUrl ? '' : '',
-                        openRouterKey: data.hasOpenRouterKey ? '' : ''
-                    });
+                    // Secrets never reach the browser; both fields always start
+                    // empty and empty means "keep stored value" on save.
+                    setSystemConfig({ rpcUrl: '', openRouterKey: '' });
                     setIsConfigRequired(!data.hasRpcUrl || !data.hasOpenRouterKey);
                 })
                 .catch(err => console.error("Failed to fetch settings:", err))

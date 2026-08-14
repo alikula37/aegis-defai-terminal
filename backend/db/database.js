@@ -294,7 +294,7 @@ export function generateUniqueSimulationName(baseName, userId) {
     return newName;
 }
 
-export async function resetPortfolio(initialBalance, simulationName = 'Default Simulation', simulationIdToReset = null, userId) {
+export async function resetPortfolio(initialBalance, simulationName, simulationIdToReset, userId) {
     requireUserId(userId, 'resetPortfolio');
     if (simulationIdToReset) {
         // E9 — ownership enforced in the DELETE itself (composite key).
@@ -461,14 +461,17 @@ if (encryptionKeyBuffer.length !== 32) {
 const IV_LENGTH = 16;
 
 // Exported for unit tests (B5) — the production callers use updateSettings.
+// AES-256-GCM: authenticated encryption (integrity + confidentiality), unlike
+// the legacy CBC rows below which are only decrypted for backward
+// compatibility (SonarQube S5542).
 export function encrypt(text) {
     if (!text) return text;
     try {
-        let iv = crypto.randomBytes(IV_LENGTH);
-        let cipher = crypto.createCipheriv('aes-256-cbc', encryptionKeyBuffer, iv);
-        let encrypted = cipher.update(text);
-        encrypted = Buffer.concat([encrypted, cipher.final()]);
-        return iv.toString('hex') + ':' + encrypted.toString('hex');
+        const iv = crypto.randomBytes(IV_LENGTH);
+        const cipher = crypto.createCipheriv('aes-256-gcm', encryptionKeyBuffer, iv);
+        const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+        const tag = cipher.getAuthTag();
+        return `gcm:${iv.toString('hex')}:${tag.toString('hex')}:${encrypted.toString('hex')}`;
     } catch (e) {
         // B5 — never persist a secret in plaintext: on cipher failure the value
         // is NOT stored (null) instead of silently saving the raw key.
@@ -480,11 +483,18 @@ export function encrypt(text) {
 export function decrypt(text) {
     if (!text) return text;
     try {
-        let textParts = text.split(':');
+        if (typeof text === 'string' && text.startsWith('gcm:')) {
+            const [, ivHex, tagHex, ctHex] = text.split(':');
+            const decipher = crypto.createDecipheriv('aes-256-gcm', encryptionKeyBuffer, Buffer.from(ivHex, 'hex'));
+            decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+            return Buffer.concat([decipher.update(Buffer.from(ctHex, 'hex')), decipher.final()]).toString('utf8');
+        }
+        // Legacy AES-256-CBC rows (pre-GCM) — decrypt-only for compatibility.
+        const textParts = text.split(':');
         if (textParts.length !== 2) return text; // Not encrypted or wrong format
-        let iv = Buffer.from(textParts[0], 'hex');
-        let encryptedText = Buffer.from(textParts[1], 'hex');
-        let decipher = crypto.createDecipheriv('aes-256-cbc', encryptionKeyBuffer, iv);
+        const iv = Buffer.from(textParts[0], 'hex');
+        const encryptedText = Buffer.from(textParts[1], 'hex');
+        const decipher = crypto.createDecipheriv('aes-256-cbc', encryptionKeyBuffer, iv);
         let decrypted = decipher.update(encryptedText);
         decrypted = Buffer.concat([decrypted, decipher.final()]);
         return decrypted.toString();
@@ -536,7 +546,7 @@ export async function getSettings(userId) {
     }
 }
 
-export async function updateSettings(settings, simulationId = null, userId) {
+export async function updateSettings(settings, simulationId, userId) {
     requireUserId(userId, 'updateSettings');
     const stmt = db.prepare(`
       INSERT INTO settings(simulation_id, user_id, rpc_url, slippage, openrouter_key, active_model, target_hf, max_gas_claim, data_mode, data_scenario, automation_rules, llm_tools_enabled)

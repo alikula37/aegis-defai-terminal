@@ -63,13 +63,7 @@ export class AegisAgent {
         // config default
         this.executionChainId = options.onchain?.chainId
             ?? (process.env.EVM_CHAIN_ID ? Number(process.env.EVM_CHAIN_ID) : aegisConfig.execution.chainId);
-        this.executionDeps = this.executionMode === 'onchain'
-            ? (options.onchain?.deps ?? resolveOnchainDeps({
-                rpcUrl: options.onchain?.rpcUrl ?? aegisConfig.execution.rpcUrl ?? process.env.EVM_PROVIDER_URL,
-                privateKey: options.onchain?.privateKey ?? process.env.EVM_PRIVATE_KEY,
-                chainId: this.executionChainId,
-            }))
-            : { provider: null, signer: null, address: null };
+        this.executionDeps = this._resolveExecutionDeps(options);
         // Ready = simulation always, onchain only with provider + signer.
         this.executionReady = this.executionMode === 'simulation'
             || Boolean(this.executionDeps.provider && this.executionDeps.signer);
@@ -96,6 +90,19 @@ export class AegisAgent {
         if (this.executionMode === 'onchain' && !this.executionReady) {
             logger.warn('[EXECUTION] ⚠️ Onchain mode is NOT ready: configure EVM_PROVIDER_URL + EVM_PRIVATE_KEY (testnet only), or set execution.mode="simulation". Agent will run read-only.');
         }
+    }
+
+    // Resolve the onchain provider/signer deps (or the simulation placeholder).
+    _resolveExecutionDeps(options) {
+        if (this.executionMode !== 'onchain') {
+            return { provider: null, signer: null, address: null };
+        }
+        if (options.onchain?.deps) return options.onchain.deps;
+        return resolveOnchainDeps({
+            rpcUrl: options.onchain?.rpcUrl ?? aegisConfig.execution.rpcUrl ?? process.env.EVM_PROVIDER_URL,
+            privateKey: options.onchain?.privateKey ?? process.env.EVM_PRIVATE_KEY,
+            chainId: this.executionChainId,
+        });
     }
 
     // Runtime status exposed via REST/WS so the UI can show which execution
@@ -397,6 +404,65 @@ export class AegisAgent {
         };
     }
 
+    // 1 — fetch the market snapshot; logs + returns null on failure (aborts the
+    // cycle safely). Shared by the main cycle and the pre-execution freshness
+    // re-check.
+    async _fetchMarketData(stepName = 'MarketDataSource.getSnapshot') {
+        try {
+            return await withRetry(() => MarketDataSource.getSnapshot(simulationState, { simulationId: this.activeSimulationId, userId: this.ownerUserId }), { name: stepName });
+        } catch (error) {
+            this.logAndBroadcast('alert', `❌ Oracle API Error: ${error.message}. Postponing execution safely.`);
+            return null;
+        }
+    }
+
+    // Persist + broadcast the snapshot (portfolio stats row and WS update).
+    _recordSnapshot(marketData) {
+        HistoricalDataService.recordSnapshot(marketData);
+        const oracle = {
+            pendlePtSusdeApy: marketData.pendlePtSusdeApy,
+            morphoBorrowApy: marketData.morphoBorrowApy,
+            susdeApy: marketData.susdeApy,
+            baseSpread: marketData.baseSpread,
+            leverage: marketData.leverage,
+            ethPrice: marketData.ethPrice,
+            gasPrice: marketData.gasPrice,
+        };
+        const stats = insertPortfolioStats(
+            marketData.portfolio.tvl,
+            marketData.portfolio.netApy,
+            marketData.portfolio.healthFactor,
+            marketData.portfolio.strategies,
+            oracle,
+            this.activeSimulationId
+        );
+        this.broadcast('portfolio_update', {
+            ...stats,
+            ...marketData.portfolio,
+            oracleStatus: marketData.oracleStatus
+        });
+    }
+
+    // 4 — slippage / freshness guard: re-fetch market data before executing a
+    // trade decision and abort if the health factor moved more than 5%.
+    // Returns the fresh { marketData, conditions } or null to abort.
+    async _checkFreshness(marketData, conditions) {
+        const freshMarketData = await this._fetchMarketData('fetchFreshMarketData');
+        if (!freshMarketData) {
+            this.logAndBroadcast('alert', `⚠️ [Slippage Check] Failed to fetch fresh market data. Aborting trade for safety.`);
+            return null;
+        }
+        const hfDiff = Math.abs(freshMarketData.portfolio.healthFactor - marketData.portfolio.healthFactor);
+        if (hfDiff > 0.05) {
+            this.logAndBroadcast('alert', `⚠️ [Slippage Check] Market conditions changed significantly during LLM decision (HF diff: ${hfDiff.toFixed(2)}). Aborting trade.`);
+            return null;
+        }
+        return {
+            marketData: freshMarketData,
+            conditions: evaluateMarketConditions(freshMarketData, this.simulationSettings),
+        };
+    }
+
     async runCycle() {
         if (!this.isRunning) return;
 
@@ -414,39 +480,11 @@ export class AegisAgent {
             this.llmBudget.beginCycle();
 
             // 1. Fetch Real Market Data
-            let marketData;
-            try {
-                marketData = await withRetry(() => MarketDataSource.getSnapshot(simulationState, { simulationId: this.activeSimulationId, userId: this.ownerUserId }), { name: 'MarketDataSource.getSnapshot' });
-            } catch (error) {
-                this.logAndBroadcast('alert', `❌ Oracle API Error: ${error.message}. Postponing execution safely.`);
-                return; // Abort cycle safely
-            }
+            let marketData = await this._fetchMarketData();
+            if (!marketData) return; // Abort cycle safely
 
             // Persist a real-data snapshot for backtesting / trend analysis
-            HistoricalDataService.recordSnapshot(marketData);
-
-            const oracle = {
-                pendlePtSusdeApy: marketData.pendlePtSusdeApy,
-                morphoBorrowApy: marketData.morphoBorrowApy,
-                susdeApy: marketData.susdeApy,
-                baseSpread: marketData.baseSpread,
-                leverage: marketData.leverage,
-                ethPrice: marketData.ethPrice,
-                gasPrice: marketData.gasPrice,
-            };
-            const stats = insertPortfolioStats(
-                marketData.portfolio.tvl,
-                marketData.portfolio.netApy,
-                marketData.portfolio.healthFactor,
-                marketData.portfolio.strategies,
-                oracle,
-                this.activeSimulationId
-            );
-            this.broadcast('portfolio_update', {
-                ...stats,
-                ...marketData.portfolio,
-                oracleStatus: marketData.oracleStatus
-            });
+            this._recordSnapshot(marketData);
 
             // 2. Assess risk
             let conditions = evaluateMarketConditions(marketData, this.simulationSettings);
@@ -475,22 +513,10 @@ export class AegisAgent {
 
             // 4. Slippage / freshness check before executing
             if (['rebalance', 'claim', 'unwind', 'adjust_portfolio', 'reallocate_capital', 'flash_loan_rescue', 'migrate_borrow', 'cross_chain_migrate'].includes(response.decision)) {
-                try {
-                    const freshMarketData = await withRetry(() => MarketDataSource.getSnapshot(simulationState, { simulationId: this.activeSimulationId, userId: this.ownerUserId }), { name: 'fetchFreshMarketData' });
-                    const hfDiff = Math.abs(freshMarketData.portfolio.healthFactor - marketData.portfolio.healthFactor);
-
-                    // If HF changed by more than 0.05 (5%), abort execution
-                    if (hfDiff > 0.05) {
-                        this.logAndBroadcast('alert', `⚠️ [Slippage Check] Market conditions changed significantly during LLM decision (HF diff: ${hfDiff.toFixed(2)}). Aborting trade.`);
-                        return; // Abort cycle
-                    }
-                    // Use fresh data for execution
-                    marketData = freshMarketData;
-                    conditions = evaluateMarketConditions(marketData, this.simulationSettings);
-                } catch (e) {
-                    this.logAndBroadcast('alert', `⚠️ [Slippage Check] Failed to fetch fresh market data: ${e.message}. Aborting trade for safety.`);
-                    return;
-                }
+                const fresh = await this._checkFreshness(marketData, conditions);
+                if (!fresh) return; // Abort cycle
+                marketData = fresh.marketData;
+                conditions = fresh.conditions;
             }
 
             // 5. Execute via the configured execution backend

@@ -1,0 +1,6 @@
+projectKey=aegis-defai-terminal
+serverUrl=http://localhost:9200
+serverVersion=9.9.8.100196
+dashboardUrl=http://localhost:9200/dashboard?id=aegis-defai-terminal
+ceTaskId=AaAB1E3wBU0TvjQMFlVo
+ceTaskUrl=http://localhost:9200/api/ce/task?id=AaAB1E3wBU0TvjQMFlVo

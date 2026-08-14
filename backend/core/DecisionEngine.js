@@ -74,21 +74,38 @@ export function deterministicFallback(marketData, conditions, simulationState) {
  * provide structured reasoning, these fields are derived from real data so the
  * UI can always show WHY a decision was made.
  */
+function riskZone(conditions) {
+    if (conditions.isCritical) return 'CRITICAL';
+    if (conditions.isWarning) return 'warning';
+    return 'safe';
+}
+
+function zoneExplanation(zone, hf, conditions) {
+    if (zone === 'CRITICAL') {
+        return `CRITICAL — health factor ${hf.toFixed(2)} is below the critical threshold (${conditions.criticalHf})`;
+    }
+    if (zone === 'warning') {
+        return `warning — health factor ${hf.toFixed(2)} is in the warning band (< ${conditions.warningHf})`;
+    }
+    return `safe — health factor ${hf.toFixed(2)} is in the safe zone (target ${conditions.targetHf})`;
+}
+
+function reasoningAlternatives(conditions) {
+    const alternatives = ['hold — keep current position and wait for better conditions', 'adjust_portfolio — reduce/increase LTV or switch collateral', 'reallocate_capital — shift allocations between loop/basis/jit'];
+    if (conditions.isClaimProfitable) alternatives.unshift('claim — collect pending ENA/MORPHO rewards');
+    if (conditions.isCritical) alternatives.unshift('flash_loan_rescue — emergency debt reduction via flash loan');
+    return alternatives;
+}
+
 export function buildStructuredReasoning(marketData, conditions, decision, action = '') {
     const hf = marketData.portfolio.healthFactor ?? 0;
     const spread = marketData.baseSpread ?? 0;
     const ltv = (marketData.portfolio.currentLtv ?? 0) * 100;
-    const zone = conditions.isCritical ? 'CRITICAL' : conditions.isWarning ? 'warning' : 'safe';
-    const zoneText = zone === 'CRITICAL'
-        ? `CRITICAL — health factor ${hf.toFixed(2)} is below the critical threshold (${conditions.criticalHf})`
-        : zone === 'warning'
-            ? `warning — health factor ${hf.toFixed(2)} is in the warning band (< ${conditions.warningHf})`
-            : `safe — health factor ${hf.toFixed(2)} is in the safe zone (target ${conditions.targetHf})`;
+    const zone = riskZone(conditions);
+    const zoneText = zoneExplanation(zone, hf, conditions);
 
     const situation = `Market: ETH $${(marketData.ethPrice ?? 0).toFixed(0)}, net APY ${(marketData.netApy ?? 0).toFixed(2)}%, base spread ${spread.toFixed(2)}%, LTV ${ltv.toFixed(1)}%, leverage ${(marketData.leverage ?? 1).toFixed(2)}x, gas ${marketData.gasPrice ?? 0} gwei. Risk zone: ${zoneText}.`;
-    const alternatives = ['hold — keep current position and wait for better conditions', 'adjust_portfolio — reduce/increase LTV or switch collateral', 'reallocate_capital — shift allocations between loop/basis/jit'];
-    if (conditions.isClaimProfitable) alternatives.unshift('claim — collect pending ENA/MORPHO rewards');
-    if (conditions.isCritical) alternatives.unshift('flash_loan_rescue — emergency debt reduction via flash loan');
+    const alternatives = reasoningAlternatives(conditions);
 
     return {
         situation,

@@ -3,6 +3,35 @@ import { useState, useEffect } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import TvlHistoryModal from './TvlHistoryModal';
 
+// Formatting for a live metric value; keeps the render callback flat (S3776).
+function formatMetric(metric, rawValue, targetHf) {
+    const out = {
+        displayValue: metric.defaultValue,
+        valueColor: metric.valueColor,
+        iconColor: metric.iconColor,
+        badgeText: metric.badge.text,
+    };
+    if (rawValue === null || rawValue === undefined) return out;
+    if (metric.key === 'tvl') {
+        out.displayValue = `$${Number(rawValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    } else if (metric.key === 'netApy') {
+        const numValue = Number(rawValue);
+        if (numValue > 0) {
+            out.displayValue = `+${numValue.toFixed(2)}%`;
+            out.valueColor = 'text-green-400';
+            out.iconColor = 'text-green-400/70';
+        } else {
+            out.displayValue = `${numValue.toFixed(2)}%`;
+            out.valueColor = 'text-red-500';
+            out.iconColor = 'text-red-500/70';
+        }
+    } else if (metric.key === 'healthFactor') {
+        out.displayValue = Number(rawValue).toFixed(2);
+        out.badgeText = `Target: >${targetHf}`;
+    }
+    return out;
+}
+
 const DEFAULT_METRICS = [
     {
         label: 'Total Value Locked',
@@ -83,34 +112,8 @@ export default function DashboardMetrics() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-[1rem]">
                 {DEFAULT_METRICS.map((m) => {
                     const rawValue = liveData && liveData[m.key] != null ? liveData[m.key] : null;
-                    let displayValue = m.defaultValue;
-                    let valueColor = m.valueColor;
-                    let iconColor = m.iconColor;
-                    let badgeText = m.badge.text;
-
-                    if (rawValue !== null) {
-                        if (m.key === 'tvl') {
-                            displayValue = `$${Number(rawValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                        } else if (m.key === 'netApy') {
-                            const numValue = Number(rawValue);
-                            if (numValue > 0) {
-                                displayValue = `+${numValue.toFixed(2)}%`;
-                                valueColor = 'text-green-400';
-                                iconColor = 'text-green-400/70';
-                            } else {
-                                displayValue = `${numValue.toFixed(2)}%`;
-                                valueColor = 'text-red-500';
-                                iconColor = 'text-red-500/70';
-                            }
-                        } else if (m.key === 'healthFactor') {
-                            displayValue = Number(rawValue).toFixed(2);
-                        }
-                    }
-
-                    if (m.key === 'healthFactor') {
-                        badgeText = `Target: >${targetHf}`;
-                    }
-
+                    const formatted = formatMetric(m, rawValue, targetHf);
+                    const { displayValue, valueColor, iconColor, badgeText } = formatted;
                     const isApyCard = m.key === 'netApy';
                     const isTvlCard = m.key === 'tvl';
 

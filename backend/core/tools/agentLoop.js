@@ -58,6 +58,19 @@ export function parseToolArgs(raw) {
  * @param {Function|null} opts.beforeRound optional async gate returning boolean (LLM budget)
  * @throws when no final JSON decision is produced (agent falls back deterministically)
  */
+async function executeToolCalls(executor, toolCalls, ctx) {
+    const results = [];
+    for (const tc of toolCalls) {
+        const out = await executor.execute(tc.function?.name || '', parseToolArgs(tc.function?.arguments), ctx);
+        results.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: JSON.stringify(out.ok ? { result: out.result } : { error: out.error }),
+        });
+    }
+    return results;
+}
+
 export async function runToolAgent({
     prompt,
     memoryContext = [],
@@ -96,17 +109,7 @@ export async function runToolAgent({
                 content: res.content ?? null,
                 tool_calls: res.toolCalls,
             });
-
-            const results = [];
-            for (const tc of res.toolCalls) {
-                const out = await executor.execute(tc.function?.name || '', parseToolArgs(tc.function?.arguments), ctx);
-                results.push({
-                    role: 'tool',
-                    tool_call_id: tc.id,
-                    content: JSON.stringify(out.ok ? { result: out.result } : { error: out.error }),
-                });
-            }
-            toolMessages.push(...results);
+            toolMessages.push(...await executeToolCalls(executor, res.toolCalls, ctx));
 
             // Budget guard: if the executor has nothing left, stop immediately
             // instead of asking the LLM to keep going.

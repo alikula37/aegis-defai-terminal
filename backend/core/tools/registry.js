@@ -15,6 +15,43 @@ const intParam = (min, max) => z.number().int().min(min).max(max).describe(`inte
  * Compact projection of the live snapshot — the exact subset an LLM needs
  * to reason about risk/yield, with token-heavy internals removed.
  */
+function compactPortfolio(marketData) {
+    const portfolio = marketData.portfolio;
+    return {
+        tvl: portfolio?.tvl ?? null,
+        healthFactor: portfolio?.healthFactor ?? null,
+        currentLtv: portfolio?.currentLtv ?? null,
+        currentCollateral: portfolio?.currentCollateral ?? null,
+        allocations: portfolio?.allocations ?? null,
+        deployedCapital: portfolio?.deployedCapital ?? null,
+        activeChain: portfolio?.activeChain ?? null,
+        activeProtocol: portfolio?.activeProtocol ?? null,
+        activeStrategies: portfolio?.strategies
+            ? portfolio.strategies.filter(s => s.status === 'ACTIVE').length
+            : null,
+    };
+}
+
+function compactCrossChain(crossChain) {
+    if (!crossChain) return null;
+    return {
+        crossChainSavings: crossChain.crossChainSavings ?? null,
+        isCrossChainArbitrageAvailable: crossChain.isCrossChainArbitrageAvailable ?? null,
+        crossChainNetwork: crossChain.crossChainNetwork ?? null,
+        minViableTvl: crossChain.minViableTvl ?? null,
+    };
+}
+
+function compactPoints(points) {
+    if (!points) return null;
+    return {
+        morphoPointsApy: points.morphoPointsApy ?? null,
+        enaPointsApy: points.enaPointsApy ?? null,
+        borosFundingYield: points.borosFundingYield ?? null,
+        totalPointsApy: points.totalPointsApy ?? null,
+    };
+}
+
 export function compactMarketData(marketData) {
     if (!marketData) return { error: 'No market data available' };
     return {
@@ -37,35 +74,9 @@ export function compactMarketData(marketData) {
             leverage: marketData.leverage ?? null,
             gasPriceGwei: marketData.gasPrice ?? null,
         },
-        portfolio: {
-            tvl: marketData.portfolio?.tvl ?? null,
-            healthFactor: marketData.portfolio?.healthFactor ?? null,
-            currentLtv: marketData.portfolio?.currentLtv ?? null,
-            currentCollateral: marketData.portfolio?.currentCollateral ?? null,
-            allocations: marketData.portfolio?.allocations ?? null,
-            deployedCapital: marketData.portfolio?.deployedCapital ?? null,
-            activeChain: marketData.portfolio?.activeChain ?? null,
-            activeProtocol: marketData.portfolio?.activeProtocol ?? null,
-            activeStrategies: marketData.portfolio?.strategies
-                ? marketData.portfolio.strategies.filter(s => s.status === 'ACTIVE').length
-                : null,
-        },
-        crossChain: marketData.crossChain
-            ? {
-                crossChainSavings: marketData.crossChain.crossChainSavings ?? null,
-                isCrossChainArbitrageAvailable: marketData.crossChain.isCrossChainArbitrageAvailable ?? null,
-                crossChainNetwork: marketData.crossChain.crossChainNetwork ?? null,
-                minViableTvl: marketData.crossChain.minViableTvl ?? null,
-            }
-            : null,
-        points: marketData.points
-            ? {
-                morphoPointsApy: marketData.points.morphoPointsApy ?? null,
-                enaPointsApy: marketData.points.enaPointsApy ?? null,
-                borosFundingYield: marketData.points.borosFundingYield ?? null,
-                totalPointsApy: marketData.points.totalPointsApy ?? null,
-            }
-            : null,
+        portfolio: compactPortfolio(marketData),
+        crossChain: compactCrossChain(marketData.crossChain),
+        points: compactPoints(marketData.points),
     };
 }
 
