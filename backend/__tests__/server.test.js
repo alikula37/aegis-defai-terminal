@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import { WebSocket } from 'ws';
 import { app, server } from '../server.js';
 import db from '../db/database.js';
 import { updateSettings, getLocalUserId } from '../db/database.js';
+import { HistoricalDataService } from '../services/HistoricalDataService.js';
 
 // E9 — open-mode identity for direct DB writes in tests.
 const TEST_USER = () => getLocalUserId();
@@ -124,7 +125,19 @@ describe('API Integration Tests', () => {
         expect(validRes.body.initialBalance).toBe(15000);
     });
 
+    // Hermetic dataset so the backtest endpoints never touch live oracles in
+    // CI (external DefiLlama/RPC calls were the source of flaky runs).
+    function seedBacktestDataset() {
+        const days = [];
+        for (let i = 0; i < 60; i++) {
+            const date = new Date(Date.now() - (59 - i) * 86400000).toISOString().slice(0, 10);
+            days.push({ date, susdeApy: 12.5, borrowApy: 4.2, fundingApy: 2.0 });
+        }
+        vi.spyOn(HistoricalDataService, 'buildBacktestDataset').mockResolvedValue(days);
+    }
+
     it('GET /api/backtest should return a report', async () => {
+        seedBacktestDataset();
         const res = await request(app).get('/api/backtest').query({ rangeDays: 30, leverage: 4 });
         expect(res.status).toBe(200);
         expect(res.body).toHaveProperty('strategy');
@@ -163,11 +176,12 @@ describe('API Integration Tests', () => {
     });
 
     it('GET /api/backtest/sweep should return leverage rows', async () => {
+        seedBacktestDataset();
         const res = await request(app).get('/api/backtest/sweep').query({ leverages: '2,3,4' });
         expect(res.status).toBe(200);
         expect(Array.isArray(res.body)).toBe(true);
         expect(res.body.length).toBe(3);
-    }, 20000);
+    });
 
     it('POST /api/settings persists automation rules', async () => {
         const res = await request(app)

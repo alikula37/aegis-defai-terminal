@@ -31,6 +31,15 @@ jobs:
         cd backend
         npm ci
 
+    - name: Prepare Backend Test Env
+      # database.js refuses to boot without ENCRYPTION_KEY (secrets hardening,
+      # B5) — generate a throwaway key so tests run without a real .env.
+      run: |
+        cd backend
+        echo "ENCRYPTION_KEY=$(openssl rand -hex 32)" > .env
+        echo "OPENROUTER_API_KEY=" >> .env
+        echo "EVM_PROVIDER_URL=" >> .env
+
     - name: Run Backend Tests
       run: |
         cd backend
