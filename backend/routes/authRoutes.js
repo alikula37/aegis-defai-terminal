@@ -13,10 +13,11 @@ import {
     hashPassword, loginUser, logoutUser, getSessionToken,
     setSessionCookie, clearSessionCookie, closeUserSockets,
 } from '../utils/auth.js';
+import aegisConfig from '../aegis.config.js';
 
-const USERNAME_RE = /^[a-zA-Z0-9_.-]{3,32}$/;
-const PASSWORD_MIN = 8;
-const PASSWORD_MAX = 128;
+const USERNAME_RE = new RegExp(`^[a-zA-Z0-9_.-]{${aegisConfig.auth.usernameMin},${aegisConfig.auth.usernameMax}}$`);
+const PASSWORD_MIN = aegisConfig.auth.passwordMin;
+const PASSWORD_MAX = aegisConfig.auth.passwordMax;
 
 function sanitizeUser(user) {
     return user ? { id: user.id, username: user.username, role: user.role } : null;

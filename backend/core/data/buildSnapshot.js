@@ -87,9 +87,10 @@ export async function buildSnapshot(inputs, simulationState = {}, simulationId =
         }
     }
 
-    // Net realized APY after gas costs
+    // Net realized APY after gas costs. Guard the denominator: an empty
+    // portfolio (fresh DB, no baseline row) must yield 0 impact, never NaN.
     const annualGasCostUsd = (gasPrice * 100000 * 1e-9) * ethPrice * 365;
-    const gasImpactApy = (annualGasCostUsd / currentPortfolio.tvl) * 100;
+    const gasImpactApy = currentPortfolio.tvl > 0 ? (annualGasCostUsd / currentPortfolio.tvl) * 100 : 0;
 
     // Per-primitive APYs
     const loopApy = (collateralApy * leverage) - (bestBorrowApy * (leverage - 1)) - gasImpactApy;

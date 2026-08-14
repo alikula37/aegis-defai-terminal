@@ -107,5 +107,33 @@ export default {
             bridgeCostUsd: 25,            // CCIP bridge fixed cost estimate ($)
             simulatedGasPriceGwei: 15     // Gas fallback when no RPC is configured
         }
+    },
+    // Faz 4 (E9-kapanış) — HTTP/API katmanı işletimsel sabitleri.
+    // Tüm değerler env ile geçersiz kılınabilir; env yoksa burada durur.
+    server: {
+        port: 3001,
+        rateLimit: {
+            apiWindowMs: 15 * 60 * 1000,      // 15 dk pencere (tüm /api)
+            apiMax: 300,                       // env RATE_LIMIT_API_MAX
+            writeWindowMs: 15 * 60 * 1000,
+            writeMax: 50,                      // env RATE_LIMIT_WRITE_MAX
+            loginWindowMs: 15 * 60 * 1000,
+            loginMax: 20,                      // /api/auth/* brute-force tavanı
+        },
+        wsHeartbeatIntervalMs: 30000,          // B2.5-11 ping/pong periyodu
+        maxInitialBalance: 1e12,               // startSimulation tavanı
+        defaultInitialBalance: 10000,          // body'de değer yoksa kullanılır
+        csvExportLogLimit: 2000,
+        csvExportHistoryLimit: 10000,
+    },
+    // Faz 4 (E9) — kimlik doğrulama politika sabitleri.
+    auth: {
+        sessionTtlDays: 30,                    // env SESSION_TTL_DAYS
+        loginLockoutMaxAttempts: 5,            // başarısız deneme → kilit
+        loginLockoutMs: 15 * 60 * 1000,        // kilit süresi
+        usernameMin: 3,
+        usernameMax: 32,
+        passwordMin: 8,
+        passwordMax: 128,
     }
 };

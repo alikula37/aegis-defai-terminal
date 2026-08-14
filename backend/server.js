@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { getLogs, getLatestPortfolio, getInitialPortfolio, getPortfolioHistory, getSettings, updateSettings, deleteSettings, getRecentMemories, closeDatabase, checkSimulationNameExists, generateUniqueSimulationName, getLatestSimulation, setSimulationStatus, getAllSimulations, deleteSimulation, getSimulationById } from './db/database.js';
 import { AegisAgent } from './agent.js';
 import { Backtester } from './backtest/Backtester.js';
+import aegisConfig from './aegis.config.js';
 import helmet from 'helmet';
 import { z } from 'zod';
 import logger from './utils/logger.js';
@@ -72,21 +73,21 @@ app.use('/api/', (req, res, next) => {
 
 // Brute-force ceiling on credential endpoints — always on, both modes.
 const loginLimiter = createRateLimiter({
-    windowMs: 15 * 60 * 1000,
-    max: 20, // per IP: register/login/logout combined
+    windowMs: aegisConfig.server.rateLimit.loginWindowMs,
+    max: aegisConfig.server.rateLimit.loginMax, // per IP: register/login/logout combined
 });
 app.use('/api/auth/', loginLimiter);
 
 const apiLimiter = createRateLimiter({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: Number(process.env.RATE_LIMIT_API_MAX) || 300, // per IP
+    windowMs: aegisConfig.server.rateLimit.apiWindowMs,
+    max: Number(process.env.RATE_LIMIT_API_MAX) || aegisConfig.server.rateLimit.apiMax, // per IP
 });
 app.use('/api/', apiLimiter);
 
 // Stricter ceiling on state-changing endpoints (B6) — brute-force / abuse guard.
 const writeLimiter = createRateLimiter({
-    windowMs: 15 * 60 * 1000,
-    max: Number(process.env.RATE_LIMIT_WRITE_MAX) || 50,
+    windowMs: aegisConfig.server.rateLimit.writeWindowMs,
+    max: Number(process.env.RATE_LIMIT_WRITE_MAX) || aegisConfig.server.rateLimit.writeMax,
 });
 app.use('/api/', (req, res, next) => {
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) return writeLimiter(req, res, next);
@@ -154,7 +155,7 @@ function allSockets() {
 
 // Faz 2.5 (B2.5-11) — heartbeat: ping idle clients every 30s and drop dead
 // ones so the client gauge and the connection pool stay accurate.
-const WS_HEARTBEAT_INTERVAL_MS = 30000;
+const WS_HEARTBEAT_INTERVAL_MS = aegisConfig.server.wsHeartbeatIntervalMs;
 const wsHeartbeat = setInterval(() => {
     for (const ws of allSockets()) {
         if (ws.isAlive === false) {
@@ -301,7 +302,7 @@ const startSimulationSchema = z.object({
     .superRefine((val, ctx) => {
         if (val.initialBalance === undefined) return;
         const num = typeof val.initialBalance === 'number' ? val.initialBalance : parseFloat(val.initialBalance);
-        if (Number.isNaN(num) || num <= 0 || num > 1e12) {
+        if (Number.isNaN(num) || num <= 0 || num > aegisConfig.server.maxInitialBalance) {
             ctx.addIssue({ code: 'custom', path: ['initialBalance'], message: 'initialBalance must be > 0 and ≤ 1e12' });
         }
     });
@@ -313,8 +314,8 @@ app.post('/api/simulation/start', async (req, res) => {
         // the persisted portfolio baseline.
         const rawBalance = Number(settings.initialBalance);
         const initialBalance = Number.isFinite(rawBalance) && rawBalance > 0
-            ? Math.min(rawBalance, 1e12)
-            : 10000;
+            ? Math.min(rawBalance, aegisConfig.server.maxInitialBalance)
+            : aegisConfig.server.defaultInitialBalance;
         const simulationName = settings.simulationName || 'Default Simulation';
 
         if (!settings.isResume) {
@@ -377,7 +378,7 @@ app.post('/api/simulation/resume', async (req, res) => {
         agent.activeSimulationId = simToResume.id;
 
         const latestPortfolio = await getLatestPortfolio(agent.activeSimulationId);
-        const initialBalance = latestPortfolio ? latestPortfolio.tvl : 10000;
+        const initialBalance = latestPortfolio ? latestPortfolio.tvl : aegisConfig.server.defaultInitialBalance;
         const simulationName = simToResume.name;
 
         const settings = await getSettings(req.user.id);
@@ -535,8 +536,8 @@ app.get('/api/simulation/export', async (req, res) => {
         return res.status(400).json({ error: 'No active simulation to export.' });
     }
     try {
-        const history = await getPortfolioHistory(10000, simId, 'ALL');
-        const logs = await getLogs(2000, 0, 'All', simId);
+        const history = await getPortfolioHistory(aegisConfig.server.csvExportHistoryLimit, simId, 'ALL');
+        const logs = await getLogs(aegisConfig.server.csvExportLogLimit, 0, 'All', simId);
         const portfolioCsv = toCsv(history.map(r => ({
             timestamp: r.timestamp,
             tvl: r.tvl,
@@ -725,7 +726,7 @@ app.use((err, req, res, _next) => {
 });
 
 // ---- Start Server ----
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || aegisConfig.server.port;
 
 server.listen(PORT, () => {
     logger.info(`🚀 Backend server running on http://localhost:${PORT}`);

@@ -21,6 +21,7 @@ import {
     getLocalUserId, getSessionUser, createSession, deleteSession, deleteSessionsByUser,
     getUserById, getUserByUsername, incrementFailedAttempts, clearFailedAttempts,
 } from '../db/database.js';
+import aegisConfig from '../aegis.config.js';
 
 export const SESSION_COOKIE = 'aegis_session';
 const SCRYPT_N = 131072; // 2^17
@@ -72,7 +73,7 @@ export function sessionCookieOptions(env = process.env) {
         sameSite: 'lax',
         secure: env.NODE_ENV === 'production',
         path: '/',
-        maxAge: (Number(env.SESSION_TTL_DAYS) || 30) * 24 * 60 * 60 * 1000,
+        maxAge: (Number(env.SESSION_TTL_DAYS) || aegisConfig.auth.sessionTtlDays) * 24 * 60 * 60 * 1000,
     };
 }
 

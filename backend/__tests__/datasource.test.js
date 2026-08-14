@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 
 // Mock the DB module so the facade's mode resolution is testable in isolation
 vi.mock('../db/database.js', async (importOriginal) => {
@@ -21,6 +21,13 @@ const state = {
 
 describe('SimDataSource', () => {
     beforeEach(() => setRngSeed(2026));
+
+    beforeAll(async () => {
+        // Per-worker temp DB is empty — seed a baseline portfolio so the
+        // snapshot has a real starting TVL (matches the agent's lifecycle).
+        const db = await import('../db/database.js');
+        await db.resetPortfolio(10000, 'Datasource Seed', null, db.getLocalUserId());
+    });
 
     it('produces the standard snapshot shape', async () => {
         const s = await SimDataSource.getSnapshot(state, { scenario: 'stable' });

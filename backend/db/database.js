@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { mkdirSync } from 'fs';
 import dotenv from 'dotenv';
 import logger from '../utils/logger.js';
+import aegisConfig from '../aegis.config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Load backend/.env early so ENCRYPTION_KEY is available even when this
@@ -599,9 +600,9 @@ export function incrementFailedAttempts(id) {
     // OWASP — lockout is per-account, not per-IP. 5 failures → 15 minutes.
     db.prepare('UPDATE users SET failed_attempts = failed_attempts + 1 WHERE id = ?').run(id);
     const row = db.prepare('SELECT failed_attempts FROM users WHERE id = ?').get(id);
-    if (row && Number(row.failed_attempts) >= 5) {
+    if (row && Number(row.failed_attempts) >= aegisConfig.auth.loginLockoutMaxAttempts) {
         db.prepare('UPDATE users SET locked_until = ? WHERE id = ?')
-            .run(new Date(Date.now() + 15 * 60 * 1000).toISOString(), id);
+            .run(new Date(Date.now() + aegisConfig.auth.loginLockoutMs).toISOString(), id);
     }
 }
 
@@ -613,7 +614,7 @@ export function deleteUserById(id) {
     db.prepare('DELETE FROM users WHERE id = ?').run(id);
 }
 
-const SESSION_TTL_DAYS = Number(process.env.SESSION_TTL_DAYS) || 30;
+const SESSION_TTL_DAYS = Number(process.env.SESSION_TTL_DAYS) || aegisConfig.auth.sessionTtlDays;
 
 export function createSession(userId, ttlDays = SESSION_TTL_DAYS) {
     requireUserId(userId, 'createSession');
