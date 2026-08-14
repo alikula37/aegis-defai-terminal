@@ -8,10 +8,11 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
-
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
         node-version: [22.x]
 
     steps:
@@ -34,6 +35,8 @@ jobs:
     - name: Prepare Backend Test Env
       # database.js refuses to boot without ENCRYPTION_KEY (secrets hardening,
       # B5) — generate a throwaway key so tests run without a real .env.
+      # (openssl is bundled on all three runner images.)
+      shell: bash
       run: |
         cd backend
         echo "ENCRYPTION_KEY=$(openssl rand -hex 32)" > .env
