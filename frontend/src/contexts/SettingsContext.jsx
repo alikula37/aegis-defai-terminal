@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { apiFetch, fetchJson } from '../lib/apiClient';
 import { useAuth } from './AuthContext';
+import { useToast } from './ToastContext';
 
 const SettingsContext = createContext();
 
@@ -8,6 +9,7 @@ export const useSettings = () => useContext(SettingsContext);
 
 export const SettingsProvider = ({ children }) => {
     const { isAuthenticated } = useAuth();
+    const toast = useToast();
     const [settings, setSettings] = useState({
         rpcUrl: '',
         slippage: '0.5',
@@ -34,7 +36,11 @@ export const SettingsProvider = ({ children }) => {
                 setSavedSettings(data);
                 setIsReady(!!data.rpcUrl && !!data.openRouterKey);
             })
-            .catch(err => console.error("Failed to fetch settings:", err))
+            .catch(err => {
+                console.error("Failed to fetch settings:", err);
+                // The user would otherwise edit silently-empty fields.
+                toast.error('Could not load your settings — check the backend connection.');
+            })
             .finally(() => setIsLoading(false));
     }, [isAuthenticated]);
 

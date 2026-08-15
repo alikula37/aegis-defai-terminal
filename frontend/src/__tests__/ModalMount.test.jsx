@@ -3,6 +3,10 @@ import { render } from '@testing-library/react';
 import SimulationResumeModal from '../components/SimulationResumeModal';
 import DocsModal from '../components/DocsModal';
 
+
+vi.mock('../contexts/ToastContext', () => ({
+    useToast: () => ({ error: vi.fn(), success: vi.fn(), info: vi.fn() }),
+}));
 vi.mock('../lib/apiClient', () => ({
     fetchJson: vi.fn(async () => []),
     apiFetch: vi.fn(async () => ({ ok: true })),

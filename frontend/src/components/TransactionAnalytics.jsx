@@ -14,6 +14,7 @@ export default function TransactionAnalytics() {
     const [transactions, setTransactions] = useState([]);
     const [portfolioStats, setPortfolioStats] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState(null);
 
     useEffect(() => {
         Promise.all([
@@ -50,7 +51,10 @@ export default function TransactionAnalytics() {
                     });
                 }
             })
-            .catch(err => console.error('Failed to fetch analytics data:', err))
+            .catch(err => {
+                console.error('Failed to fetch analytics data:', err);
+                setLoadError('Could not load transaction analytics — check the backend connection.');
+            })
             .finally(() => setIsLoading(false));
     }, []);
 
@@ -58,6 +62,15 @@ export default function TransactionAnalytics() {
         return (
             <div className="bg-surface-container border border-outline-variant rounded-xl p-6 flex items-center justify-center min-h-[300px]">
                 <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
+            </div>
+        );
+    }
+
+    if (loadError) {
+        return (
+            <div className="bg-surface-container border border-outline-variant rounded-xl p-6 flex flex-col items-center justify-center min-h-[300px] text-center">
+                <span className="material-symbols-outlined text-error text-3xl mb-3">cloud_off</span>
+                <p className="font-[JetBrains_Mono] text-[13px] text-on-surface-variant max-w-xs">{loadError}</p>
             </div>
         );
     }
@@ -88,14 +101,14 @@ export default function TransactionAnalytics() {
                 </div>
                 <div className="flex justify-between items-center gap-4">
                     <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">Est. Tx Impact:</span>
-                    <span className={`font-[Inter] text-[13px] font-bold ${data.pnl >= 0 ? 'text-success' : 'text-error'}`}>
-                        ${data.pnl.toFixed(2)}
+                    <span className={`font-[Inter] text-[13px] font-bold ${Number(data.pnl) >= 0 ? 'text-success' : 'text-error'}`}>
+                        ${Number(data.pnl ?? 0).toFixed(2)}
                     </span>
                 </div>
                 <div className="flex justify-between items-center gap-4">
                     <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">Net APY:</span>
                     <span className="font-[Inter] text-[13px] font-bold text-primary">
-                        {data.netApy.toFixed(2)}%
+                        {Number(data.netApy ?? 0).toFixed(2)}%
                     </span>
                 </div>
                 {data.pnl < 0 && (

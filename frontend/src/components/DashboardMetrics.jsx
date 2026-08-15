@@ -93,19 +93,19 @@ export default function DashboardMetrics() {
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">lan</span>
                     <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">Active Chain:</span>
-                    <span className="font-bold text-on-surface">{liveData?.activeChain || 'Ethereum'}</span>
+                    <span className="font-bold text-on-surface">{liveData?.activeChain || '—'}</span>
                 </div>
                 <div className="w-px h-6 bg-outline-variant"></div>
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">account_balance</span>
                     <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">Active Protocol:</span>
-                    <span className="font-bold text-on-surface">{liveData?.activeProtocol || 'Morpho Blue'}</span>
+                    <span className="font-bold text-on-surface">{liveData?.activeProtocol || '—'}</span>
                 </div>
                 <div className="w-px h-6 bg-outline-variant"></div>
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">monitoring</span>
                     <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">Current Leverage:</span>
-                    <span className="font-bold text-on-surface">{liveData?.leverage || 5}x</span>
+                    <span className="font-bold text-on-surface">{liveData?.leverage != null ? `${liveData.leverage}x` : '—'}</span>
                 </div>
             </div>
 
@@ -172,26 +172,26 @@ export default function DashboardMetrics() {
                             <div className="space-y-4 font-[JetBrains_Mono] text-[14px]">
                                 <div className="flex justify-between items-center pb-3 border-b border-outline-variant/50">
                                     <span className="text-on-surface-variant">Base sUSDe Staking Yield</span>
-                                    <span className="text-success">+{liveData?.susdeApy?.toFixed(2) || '15.50'}%</span>
+                                    <span className="text-success">+{liveData?.susdeApy != null ? `${Number(liveData.susdeApy).toFixed(2)}%` : '—'}</span>
                                 </div>
                                 <div className="flex justify-between items-center pb-3 border-b border-outline-variant/50">
                                     <span className="text-on-surface-variant">USDC Borrow Cost</span>
-                                    <span className="text-error">-{liveData?.morphoBorrowApy?.toFixed(2) || '7.20'}%</span>
+                                    <span className="text-error">{liveData?.morphoBorrowApy != null ? `-${Number(liveData.morphoBorrowApy).toFixed(2)}%` : '—'}</span>
                                 </div>
                                 <div className="flex justify-between items-center pb-3 border-b border-outline-variant/50">
                                     <span className="text-on-surface-variant">Base Spread</span>
                                     <span className={liveData?.baseSpread > 0 ? 'text-success' : 'text-error'}>
-                                        {liveData?.baseSpread > 0 ? '+' : ''}{liveData?.baseSpread?.toFixed(2) || '8.30'}%
+                                        {liveData?.baseSpread != null ? `${liveData.baseSpread > 0 ? '+' : ''}${Number(liveData.baseSpread).toFixed(2)}%` : '—'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-center pb-3 border-b border-outline-variant/50">
                                     <span className="text-on-surface-variant">Leverage Multiplier</span>
-                                    <span className="text-primary">x{liveData?.leverage || 4}</span>
+                                    <span className="text-primary">{liveData?.leverage != null ? `x${liveData.leverage}` : '—'}</span>
                                 </div>
                                 <div className="flex justify-between items-center pt-2">
                                     <span className="text-on-surface font-bold">Net APY</span>
                                     <span className={`font-bold text-[18px] ${liveData?.netApy > 0 ? 'text-success' : 'text-error'}`}>
-                                        {liveData?.netApy > 0 ? '+' : ''}{liveData?.netApy?.toFixed(2) || '42.50'}%
+                                        {liveData?.netApy != null ? `${liveData.netApy > 0 ? '+' : ''}${Number(liveData.netApy).toFixed(2)}%` : '—'}
                                     </span>
                                 </div>
                             </div>

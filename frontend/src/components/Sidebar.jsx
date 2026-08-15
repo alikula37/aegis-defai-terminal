@@ -2,6 +2,8 @@ import { apiFetch } from '../lib/apiClient';
 import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { useToast } from '../contexts/ToastContext';
+import ConfirmDialog from './ConfirmDialog';
 import DocsModal from './DocsModal';
 import SupportModal from './SupportModal';
 
@@ -15,11 +17,13 @@ export const navItems = [
 
 export default function Sidebar() {
     const { isSimulationRunning: isRunning, setIsSimulationRunning, setIsStartModalOpen, setIsResumeModalOpen, simulationStartTime, clearSimulationData } = useWebSocket();
+    const toast = useToast();
     const [isDocsOpen, setIsDocsOpen] = useState(false);
     const [isSupportOpen, setIsSupportOpen] = useState(false);
     const [uptime, setUptime] = useState('00:00:00');
     const [hasPastSim, setHasPastSim] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
     useEffect(() => {
         let interval;
@@ -58,21 +62,21 @@ export default function Sidebar() {
                 // Sharp separation: dropping the old run's data immediately,
                 // without waiting for the WS broadcast.
                 clearSimulationData();
+                toast.success('Simulation stopped');
             } else {
                 // Revert if failed
                 setIsSimulationRunning(true);
                 const errData = await res.json();
-                alert(`Failed to stop simulation: ${errData.error || 'Unknown error'}`);
+                toast.error(`Failed to stop simulation: ${errData.error || 'Unknown error'}`);
             }
         } catch (error) {
             console.error('Failed to stop simulation:', error);
             setIsSimulationRunning(true);
-            alert(`Failed to stop simulation: ${error.message}`);
+            toast.error(`Failed to stop simulation: ${error.message}`);
         }
     };
 
     const handleDeleteLastSimulation = async () => {
-        if (!confirm('Delete the last simulation? Its portfolio, logs and decisions will be permanently removed.')) return;
         setIsDeleting(true);
         try {
             const list = await apiFetch('/api/simulations')
@@ -87,13 +91,14 @@ export default function Sidebar() {
             if (res.ok) {
                 setHasPastSim(false);
                 clearSimulationData();
+                toast.success('Simulation deleted');
             } else {
                 const errData = await res.json();
-                alert(`Failed to delete simulation: ${errData.error || 'Unknown error'}`);
+                toast.error(`Failed to delete simulation: ${errData.error || 'Unknown error'}`);
             }
         } catch (error) {
             console.error('Failed to delete simulation:', error);
-            alert(`Failed to delete simulation: ${error.message}`);
+            toast.error(`Failed to delete simulation: ${error.message}`);
         } finally {
             setIsDeleting(false);
         }
@@ -182,7 +187,7 @@ export default function Sidebar() {
                                 </div>
                                 {hasPastSim && (
                                     <button
-                                        onClick={handleDeleteLastSimulation}
+                                        onClick={() => setIsDeleteConfirmOpen(true)}
                                         disabled={isDeleting}
                                         className="w-full flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-[JetBrains_Mono] text-on-surface-variant hover:text-error transition-colors rounded-md hover:bg-error/5 disabled:opacity-50"
                                         title="Delete the last simulation and all its data"
@@ -220,6 +225,17 @@ export default function Sidebar() {
 
             <DocsModal isOpen={isDocsOpen} onClose={() => setIsDocsOpen(false)} />
             <SupportModal isOpen={isSupportOpen} onClose={() => setIsSupportOpen(false)} />
+            <ConfirmDialog
+                isOpen={isDeleteConfirmOpen}
+                title="Delete last simulation?"
+                message="Its portfolio, logs and decisions will be permanently removed. This cannot be undone."
+                confirmLabel="Delete"
+                onCancel={() => setIsDeleteConfirmOpen(false)}
+                onConfirm={() => {
+                    setIsDeleteConfirmOpen(false);
+                    handleDeleteLastSimulation();
+                }}
+            />
         </aside>
     );
 }

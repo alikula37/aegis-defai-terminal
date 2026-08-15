@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useSettings } from '../contexts/SettingsContext';
+import { safeFormatTime } from '../lib/timeFormat';
 import { Link } from 'react-router-dom';
 
 // --- Sub-components ---
@@ -64,7 +65,7 @@ const LiveLogEntry = ({ log }) => {
                 <p className={`font-[JetBrains_Mono] text-[12px] leading-[18px] ${color}`}>{log.message}</p>
             </div>
             <span className="font-[JetBrains_Mono] text-[10px] text-on-surface-variant shrink-0 mt-0.5">
-                {new Date(log.timestamp).toLocaleTimeString('en-US', { hour12: false })}
+                {safeFormatTime(log.timestamp)}
             </span>
         </div>
     );
@@ -115,8 +116,10 @@ export default function LiveData() {
         }
     }, [logs]);
 
-    const hf = portfolioData?.healthFactor || portfolioData?.health_factor;
-    const hfColor = hf >= 1.25 ? 'text-success' : hf >= 1.21 ? 'text-warning' : 'text-error';
+    const hf = portfolioData?.healthFactor ?? portfolioData?.health_factor;
+    // Only color-code when there is a real value — a missing HF must never
+    // render a fake "CRITICAL — de-leverage now" alarm.
+    const hfColor = hf == null ? 'text-on-surface-variant' : hf >= 1.25 ? 'text-success' : hf >= 1.21 ? 'text-warning' : 'text-error';
 
     return (
         <div className="flex-1 overflow-y-auto p-[2rem] bg-background">
@@ -234,10 +237,10 @@ export default function LiveData() {
                 <DataCard title="Portfolio Health" icon="shield" badge="Risk Monitor" badgeColor="text-error">
                     <DataBadge
                         label="Health Factor"
-                        value={hf ? Number(hf).toFixed(2) : '—'}
+                        value={hf != null ? Number(hf).toFixed(2) : '—'}
                         color={hfColor}
                         icon="monitor_heart"
-                        sub={hf >= 1.25 ? 'Safe — above target' : hf >= 1.21 ? 'Warning — rebalance soon' : 'CRITICAL — de-leverage now'}
+                        sub={hf == null ? 'Waiting for oracle data' : hf >= 1.25 ? 'Safe — above target' : hf >= 1.21 ? 'Warning — rebalance soon' : 'CRITICAL — de-leverage now'}
                     />
                     <DataBadge
                         label="Total Value Locked"
@@ -248,7 +251,7 @@ export default function LiveData() {
                     />
                     <DataBadge
                         label="Active Strategies"
-                        value={portfolioData?.activeAgents || '—'}
+                        value={portfolioData?.activeAgents != null ? portfolioData.activeAgents : '—'}
                         color="text-primary"
                         icon="hub"
                         sub="Running agent instances"
@@ -259,10 +262,10 @@ export default function LiveData() {
                 <DataCard title="Blockchain Data" icon="link" badge="Sepolia RPC" badgeColor="text-primary">
                     <DataBadge
                         label="Gas Price"
-                        value={portfolioData?.gasPrice ? `${Number(portfolioData.gasPrice).toFixed(1)} gwei` : '—'}
-                        color={portfolioData?.gasPrice < 20 ? 'text-success' : portfolioData?.gasPrice < 45 ? 'text-warning' : 'text-error'}
+                        value={portfolioData?.gasPrice != null ? `${Number(portfolioData.gasPrice).toFixed(1)} gwei` : '—'}
+                        color={portfolioData?.gasPrice == null ? 'text-on-surface-variant' : portfolioData?.gasPrice < 20 ? 'text-success' : portfolioData?.gasPrice < 45 ? 'text-warning' : 'text-error'}
                         icon="local_gas_station"
-                        sub={portfolioData?.gasPrice < 20 ? 'Low — good for claiming' : portfolioData?.gasPrice < 45 ? 'Moderate' : 'High — avoid transactions'}
+                        sub={portfolioData?.gasPrice == null ? 'Waiting for RPC data' : portfolioData?.gasPrice < 20 ? 'Low — good for claiming' : portfolioData?.gasPrice < 45 ? 'Moderate' : 'High — avoid transactions'}
                     />
                     <DataBadge
                         label="Block Number"
@@ -282,18 +285,25 @@ export default function LiveData() {
 
                 {/* 6. Avg Strategy APY */}
                 <DataCard title="Strategy Breakdown" icon="pie_chart" badge="Allocation" badgeColor="text-tertiary">
-                    {portfolioData?.strategies?.map((s, i) => (
-                        <DataBadge
-                            key={i}
-                            label={s.name}
-                            value={`${Number(s.apy).toFixed(2)}%`}
-                            color="text-primary"
-                            icon="arrow_right"
-                            sub={`${s.protocol} · ${s.risk} risk · ${((s.tvl / (portfolioData?.tvl || 1)) * 100).toFixed(0)}% alloc.`}
-                        />
-                    )) || (
-                            <p className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant py-2">Start simulation to see strategy data.</p>
-                        )}
+                    {(portfolioData?.strategies || []).map((s, i) => {
+                        const apy = Number(s.apy);
+                        const tvl = Number(s.tvl);
+                        const safeApy = Number.isFinite(apy) ? apy : null;
+                        const alloc = Number.isFinite(tvl) && portfolioData?.tvl ? ((tvl / portfolioData.tvl) * 100).toFixed(0) : null;
+                        return (
+                            <DataBadge
+                                key={i}
+                                label={s.name}
+                                value={safeApy != null ? `${safeApy.toFixed(2)}%` : '—'}
+                                color="text-primary"
+                                icon="arrow_right"
+                                sub={`${s.protocol || '—'} · ${s.risk || '—'} risk · ${alloc != null ? alloc + '% alloc.' : '—'}`}
+                            />
+                        );
+                    })}
+                    {!portfolioData?.strategies?.length && (
+                        <p className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant py-2">Start simulation to see strategy data.</p>
+                    )}
                 </DataCard>
 
             </div>

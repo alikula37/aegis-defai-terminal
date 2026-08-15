@@ -78,17 +78,21 @@ export default function LiveYieldChart() {
     const { portfolioData: liveData } = useWebSocket();
     const [data, setData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState(null);
     const [timeRange, setTimeRange] = useState('1H');
     const seenTimestamps = useRef(new Set());
 
     // ---- Load DB history on mount and when timeRange changes ----
     useEffect(() => {
         setIsLoading(true);
+        setLoadError(null);
         apiFetch(`/api/portfolio/history?limit=1000&timeRange=${timeRange}`)
             .then(r => r.json())
             .then(rows => {
+                // Keep negative-APY rows (real losses must show in the chart);
+                // only skip null/zero-value rows.
                 const pts = (Array.isArray(rows) ? rows : [])
-                    .filter(r => r.net_apy > 0) // Skip zero-value rows
+                    .filter(r => r.net_apy != null && r.net_apy !== 0)
                     .map(rowToPoint)
                     .reverse(); // Reverse to show oldest to newest
 
@@ -96,7 +100,11 @@ export default function LiveYieldChart() {
                 pts.forEach(p => seenTimestamps.current.add(p.timestamp));
                 setData(pts);
             })
-            .catch(() => { }) // Graceful failure — live data will fill in
+            .catch(() => {
+                // Live WS data will still fill the chart, but the failure must
+                // not masquerade as "no data".
+                setLoadError('History unavailable — backend unreachable');
+            })
             .finally(() => setIsLoading(false));
     }, [timeRange]);
 
@@ -178,11 +186,13 @@ export default function LiveYieldChart() {
             <div className="flex-1 w-full relative z-10 -ml-4">
                 {!hasData ? (
                     <div className="flex flex-col items-center justify-center h-full gap-3 text-on-surface-variant">
-                        <span className="material-symbols-outlined text-[40px] opacity-30">show_chart</span>
+                        <span className={`material-symbols-outlined text-[40px] ${loadError ? 'text-error opacity-70' : 'opacity-30'}`}>show_chart</span>
                         <p className="font-[JetBrains_Mono] text-[12px] text-center opacity-50 max-w-[220px]">
                             {isLoading
                                 ? 'Loading historical data...'
-                                : 'Start simulation to begin recording APY data'}
+                                : loadError
+                                    ? loadError
+                                    : 'Start simulation to begin recording APY data'}
                         </p>
                     </div>
                 ) : (

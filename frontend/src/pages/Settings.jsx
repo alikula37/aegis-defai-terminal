@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { useToast } from '../contexts/ToastContext';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { getApiKey, setApiKey } from '../lib/apiClient';
 
 const LLM_MODELS = [
@@ -20,10 +22,12 @@ const LLM_MODELS = [
 export default function Settings() {
     const { settings, setLocalSettings, updateSettings, clearSettings } = useSettings();
     const { executionStatus } = useWebSocket();
+    const toast = useToast();
     const [saved, setSaved] = useState(false);
     const [showKey, setShowKey] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isClearing, setIsClearing] = useState(false);
+    const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
     const [apiKeyInput, setApiKeyInput] = useState(getApiKey());
 
     const handleChange = (field, value) => {
@@ -34,24 +38,26 @@ export default function Settings() {
     const handleSave = async () => {
         setIsSaving(true);
         const success = await updateSettings(settings);
+        setSaved(false);
         if (success) {
             setSaved(true);
+            toast.success('Settings saved');
+            setTimeout(() => setSaved(false), 3000);
         } else {
-            setSaved(false);
+            toast.error('Failed to save settings — check the backend connection');
         }
         setIsSaving(false);
-        setTimeout(() => setSaved(false), 3000);
     };
 
     const handleClear = async () => {
-        if (!confirm('Are you sure you want to clear all settings history? This cannot be undone.')) return;
-
         setIsClearing(true);
         const success = await clearSettings();
-        if (!success) {
-            console.error("Failed to clear settings");
+        if (success) {
+            setSaved(false);
+            toast.success('Settings history cleared');
+        } else {
+            toast.error('Failed to clear settings — check the backend connection');
         }
-        setSaved(false);
         setIsClearing(false);
     };
 
@@ -315,7 +321,7 @@ export default function Settings() {
                         </div>
                     )}
                     <button
-                        onClick={handleClear}
+                        onClick={() => setIsClearConfirmOpen(true)}
                         disabled={isClearing || isSaving}
                         className="bg-error-container text-on-error-container px-4 py-2 rounded-lg font-[Inter] text-[14px] font-medium hover:brightness-110 transition-all flex items-center gap-2 disabled:opacity-50"
                         title="Clear Settings History"
@@ -333,6 +339,17 @@ export default function Settings() {
                     </button>
                 </div>
             </div>
+            <ConfirmDialog
+                isOpen={isClearConfirmOpen}
+                title="Clear settings history?"
+                message="Every stored preference, API credential and history row will be removed. This cannot be undone."
+                confirmLabel="Clear"
+                onCancel={() => setIsClearConfirmOpen(false)}
+                onConfirm={() => {
+                    setIsClearConfirmOpen(false);
+                    handleClear();
+                }}
+            />
         </div>
     );
 }

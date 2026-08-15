@@ -42,6 +42,12 @@ export default function CrossChainArbitrage() {
 
     const maxRate = Math.max(l1Borrow, cc.arbitrumBorrowApy || 0, cc.baseBorrowApy || 0) * 1.15;
     const bestIsArbitrum = (cc.arbitrumBorrowApy ?? Infinity) <= (cc.baseBorrowApy ?? Infinity);
+    // Guards: partial WS payloads must never crash the page (undefined.toFixed).
+    const savingsApy = Number(cc.crossChainSavings);
+    const safeSavings = Number.isFinite(savingsApy) ? savingsApy : 0;
+    const bridgeCost = Number(cc.bridgeCostUsd);
+    const safeBridgeCost = Number.isFinite(bridgeCost) ? bridgeCost : 0;
+    const bestChain = typeof cc.crossChainNetwork === 'string' ? cc.crossChainNetwork.split(' ')[0] : 'L1';
 
     return (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 space-y-4">
@@ -90,18 +96,18 @@ export default function CrossChainArbitrage() {
             <div className="pt-3 border-t border-white/10 grid grid-cols-3 gap-3 text-center">
                 <div>
                     <p className="text-[10px] text-white/40 mb-1">Annual Savings</p>
-                    <p className={`text-sm font-mono font-bold ${cc.crossChainSavings > 0 ? 'text-emerald-400' : 'text-white/50'}`}>
-                        {cc.crossChainSavings > 0 ? '+' : ''}{cc.crossChainSavings.toFixed(2)}% APY
+                    <p className={`text-sm font-mono font-bold ${safeSavings > 0 ? 'text-emerald-400' : 'text-white/50'}`}>
+                        {safeSavings > 0 ? '+' : ''}{safeSavings.toFixed(2)}% APY
                     </p>
                 </div>
                 <div>
                     <p className="text-[10px] text-white/40 mb-1">Bridge Cost</p>
-                    <p className="text-sm font-mono font-bold text-orange-400">~${cc.bridgeCostUsd.toFixed(0)}</p>
+                    <p className="text-sm font-mono font-bold text-orange-400">~${safeBridgeCost.toFixed(0)}</p>
                 </div>
                 <div>
                     <p className="text-[10px] text-white/40 mb-1">Best Chain</p>
                     <p className="text-sm font-mono font-bold text-white/80 truncate text-xs">
-                        {cc.crossChainNetwork.split(' ')[0]}
+                        {bestChain}
                     </p>
                 </div>
             </div>
@@ -113,7 +119,7 @@ export default function CrossChainArbitrage() {
                 </div>
             ) : (
                 <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white/40 leading-relaxed">
-                    ℹ️ Cross-chain savings ({cc.crossChainSavings.toFixed(2)}% APY) below threshold or bridge costs exceed benefit. Staying on L1.
+                    ℹ️ Cross-chain savings ({safeSavings.toFixed(2)}% APY) below threshold or bridge costs exceed benefit. Staying on L1.
                 </div>
             )}
         </div>

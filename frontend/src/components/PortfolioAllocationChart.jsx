@@ -17,14 +17,14 @@ export default function PortfolioAllocationChart() {
 
     const data = strategies.map(s => ({
         name: s.name,
-        value: s.tvl,
-        apy: s.apy
+        value: Number.isFinite(Number(s.tvl)) ? Number(s.tvl) : 0,
+        apy: Number.isFinite(Number(s.apy)) ? Number(s.apy) : 0
     }));
 
     const CustomTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
             const data = payload[0].payload;
-            const total = strategies.reduce((sum, s) => sum + s.tvl, 0);
+            const total = strategies.reduce((sum, s) => sum + Number(s.tvl || 0), 0);
             const percent = total > 0 ? ((data.value / total) * 100).toFixed(1) : 0;
             return (
                 <div className="bg-surface-container-high border border-outline-variant p-3 rounded-lg shadow-xl">

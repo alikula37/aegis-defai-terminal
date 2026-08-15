@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useAuth } from '../contexts/AuthContext';
+import { safeFormatTime } from '../lib/timeFormat';
 import MobileNav from './MobileNav';
 
 const pageTitles = {
@@ -115,7 +116,7 @@ export default function TopNav() {
                                                 <div>
                                                     <p className="text-sm text-on-surface">{notif.message}</p>
                                                     <span className="text-xs text-on-surface-variant mt-1 block">
-                                                        {new Date(notif.timestamp).toLocaleTimeString()}
+                                                        {safeFormatTime(notif.timestamp)}
                                                     </span>
                                                 </div>
                                             </div>

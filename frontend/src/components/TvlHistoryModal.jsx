@@ -8,6 +8,7 @@ import {
 
 function fmtTime(iso) {
     const d = new Date(iso);
+    if (isNaN(d.getTime())) return '--:--';
     return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
@@ -30,11 +31,13 @@ export default function TvlHistoryModal({ isOpen, onClose }) {
     const { modalRef } = useModalA11y({ isOpen, onClose });
     const [data, setData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState(null);
 
     useEffect(() => {
         if (!isOpen) return;
 
         setIsLoading(true);
+        setLoadError(null);
         apiFetch('/api/portfolio/history?limit=50')
             .then(r => r.json())
             .then(rows => {
@@ -46,7 +49,10 @@ export default function TvlHistoryModal({ isOpen, onClose }) {
                     }));
                 setData(pts);
             })
-            .catch(err => console.error('Failed to fetch TVL history:', err))
+            .catch(err => {
+                console.error('Failed to fetch TVL history:', err);
+                setLoadError('Could not load TVL history — check the backend connection.');
+            })
             .finally(() => setIsLoading(false));
     }, [isOpen]);
 
@@ -71,6 +77,11 @@ export default function TvlHistoryModal({ isOpen, onClose }) {
                     {isLoading ? (
                         <div className="w-full h-full flex items-center justify-center">
                             <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
+                        </div>
+                    ) : loadError ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-on-surface-variant font-[JetBrains_Mono] text-sm text-center px-6">
+                            <span className="material-symbols-outlined text-error text-3xl">cloud_off</span>
+                            {loadError}
                         </div>
                     ) : data.length === 0 ? (
                         <div className="w-full h-full flex items-center justify-center text-on-surface-variant font-[JetBrains_Mono] text-sm">

@@ -7,6 +7,10 @@ vi.mock('../contexts/AuthContext', () => ({
     useAuth: () => ({ isAuthenticated: true }),
 }));
 
+vi.mock('../contexts/ToastContext', () => ({
+    useToast: () => ({ error: vi.fn(), success: vi.fn(), info: vi.fn() }),
+}));
+
 const apiFetch = vi.fn();
 
 vi.mock('../lib/apiClient', () => ({

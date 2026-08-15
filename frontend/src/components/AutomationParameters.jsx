@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
+import { useToast } from '../contexts/ToastContext';
 import { addRule, removeRule, toggleRule } from './automationRulesLogic';
 
 export default function AutomationParameters() {
     const { settings, updateSettings } = useSettings();
+    const toast = useToast();
     const [isAdding, setIsAdding] = useState(false);
     const [condition, setCondition] = useState('');
     const [action, setAction] = useState('');
@@ -28,13 +30,21 @@ export default function AutomationParameters() {
 
     const persist = async (nextRules) => {
         setIsSaving(true);
-        await updateSettings({ ...settings, automationRules: nextRules });
+        const success = await updateSettings({ ...settings, automationRules: nextRules });
         setIsSaving(false);
+        if (!success) {
+            // updateSettings returns false on failure — never let a rule
+            // silently vanish from the UI.
+            toast.error('Failed to save rule — check the backend connection');
+            return false;
+        }
+        return true;
     };
 
     const handleAdd = async () => {
         if (!condition.trim() || !action.trim()) return;
-        await persist(addRule(customRules, condition, action));
+        const ok = await persist(addRule(customRules, condition, action));
+        if (!ok) return;
         setCondition('');
         setAction('');
         setIsAdding(false);

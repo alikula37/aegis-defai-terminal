@@ -25,6 +25,10 @@ vi.mock('../contexts/WebSocketContext', () => ({
         clearSimulationData,
     }),
 }));
+const toast = { error: vi.fn(), success: vi.fn(), info: vi.fn() };
+vi.mock('../contexts/ToastContext', () => ({
+    useToast: () => toast,
+}));
 const apiFetch = vi.fn(async () => ({ ok: true, json: async () => [] }));
 vi.mock('../lib/apiClient', () => ({
     apiFetch: (...args) => apiFetch(...args),
@@ -62,8 +66,7 @@ describe('Sidebar render (E10 regression guard)', () => {
         });
     });
 
-    it('deleting calls the API with the latest id and clears the UI data', async () => {
-        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    it('deleting goes through the themed confirm dialog, calls the API, clears the UI', async () => {
         apiFetch.mockImplementation(async (url) => {
             if (url === '/api/simulations') return { ok: true, json: async () => [{ id: 7, name: 'sim_x' }] };
             if (url === '/api/simulation/7') return { ok: true, json: async () => ({ success: true }) };
@@ -77,11 +80,19 @@ describe('Sidebar render (E10 regression guard)', () => {
         await waitFor(() => {
             expect(screen.getByRole('button', { name: /Delete last simulation/i })).toBeTruthy();
         });
+        // Clicking the delete action opens the themed dialog — no native confirm.
         fireEvent.click(screen.getByRole('button', { name: /Delete last simulation/i }));
+        expect(screen.getByText(/Delete last simulation\?/i)).toBeTruthy();
+        // Cancel does nothing.
+        fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
+        expect(apiFetch).not.toHaveBeenCalledWith('/api/simulation/7', { method: 'DELETE' });
+        // Confirm proceeds.
+        fireEvent.click(screen.getByRole('button', { name: /Delete last simulation/i }));
+        fireEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
         await waitFor(() => {
             expect(apiFetch).toHaveBeenCalledWith('/api/simulation/7', { method: 'DELETE' });
         });
         expect(clearSimulationData).toHaveBeenCalled();
-        confirmSpy.mockRestore();
+        expect(toast.success).toHaveBeenCalledWith('Simulation deleted');
     });
 });

@@ -13,6 +13,10 @@ const mockSettings = {
     ],
 };
 
+
+vi.mock('../contexts/ToastContext', () => ({
+    useToast: () => ({ error: vi.fn(), success: vi.fn(), info: vi.fn() }),
+}));
 vi.mock('../contexts/SettingsContext', () => ({
     useSettings: () => ({ settings: mockSettings, updateSettings }),
 }));

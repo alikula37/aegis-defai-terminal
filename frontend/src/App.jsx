@@ -10,10 +10,11 @@ import LoginPage from './pages/LoginPage';
 import { WebSocketProvider } from './contexts/WebSocketContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function AppShell() {
-    const { authRequired, user, loading } = useAuth();
+    const { user, loading } = useAuth();
     // Open mode (AUTH_REQUIRED=false): me() resolves to the local user, so the
     // login screen never appears. Required mode: block until identity resolves.
     if (loading) {
@@ -52,15 +53,17 @@ function AppShell() {
 function App() {
     return (
         <ErrorBoundary>
-            <AuthProvider>
-                <SettingsProvider>
-                    <WebSocketProvider>
-                        <Router>
-                            <AppShell />
-                        </Router>
-                    </WebSocketProvider>
-                </SettingsProvider>
-            </AuthProvider>
+            <ToastProvider>
+                <AuthProvider>
+                    <SettingsProvider>
+                        <WebSocketProvider>
+                            <Router>
+                                <AppShell />
+                            </Router>
+                        </WebSocketProvider>
+                    </SettingsProvider>
+                </AuthProvider>
+            </ToastProvider>
         </ErrorBoundary>
     );
 }

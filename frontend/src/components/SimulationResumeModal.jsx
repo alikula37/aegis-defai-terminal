@@ -1,29 +1,40 @@
 import { apiFetch, fetchJson } from '../lib/apiClient';
 import { useState, useEffect } from 'react';
 import { useModalA11y } from '../hooks/useModalA11y';
+import { useToast } from '../contexts/ToastContext';
+import { safeFormatDateTime } from '../lib/timeFormat';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function SimulationResumeModal({ isOpen, onClose, onResume }) {
-    const { modalRef } = useModalA11y({ isOpen, onClose });
+    const toast = useToast();
+    const [pendingDeleteId, setPendingDeleteId] = useState(null);
+    // While the delete confirmation is open it owns Escape (the ConfirmDialog
+    // is rendered inside this modal's subtree, so both a11y hooks would
+    // otherwise close both dialogs on a single Escape).
+    const { modalRef } = useModalA11y({ isOpen, onClose: pendingDeleteId !== null ? undefined : onClose });
     const [simulations, setSimulations] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [loadError, setLoadError] = useState(null);
     const [selectedSimId, setSelectedSimId] = useState(null);
 
     useEffect(() => {
         if (isOpen) {
             setIsLoading(true);
+            setLoadError(null);
             fetchJson('/api/simulations')
                 .then(data => {
                     setSimulations(data);
                     if (data.length > 0) setSelectedSimId(data[0].id);
                 })
-                .catch(err => console.error("Failed to fetch simulations:", err))
+                .catch(err => {
+                    console.error("Failed to fetch simulations:", err);
+                    setLoadError('Could not load simulations — check the backend connection.');
+                })
                 .finally(() => setIsLoading(false));
         }
     }, [isOpen]);
 
     const handleDelete = async (id) => {
-        if (!confirm('Are you sure you want to delete this simulation? All data will be lost.')) return;
-
         setIsLoading(true);
         try {
             const res = await apiFetch(`/api/simulation/${id}`, {
@@ -35,13 +46,14 @@ export default function SimulationResumeModal({ isOpen, onClose, onResume }) {
                 if (selectedSimId === id) {
                     setSelectedSimId(newSims.length > 0 ? newSims[0].id : null);
                 }
+                toast.success('Simulation deleted');
             } else {
                 const errData = await res.json();
-                alert(`Failed to delete simulation: ${errData.error || 'Unknown error'}`);
+                toast.error(`Failed to delete simulation: ${errData.error || 'Unknown error'}`);
             }
         } catch (error) {
             console.error('Failed to delete simulation:', error);
-            alert(`Failed to delete simulation: ${error.message}`);
+            toast.error(`Failed to delete simulation: ${error.message}`);
         } finally {
             setIsLoading(false);
         }
@@ -63,6 +75,11 @@ export default function SimulationResumeModal({ isOpen, onClose, onResume }) {
                     <div className="flex justify-center py-8">
                         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                     </div>
+                ) : loadError ? (
+                    <p className="text-center text-error py-4 font-[JetBrains_Mono] text-[13px] flex items-center justify-center gap-2">
+                        <span className="material-symbols-outlined text-[16px]">cloud_off</span>
+                        {loadError}
+                    </p>
                 ) : simulations.length === 0 ? (
                     <p className="text-center text-on-surface-variant py-4 font-[JetBrains_Mono] text-[14px]">No simulations found.</p>
                 ) : (
@@ -80,7 +97,7 @@ export default function SimulationResumeModal({ isOpen, onClose, onResume }) {
                                     />
                                     <div>
                                         <p className="font-[Inter] text-[14px] font-medium text-on-surface">{sim.name}</p>
-                                        <p className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant">{new Date(sim.created_at).toLocaleString()}</p>
+                                        <p className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant">{safeFormatDateTime(sim.created_at)}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
@@ -91,7 +108,7 @@ export default function SimulationResumeModal({ isOpen, onClose, onResume }) {
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
-                                            handleDelete(sim.id);
+                                            setPendingDeleteId(sim.id);
                                         }}
                                         className="text-on-surface-variant hover:text-error transition-colors p-1 flex items-center justify-center rounded-full hover:bg-error/10"
                                         title="Delete Simulation"
@@ -120,6 +137,18 @@ export default function SimulationResumeModal({ isOpen, onClose, onResume }) {
                     </button>
                 </div>
             </div>
+            <ConfirmDialog
+                isOpen={pendingDeleteId !== null}
+                title="Delete this simulation?"
+                message="All its portfolio, logs and decisions will be permanently removed. This cannot be undone."
+                confirmLabel="Delete"
+                onCancel={() => setPendingDeleteId(null)}
+                onConfirm={() => {
+                    const id = pendingDeleteId;
+                    setPendingDeleteId(null);
+                    if (id !== null) handleDelete(id);
+                }}
+            />
         </div>
     );
 }

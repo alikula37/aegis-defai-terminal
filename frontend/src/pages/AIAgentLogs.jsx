@@ -1,6 +1,7 @@
 import { apiFetch } from '../lib/apiClient';
 import { useState, useEffect, useRef } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { safeFormatTime } from '../lib/timeFormat';
 
 const LOG_TYPES = ['All', 'scan', 'flash_loan', 'rebalance', 'claim', 'alert', 'system'];
 
@@ -9,18 +10,23 @@ export default function AIAgentLogs() {
     const [logs, setLogs] = useState([]);
     const [filterType, setFilterType] = useState('All');
     const [filterDate, setFilterDate] = useState('');
+    const [loadError, setLoadError] = useState(null);
     const bottomRef = useRef(null);
 
-    // Fetch historical logs
-    useEffect(() => {
+    // Fetch historical logs — never fabricate entries on failure.
+    const loadHistory = () => {
+        setLoadError(null);
         apiFetch('/api/logs')
             .then(r => r.json())
             .then(data => setLogs(Array.isArray(data) ? data : []))
-            .catch(() => {
-                setLogs([
-                    { id: 1, timestamp: new Date().toISOString(), type: 'system', message: '🤖 Agent system initialized. Waiting for backend connection...' }
-                ]);
+            .catch(err => {
+                console.error("Failed to fetch logs:", err);
+                setLoadError("Could not load the agent logs — check the backend connection.");
             });
+    };
+
+    useEffect(() => {
+        loadHistory();
     }, []);
 
     // WebSocket for live logs
@@ -61,10 +67,6 @@ export default function AIAgentLogs() {
         return map[type] || 'bg-surface-variant text-on-surface-variant';
     };
 
-    const formatTime = (ts) => {
-        try { return new Date(ts).toLocaleTimeString('en-US', { hour12: false }); } catch { return '--:--:--'; }
-    };
-
     return (
         <div className="flex-1 flex flex-col p-[1.5rem] gap-4 overflow-hidden">
             {/* Header + Filters */}
@@ -99,20 +101,33 @@ export default function AIAgentLogs() {
                 <div className="bg-surface-container-highest px-4 py-2 border-b border-outline-variant flex items-center gap-2 shrink-0">
                     <span className="material-symbols-outlined text-on-surface-variant text-[16px]">terminal</span>
                     <span className="font-[JetBrains_Mono] text-[13px] font-medium text-on-surface">aegis-defai-agent</span>
-                    <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant ml-auto">PID: 1337</span>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 font-[JetBrains_Mono] text-[12px] leading-[20px] flex flex-col gap-1">
+                    {loadError && (
+                        <div className="flex items-center gap-3 px-2 py-3 text-error">
+                            <span className="material-symbols-outlined text-[16px]">cloud_off</span>
+                            <span className="flex-1">{loadError}</span>
+                            <button
+                                onClick={loadHistory}
+                                className="px-3 py-1 rounded-md border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors"
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    )}
                     {filtered.map((log, i) => (
                         <div key={log.id || i} className="flex gap-3 hover:bg-surface-variant/30 px-2 py-1 rounded transition-colors items-start">
-                            <span className="text-outline shrink-0">[{formatTime(log.timestamp)}]</span>
+                            <span className="text-outline shrink-0">[{safeFormatTime(log.timestamp)}]</span>
                             <span className={`shrink-0 px-1.5 py-0 rounded border text-[10px] uppercase tracking-wider ${typeBadgeColor(log.type)}`}>{log.type?.replace('_', ' ') || 'log'}</span>
                             <span className={typeColor(log.type)}>{log.message}</span>
                         </div>
                     ))}
-                    <div ref={bottomRef} className="flex gap-3 px-2 py-1 mt-1 items-center">
-                        <span className="text-outline shrink-0">[Live]</span>
-                        <span className="w-2 h-4 bg-primary/70 animate-pulse inline-block"></span>
-                    </div>
+                    {connected && (
+                        <div ref={bottomRef} className="flex gap-3 px-2 py-1 mt-1 items-center">
+                            <span className="text-outline shrink-0">[Live]</span>
+                            <span className="w-2 h-4 bg-primary/70 animate-pulse inline-block"></span>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

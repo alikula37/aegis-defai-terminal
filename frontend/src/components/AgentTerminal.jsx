@@ -1,6 +1,7 @@
 import { apiFetch } from '../lib/apiClient';
 import { useState, useEffect, useRef } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { safeFormatTime } from '../lib/timeFormat';
 
 const INITIAL_LOGS = [
     { time: '--:--:--', text: '🤖 Agent system initialized. Waiting for backend connection...', color: 'text-on-surface-variant' }
@@ -32,7 +33,7 @@ function parseDetails(logData) {
 
 function normalizeLog(logData) {
     const { timestamp, message, type: logType } = logData;
-    const time = new Date(timestamp).toLocaleTimeString('en-US', { hour12: false });
+    const time = safeFormatTime(timestamp);
     const color = typeColorMap[logType] || 'text-on-surface';
     const details = parseDetails(logData);
     return { time, text: message, color, type: logType, reasoning: details?.reasoning || null };
@@ -123,10 +124,12 @@ export default function AgentTerminal() {
                         {log.type === 'decision' && <ReasoningPanel reasoning={log.reasoning} />}
                     </div>
                 ))}
-                <div ref={bottomRef} className="flex gap-3 p-1 mt-2 items-center">
-                    <span className="text-outline shrink-0">[Live]</span>
-                    <span className="w-2 h-4 bg-primary/70 animate-pulse inline-block"></span>
-                </div>
+                {connected && (
+                    <div ref={bottomRef} className="flex gap-3 p-1 mt-2 items-center">
+                        <span className="text-outline shrink-0">[Live]</span>
+                        <span className="w-2 h-4 bg-primary/70 animate-pulse inline-block"></span>
+                    </div>
+                )}
             </div>
         </div>
     );

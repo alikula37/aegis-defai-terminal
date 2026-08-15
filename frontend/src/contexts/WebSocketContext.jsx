@@ -3,6 +3,7 @@ import SimulationStartModal from '../components/SimulationStartModal';
 import SimulationResumeModal from '../components/SimulationResumeModal';
 import { apiFetch } from '../lib/apiClient';
 import { useAuth } from './AuthContext';
+import { useToast } from './ToastContext';
 
 export const WebSocketContext = createContext();
 
@@ -97,6 +98,7 @@ export function applyWsMessage(data, setters) {
 
 export const WebSocketProvider = ({ children }) => {
     const { isAuthenticated } = useAuth();
+    const toast = useToast();
     const [portfolioData, setPortfolioData] = useState(null);
     const [agentLogs, setAgentLogs] = useState([]);
     const [isConnected, setIsConnected] = useState(false);
@@ -158,11 +160,11 @@ export const WebSocketProvider = ({ children }) => {
                 if (settings.simulationName) setSimulationName(settings.simulationName);
             } else {
                 const errData = await res.json();
-                alert(`Failed to start simulation: ${errData.error || 'Unknown error'}`);
+                toast.error(`Failed to start simulation: ${errData.error || "Unknown error"}`);
             }
         } catch (error) {
             console.error('Failed to start simulation:', error);
-            alert(`Failed to start simulation: ${error.message}`);
+            toast.error(`Failed to start simulation: ${error.message}`);
         } finally {
             setIsStarting(false);
         }
@@ -182,11 +184,11 @@ export const WebSocketProvider = ({ children }) => {
                 setIsResumeModalOpen(false);
             } else {
                 const errData = await res.json();
-                alert(`Failed to resume simulation: ${errData.error || 'Unknown error'}`);
+                toast.error(`Failed to resume simulation: ${errData.error || "Unknown error"}`);
             }
         } catch (error) {
             console.error('Failed to resume simulation:', error);
-            alert(`Failed to resume simulation: ${error.message}`);
+            toast.error(`Failed to resume simulation: ${error.message}`);
         } finally {
             setIsStarting(false);
         }
@@ -204,11 +206,11 @@ export const WebSocketProvider = ({ children }) => {
                 setHasData(false);
             } else {
                 const errData = await res.json();
-                alert(`Failed to stop simulation: ${errData.error || 'Unknown error'}`);
+                toast.error(`Failed to stop simulation: ${errData.error || "Unknown error"}`);
             }
         } catch (error) {
             console.error('Failed to stop simulation:', error);
-            alert(`Failed to stop simulation: ${error.message}`);
+            toast.error(`Failed to stop simulation: ${error.message}`);
         }
     };
 
@@ -272,6 +274,7 @@ export const WebSocketProvider = ({ children }) => {
                             setSimulationName,
                             setExecutionStatus,
                             setNotifications,
+                            setHasData,
                         });
                     } catch (e) {
                         console.error('Error parsing WebSocket message:', e);
@@ -288,6 +291,13 @@ export const WebSocketProvider = ({ children }) => {
                         reconnectInterval = setTimeout(() => connect(retryCount + 1), delay);
                     } else {
                         console.error('[WS] Max reconnection attempts reached.');
+                        // Never die silently: surface the dead stream so the
+                        // user knows the pages may be showing stale data.
+                        setNotifications(prev => [...prev.slice(-9), {
+                            type: 'error',
+                            message: 'Live connection lost — reconnection attempts exhausted. Refresh the page to reconnect.',
+                            timestamp: new Date().toISOString(),
+                        }]);
                     }
                 };
 

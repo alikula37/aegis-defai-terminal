@@ -7,37 +7,11 @@ import PortfolioAllocationChart from '../components/PortfolioAllocationChart';
 import PointsTracker from '../components/PointsTracker';
 import CrossChainArbitrage from '../components/CrossChainArbitrage';
 
-const PLACEHOLDER_STRATEGIES = [
-    { name: 'Pendle PT-sUSDe Arb', protocol: 'Pendle Finance', apy: 35.5, risk: 'Low', tvl: 0, borrowProtocol: 'Aave V4 E-Mode', status: 'ACTIVE' },
-    { name: 'PT-syrupUSDC RWA', protocol: 'Maple Finance + Aave V4', apy: 12.8, risk: 'Low', tvl: 0, borrowProtocol: 'Aave V4 E-Mode', status: 'ACTIVE' },
-    { name: 'Ethena sUSDe Leverage', protocol: 'Ethena + Morpho', apy: 28.4, risk: 'Med', tvl: 0, borrowProtocol: 'Morpho Blue', status: 'ACTIVE' },
-    { name: 'Boros YU Hedge', protocol: 'Pendle Boros', apy: 1.2, risk: 'Med', tvl: 0, borrowProtocol: 'N/A (Margin)', status: 'STANDBY' },
-    { name: 'Morpho USDC Revolver', protocol: 'Morpho Blue', apy: 12.1, risk: 'Low', tvl: 0, borrowProtocol: 'N/A (Supply)', status: 'ACTIVE' },
-];
-
 export default function YieldStrategies() {
     const { portfolioData: liveData, isSimulationRunning, hasData, setIsStartModalOpen, setIsResumeModalOpen } = useWebSocket();
-    const [isLoading, setIsLoading] = useState(true);
 
-    // Show brief loading indicator, then show placeholder/live data
-    useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 2500);
-        return () => clearTimeout(timer);
-    }, []);
-
-    const strategies = liveData?.strategies?.length > 0 ? liveData.strategies : PLACEHOLDER_STRATEGIES;
-
-    if (isLoading) {
-        return (
-            <div className="p-8 max-w-7xl mx-auto flex flex-col items-center justify-center min-h-[60vh]">
-                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-6"></div>
-                <h2 className="font-[Inter] text-[22px] font-bold text-on-surface mb-2">Loading Yield Strategies</h2>
-                <p className="font-[JetBrains_Mono] text-[13px] text-on-surface-variant text-center max-w-md">
-                    Connecting to DeFiLlama feeds...
-                </p>
-            </div>
-        );
-    }
+    // Real data only — never fall back to fabricated strategy rows.
+    const strategies = liveData?.strategies?.length > 0 ? liveData.strategies : [];
 
     const isSimulationStarted = isSimulationRunning || hasData;
 
@@ -81,7 +55,7 @@ export default function YieldStrategies() {
         ? `${Number(liveData.netApy) > 0 ? '+' : ''}${Number(liveData.netApy).toFixed(2)}%`
         : '0.00%';
 
-    const activeAgents = isSimulationRunning ? '1' : '0';
+    const activeAgents = liveData?.activeAgents != null ? String(liveData.activeAgents) : (isSimulationRunning ? '1' : '0');
 
     const yieldMetrics = [
         {
@@ -119,19 +93,19 @@ export default function YieldStrategies() {
                     <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary">lan</span>
                         <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">Active Chain:</span>
-                        <span className="font-bold text-on-surface">{liveData?.activeChain || 'Ethereum'}</span>
+                        <span className="font-bold text-on-surface">{liveData?.activeChain || '—'}</span>
                     </div>
                     <div className="w-px h-6 bg-outline-variant"></div>
                     <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary">account_balance</span>
                         <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">Active Protocol:</span>
-                        <span className="font-bold text-on-surface">{liveData?.activeProtocol || 'Morpho Blue'}</span>
+                        <span className="font-bold text-on-surface">{liveData?.activeProtocol || '—'}</span>
                     </div>
                     <div className="w-px h-6 bg-outline-variant"></div>
                     <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary">monitoring</span>
                         <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">Current Leverage:</span>
-                        <span className="font-bold text-on-surface">{liveData?.leverage || 5}x</span>
+                        <span className="font-bold text-on-surface">{liveData?.leverage != null ? `${liveData.leverage}x` : '—'}</span>
                     </div>
                 </div>
 
