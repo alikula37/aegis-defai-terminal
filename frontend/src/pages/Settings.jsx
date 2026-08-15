@@ -57,7 +57,7 @@ export default function Settings() {
 
     return (
         <div className="flex-1 overflow-y-auto p-[2rem] bg-background">
-            <div className="max-w-[720px] mx-auto space-y-6">
+            <div className="max-w-[960px] mx-auto space-y-6">
                 <div>
                     <h2 className="font-[Inter] text-[24px] leading-[32px] font-semibold text-on-surface">System Configuration</h2>
                     <p className="text-[14px] text-on-surface-variant mt-1">Manage your agent's blockchain, API, and model settings.</p>
