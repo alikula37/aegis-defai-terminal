@@ -3,39 +3,74 @@ import { useState, useEffect } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useModalA11y } from '../hooks/useModalA11y';
 
+const SCENARIOS = [
+    { value: 'stable', label: 'Stable — baseline spread' },
+    { value: 'bull', label: 'Bull — positive spread, high funding' },
+    { value: 'bear', label: 'Bear — negative spread' },
+    { value: 'depeg', label: 'sUSDe depeg — liquidation stress' },
+];
+
 export default function SimulationStartModal({ isOpen, onClose, onStart }) {
     const { isStarting, executionStatus } = useWebSocket();
     const [settings, setSettings] = useState({
-        simulationName: 'Aegis Alpha Run',
+        simulationName: '',
         initialBalance: '10000',
         duration: 'Continuous',
         frequency: 'Medium',
-        riskAppetite: 'Balanced'
+        riskAppetite: 'Balanced',
+        dataMode: 'LIVE',
+        dataScenario: 'stable',
+        seed: '',
+        activeModel: '',
     });
 
-    const [systemConfig, setSystemConfig] = useState({
-        rpcUrl: '',
-        openRouterKey: ''
-    });
-    const [isConfigRequired, setIsConfigRequired] = useState(false);
+    // Per-start API credentials. Secrets never come back from the server;
+    // empty + configured = "keep the stored value" on save.
+    const [systemConfig, setSystemConfig] = useState({ rpcUrl: '', openRouterKey: '' });
+    const [configFlags, setConfigFlags] = useState({ hasRpcUrl: false, hasOpenRouterKey: false });
+    const [carryOver, setCarryOver] = useState({});
     const [isLoadingSettings, setIsLoadingSettings] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState(null);
     const [suggestedName, setSuggestedName] = useState(null);
+    const [showKeyGuide, setShowKeyGuide] = useState(false);
+    const [showAdvanced, setShowAdvanced] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             setIsLoadingSettings(true);
-            apiFetch('/api/settings')
-                .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
-                .then(data => {
+            setError(null);
+            setSuggestedName(null);
+            Promise.all([
+                apiFetch('/api/settings')
+                    .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))),
+                apiFetch('/api/simulation/suggest-name')
+                    .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))),
+            ])
+                .then(([data, nameData]) => {
                     // Secrets are masked server-side (never returned to the
-                    // browser); only the "is it set?" flags come back. Empty
-                    // fields mean "keep the stored value" on save.
-                    // Secrets never reach the browser; both fields always start
-                    // empty and empty means "keep stored value" on save.
+                    // browser); only "is it set?" flags come back. Empty fields
+                    // mean "keep the stored value" on save.
                     setSystemConfig({ rpcUrl: '', openRouterKey: '' });
-                    setIsConfigRequired(!data.hasRpcUrl || !data.hasOpenRouterKey);
+                    setConfigFlags({ hasRpcUrl: !!data.hasRpcUrl, hasOpenRouterKey: !!data.hasOpenRouterKey });
+                    // Carry forward every stored preference so the settings
+                    // append-row save never silently resets them (slippage,
+                    // risk thresholds, rules, model).
+                    setCarryOver({
+                        slippage: data.slippage,
+                        targetHf: data.targetHf,
+                        maxGasClaim: data.maxGasClaim,
+                        automationRules: data.automationRules,
+                        llmToolsEnabled: data.llmToolsEnabled,
+                    });
+                    setSettings(prev => ({
+                        ...prev,
+                        // Mage-style unique suggestion every time the modal opens.
+                        simulationName: nameData.suggestedName || prev.simulationName,
+                        dataMode: data.dataMode || 'LIVE',
+                        dataScenario: data.dataScenario || 'stable',
+                        activeModel: data.activeModel || '',
+                    }));
                 })
                 .catch(err => console.error("Failed to fetch settings:", err))
                 .finally(() => setIsLoadingSettings(false));
@@ -48,28 +83,64 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
 
     if (!isOpen) return null;
 
+    const refreshName = () => {
+        apiFetch('/api/simulation/suggest-name')
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (data?.suggestedName) {
+                    setSettings(prev => ({ ...prev, simulationName: data.suggestedName }));
+                }
+            })
+            .catch(() => { /* non-critical */ });
+    };
+
+    // LIVE market data needs a working RPC + LLM key; SIM (seeded) is
+    // self-contained (deterministic fallback + seeded data, no network).
+    const validate = () => {
+        if (settings.dataMode !== 'SIM') {
+            if (!systemConfig.rpcUrl && !configFlags.hasRpcUrl) {
+                return 'LIVE market data requires a Sepolia RPC URL — add one below or switch the Market Data Source to SIM (seeded scenario).';
+            }
+            if (!systemConfig.openRouterKey && !configFlags.hasOpenRouterKey) {
+                return 'LIVE market data requires an OpenRouter API key — add one below or switch the Market Data Source to SIM (seeded scenario).';
+            }
+        }
+        return null;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
         setSuggestedName(null);
 
-        if (isConfigRequired) {
-            setIsSaving(true);
-            try {
-                await apiFetch('/api/settings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        rpcUrl: systemConfig.rpcUrl,
-                        openRouterKey: systemConfig.openRouterKey,
-                        slippage: '0.5', // Default value if not set
-                    }),
-                });
-            } catch (err) {
-                console.error("Failed to save initial settings:", err);
-            } finally {
-                setIsSaving(false);
-            }
+        const validationError = validate();
+        if (validationError) {
+            setError(validationError);
+            return;
+        }
+
+        // Persist the data source + any provided credentials (empty key = keep
+        // the stored one) + carry forward stored preferences. Secrets are
+        // encrypted (AES-256-GCM) server-side.
+        setIsSaving(true);
+        try {
+            const payload = {
+                ...carryOver,
+                dataMode: settings.dataMode,
+                dataScenario: settings.dataScenario,
+                activeModel: settings.activeModel || undefined,
+            };
+            if (systemConfig.rpcUrl) payload.rpcUrl = systemConfig.rpcUrl;
+            if (systemConfig.openRouterKey) payload.openRouterKey = systemConfig.openRouterKey;
+            await apiFetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+        } catch (err) {
+            console.error("Failed to save settings:", err);
+        } finally {
+            setIsSaving(false);
         }
 
         const result = await onStart(settings);
@@ -91,9 +162,13 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
         setSystemConfig(prev => ({ ...prev, [name]: value }));
     };
 
+    const modeIsLive = settings.dataMode !== 'SIM';
+    const liveMissingRpc = modeIsLive && !systemConfig.rpcUrl && !configFlags.hasRpcUrl;
+    const liveMissingKey = modeIsLive && !systemConfig.openRouterKey && !configFlags.hasOpenRouterKey;
+
     return (
         <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="start-modal-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-surface-container border border-outline-variant rounded-xl p-6 w-full max-w-md shadow-2xl relative">
+            <div className="bg-surface-container border border-outline-variant rounded-xl p-6 w-full max-w-lg shadow-2xl relative max-h-[90vh] overflow-y-auto">
                 <button
                     onClick={onClose}
                     aria-label="Close start simulation dialog"
@@ -119,16 +194,134 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                         </div>
                     )}
 
+                    {/* Simulation Name — auto-suggested unique (mage.ai style) */}
                     <div>
                         <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Simulation Name</label>
-                        <input
-                            type="text"
-                            name="simulationName"
-                            value={settings.simulationName}
+                        <div className="flex gap-2 items-center">
+                            <input
+                                type="text"
+                                name="simulationName"
+                                value={settings.simulationName}
+                                onChange={handleChange}
+                                required
+                                className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
+                            />
+                            <button
+                                type="button"
+                                onClick={refreshName}
+                                title="Generate a new unique name"
+                                aria-label="Generate a new unique simulation name"
+                                className="shrink-0 px-3 py-2 rounded-md border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-[18px]">refresh</span>
+                            </button>
+                        </div>
+                        <p className="font-[JetBrains_Mono] text-[10px] text-on-surface-variant mt-1">
+                            Unique name suggested automatically — edit freely, the system keeps it per-user.
+                        </p>
+                    </div>
+
+                    {/* Market Data Source — selectable right at the start */}
+                    <div>
+                        <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Market Data Source</label>
+                        <select
+                            name="dataMode"
+                            value={settings.dataMode}
                             onChange={handleChange}
-                            required
                             className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
-                        />
+                        >
+                            <option value="LIVE">LIVE — Real market data (DefiLlama, Morpho, Hyperliquid)</option>
+                            <option value="SIM">SIM — Seeded scenario (stress testing, no network)</option>
+                        </select>
+                        {settings.dataMode === 'SIM' && (
+                            <select
+                                name="dataScenario"
+                                value={settings.dataScenario}
+                                onChange={handleChange}
+                                className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary mt-2"
+                            >
+                                {SCENARIOS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                            </select>
+                        )}
+                        <p className="font-[JetBrains_Mono] text-[10px] text-on-surface-variant mt-1">
+                            {modeIsLive
+                                ? 'LIVE uses real-time oracles and requires the API keys below.'
+                                : 'SIM uses deterministic scenarios for stress-testing the agent — no network or API keys needed.'}
+                        </p>
+                    </div>
+
+                    {/* API Keys — always visible */}
+                    <div className="pt-4 border-t border-outline-variant space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-on-surface">
+                                <span className="material-symbols-outlined text-primary text-[18px]">key</span>
+                                <h3 className="font-[Inter] text-[14px] font-semibold">Blockchain &amp; AI Keys</h3>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowKeyGuide(v => !v)}
+                                className="font-[JetBrains_Mono] text-[11px] text-primary hover:underline flex items-center gap-1"
+                            >
+                                <span className="material-symbols-outlined text-[14px]">help</span>
+                                {showKeyGuide ? 'Hide guide' : 'Where do I get these?'}
+                            </button>
+                        </div>
+
+                        {showKeyGuide && (
+                            <div className="bg-surface-container-lowest border border-outline-variant rounded-md p-3 space-y-2">
+                                <p className="font-[JetBrains_Mono] text-[11px] leading-[16px] text-on-surface-variant">
+                                    <strong className="text-on-surface">OpenRouter API Key</strong> — powers the agent's AI decisions.
+                                    Sign up at <a href="https://openrouter.ai" target="_blank" rel="noreferrer" className="text-primary hover:underline">openrouter.ai</a>,
+                                    open <span className="text-primary">Keys</span> and click <span className="text-primary">Create Key</span>
+                                    (format <span className="text-on-surface">sk-or-v1-...</span>). A few dollars of credit keeps the agent running.
+                                </p>
+                                <p className="font-[JetBrains_Mono] text-[11px] leading-[16px] text-on-surface-variant">
+                                    <strong className="text-on-surface">Sepolia RPC URL</strong> — reads blockchain data for LIVE mode.
+                                    Create a free app at <a href="https://www.alchemy.com/" target="_blank" rel="noreferrer" className="text-primary hover:underline">Alchemy</a> or
+                                    <a href="https://www.infura.io/" target="_blank" rel="noreferrer" className="text-primary hover:underline"> Infura</a>,
+                                    pick the <span className="text-primary">Sepolia</span> network and copy the HTTPS URL
+                                    (format <span className="text-on-surface">https://sepolia.infura.io/v3/YOUR_KEY</span>).
+                                </p>
+                                <p className="font-[JetBrains_Mono] text-[11px] leading-[16px] text-on-surface-variant">
+                                    Keys are encrypted (AES-256-GCM) before storage. <strong className="text-on-surface">SIM</strong> mode needs neither.
+                                </p>
+                            </div>
+                        )}
+
+                        <div>
+                            <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">
+                                Sepolia RPC URL {configFlags.hasRpcUrl && <span className="text-success">· ✓ configured</span>}
+                            </label>
+                            <input
+                                type="url"
+                                name="rpcUrl"
+                                value={systemConfig.rpcUrl}
+                                onChange={handleConfigChange}
+                                required={liveMissingRpc}
+                                placeholder={configFlags.hasRpcUrl ? 'Leave empty to keep the stored URL' : 'https://sepolia.infura.io/v3/...'}
+                                className={`w-full bg-surface-variant border rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary ${liveMissingRpc ? 'border-error' : 'border-outline-variant'}`}
+                            />
+                            {liveMissingRpc && (
+                                <p className="font-[JetBrains_Mono] text-[10px] text-error mt-1">Required for LIVE market data.</p>
+                            )}
+                        </div>
+                        <div>
+                            <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">
+                                OpenRouter API Key {configFlags.hasOpenRouterKey && <span className="text-success">· ✓ configured</span>}
+                            </label>
+                            <input
+                                type="password"
+                                name="openRouterKey"
+                                value={systemConfig.openRouterKey}
+                                onChange={handleConfigChange}
+                                required={liveMissingKey}
+                                placeholder={configFlags.hasOpenRouterKey ? 'Leave empty to keep the stored key' : 'sk-or-v1-...'}
+                                className={`w-full bg-surface-variant border rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary ${liveMissingKey ? 'border-error' : 'border-outline-variant'}`}
+                            />
+                            {liveMissingKey && (
+                                <p className="font-[JetBrains_Mono] text-[10px] text-error mt-1">Required for LIVE market data.</p>
+                            )}
+                        </div>
                     </div>
 
                     <div>
@@ -144,32 +337,33 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                         />
                     </div>
 
-                    <div>
-                        <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Simulation Duration</label>
-                        <select
-                            name="duration"
-                            value={settings.duration}
-                            onChange={handleChange}
-                            className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
-                        >
-                            <option value="Continuous">Continuous (Manual Stop)</option>
-                            <option value="1 Hour">1 Hour</option>
-                            <option value="24 Hours">24 Hours</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Transaction Frequency</label>
-                        <select
-                            name="frequency"
-                            value={settings.frequency}
-                            onChange={handleChange}
-                            className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
-                        >
-                            <option value="High">High (Aggressive Scanning)</option>
-                            <option value="Medium">Medium (Balanced)</option>
-                            <option value="Low">Low (Conservative Scanning)</option>
-                        </select>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Duration</label>
+                            <select
+                                name="duration"
+                                value={settings.duration}
+                                onChange={handleChange}
+                                className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
+                            >
+                                <option value="Continuous">Continuous (Manual Stop)</option>
+                                <option value="1 Hour">1 Hour</option>
+                                <option value="24 Hours">24 Hours</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Frequency</label>
+                            <select
+                                name="frequency"
+                                value={settings.frequency}
+                                onChange={handleChange}
+                                className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
+                            >
+                                <option value="High">High (Aggressive Scanning)</option>
+                                <option value="Medium">Medium (Balanced)</option>
+                                <option value="Low">Low (Conservative Scanning)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div>
@@ -186,45 +380,43 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                         </select>
                     </div>
 
-                    {isLoadingSettings ? (
-                        <div className="py-4 text-center text-on-surface-variant font-[JetBrains_Mono] text-[12px]">
-                            Checking system configuration...
-                        </div>
-                    ) : isConfigRequired ? (
-                        <div className="mt-6 pt-4 border-t border-outline-variant space-y-4">
-                            <div className="flex items-center gap-2 text-warning mb-2">
-                                <span className="material-symbols-outlined text-[18px]">warning</span>
-                                <h3 className="font-[Inter] text-[14px] font-semibold">System Configuration Required</h3>
+                    {/* Advanced: deterministic seed + LLM model */}
+                    <div className="pt-1">
+                        <button
+                            type="button"
+                            onClick={() => setShowAdvanced(v => !v)}
+                            className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant hover:text-on-surface flex items-center gap-1"
+                        >
+                            <span className="material-symbols-outlined text-[14px]">{showAdvanced ? 'expand_less' : 'expand_more'}</span>
+                            Advanced
+                        </button>
+                        {showAdvanced && (
+                            <div className="mt-3 space-y-4">
+                                <div>
+                                    <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Random Seed (optional)</label>
+                                    <input
+                                        type="text"
+                                        name="seed"
+                                        value={settings.seed}
+                                        onChange={handleChange}
+                                        placeholder="Same seed → same market events (deterministic)"
+                                        className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Active LLM Model</label>
+                                    <input
+                                        type="text"
+                                        name="activeModel"
+                                        value={settings.activeModel}
+                                        onChange={handleChange}
+                                        placeholder="e.g. google/gemini-2.5-flash-exp:free"
+                                        className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
+                                    />
+                                </div>
                             </div>
-                            <p className="text-[12px] text-on-surface-variant mb-4">
-                                Please provide your RPC URL and OpenRouter API Key to enable the agent.
-                            </p>
-                            <div>
-                                <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Sepolia RPC URL</label>
-                                <input
-                                    type="url"
-                                    name="rpcUrl"
-                                    value={systemConfig.rpcUrl}
-                                    onChange={handleConfigChange}
-                                    required
-                                    placeholder="https://sepolia.infura.io/v3/..."
-                                    className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
-                                />
-                            </div>
-                            <div>
-                                <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">OpenRouter API Key</label>
-                                <input
-                                    type="password"
-                                    name="openRouterKey"
-                                    value={systemConfig.openRouterKey}
-                                    onChange={handleConfigChange}
-                                    required
-                                    placeholder="sk-or-v1-..."
-                                    className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
-                                />
-                            </div>
-                        </div>
-                    ) : null}
+                        )}
+                    </div>
 
                     {error && (
                         <div className="mt-4 p-3 bg-error-container text-on-error-container rounded-md text-[13px] font-[Inter]">

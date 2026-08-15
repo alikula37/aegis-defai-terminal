@@ -3,7 +3,7 @@ import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import dotenv from 'dotenv';
-import { getLogs, getLatestPortfolio, getInitialPortfolio, getPortfolioHistory, getSettings, updateSettings, deleteSettings, getRecentMemories, closeDatabase, checkSimulationNameExists, generateUniqueSimulationName, getLatestSimulation, setSimulationStatus, getAllSimulations, deleteSimulation, getSimulationById, getLocalUserId } from './db/database.js';
+import { getLogs, getLatestPortfolio, getInitialPortfolio, getPortfolioHistory, getSettings, updateSettings, deleteSettings, getRecentMemories, closeDatabase, checkSimulationNameExists, generateUniqueSimulationName, suggestSimulationName, getLatestSimulation, setSimulationStatus, getAllSimulations, deleteSimulation, getSimulationById, getLocalUserId } from './db/database.js';
 import { AegisAgent } from './agent.js';
 import { Backtester } from './backtest/Backtester.js';
 import aegisConfig from './aegis.config.js';
@@ -310,6 +310,8 @@ const startSimulationSchema = z.object({
     riskAppetite: z.string().optional(),
     simulationName: z.string().optional(),
     seed: z.union([z.string(), z.number()]).optional(),
+    dataMode: z.enum(['LIVE', 'SIM']).optional(),
+    dataScenario: z.enum(['stable', 'bull', 'bear', 'depeg']).optional(),
 }).passthrough()
     // B6 — reject NaN/Infinity/negative/absurd balances at the schema layer
     .superRefine((val, ctx) => {
@@ -319,6 +321,38 @@ const startSimulationSchema = z.object({
             ctx.addIssue({ code: 'custom', path: ['initialBalance'], message: 'initialBalance must be > 0 and ≤ 1e12' });
         }
     });
+
+/**
+ * LIVE mode needs real market data (RPC) + the LLM (OpenRouter) — an agent
+ * without them would silently run on stale/empty state. SIM (seeded scenario)
+ * is fully self-contained (deterministic fallback + seeded data).
+ * Checks the effective values: what the request carries OR what is stored
+ * (decrypted) OR the env fallbacks.
+ */
+async function assertLiveConfig(userId, body) {
+    const stored = await getSettings(userId);
+    const hasRpc = Boolean(body.rpcUrl)
+        || Boolean(stored?.rpcUrl)
+        || Boolean(process.env.EVM_PROVIDER_URL);
+    const hasKey = Boolean(body.openRouterKey)
+        || Boolean(stored?.openRouterKey)
+        || Boolean(process.env.OPENROUTER_API_KEY);
+    if (!hasRpc || !hasKey) {
+        const missing = [];
+        if (!hasRpc) missing.push('a Sepolia RPC URL (Alchemy/Infura)');
+        if (!hasKey) missing.push('an OpenRouter API key');
+        throw new Error(`LIVE market data requires ${missing.join(' and ')}. Add them in Settings, or switch the Market Data Source to SIM (seeded scenario).`);
+    }
+}
+
+app.get('/api/simulation/suggest-name', async (req, res) => {
+    try {
+        // Mage-style random unique name: sim_<uuid4-hex> (collision loop).
+        res.json({ suggestedName: suggestSimulationName(req.user.id) });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 app.post('/api/simulation/start', async (req, res) => {
     try {
@@ -339,6 +373,17 @@ app.post('/api/simulation/start', async (req, res) => {
                     error: 'Simulation name already exists.',
                     suggestedName
                 });
+            }
+        }
+
+        // LIVE market data requires a working RPC + LLM key (SIM is seeded and
+        // self-contained). Enforced server-side so API clients cannot bypass
+        // the start-modal validation.
+        if ((settings.dataMode ?? 'LIVE') !== 'SIM') {
+            try {
+                await assertLiveConfig(req.user.id, settings);
+            } catch (error) {
+                return res.status(400).json({ error: error.message });
             }
         }
 

@@ -118,11 +118,82 @@ describe('API Integration Tests', () => {
         // with simulations persisted in the local aegis.db.
         const validRes = await request(app)
             .post('/api/simulation/start')
-            .send({ initialBalance: 15000, simulationName: `Test Sim ${Date.now()}` });
+            .send({ initialBalance: 15000, simulationName: `Test Sim ${Date.now()}`, dataMode: 'SIM' });
 
         expect(validRes.status).toBe(200);
         expect(validRes.body.success).toBe(true);
         expect(validRes.body.initialBalance).toBe(15000);
+    });
+
+    it('LIVE data mode requires RPC + OpenRouter key (400 with guidance)', async () => {
+        // The effective config includes the .env fallbacks (dotenv-loaded) —
+        // stub them away plus wipe stored rows so the check sees emptiness.
+        const savedKey = process.env.OPENROUTER_API_KEY;
+        const savedRpc = process.env.EVM_PROVIDER_URL;
+        delete process.env.OPENROUTER_API_KEY;
+        delete process.env.EVM_PROVIDER_URL;
+        await request(app).delete('/api/settings');
+        try {
+            const res = await request(app)
+                .post('/api/simulation/start')
+                .send({ initialBalance: 10000, simulationName: `Live No Key ${Date.now()}` });
+            expect(res.status).toBe(400);
+            expect(res.body.error).toMatch(/LIVE market data requires/);
+            expect(res.body.error).toMatch(/Sepolia RPC URL/);
+            expect(res.body.error).toMatch(/OpenRouter API key/);
+        } finally {
+            if (savedKey !== undefined) process.env.OPENROUTER_API_KEY = savedKey;
+            if (savedRpc !== undefined) process.env.EVM_PROVIDER_URL = savedRpc;
+        }
+    });
+
+    it('LIVE data mode passes when keys arrive in the request body', async () => {
+        const res = await request(app)
+            .post('/api/simulation/start')
+            .send({
+                initialBalance: 10000,
+                simulationName: `Live With Key ${Date.now()}`,
+                rpcUrl: 'https://sepolia.test/v2/abc',
+                openRouterKey: 'sk-or-v1-body-key',
+            });
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    it('SIM seeded mode starts without any keys (self-contained)', async () => {
+        const res = await request(app)
+            .post('/api/simulation/start')
+            .send({ initialBalance: 10000, simulationName: `Sim No Key ${Date.now()}`, dataMode: 'SIM', dataScenario: 'bear' });
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    it('rejects invalid dataMode/dataScenario values (400)', async () => {
+        const badMode = await request(app)
+            .post('/api/simulation/start')
+            .send({ simulationName: `Bad Mode ${Date.now()}`, dataMode: 'ORACLE' });
+        expect(badMode.status).toBe(400);
+
+        const badScenario = await request(app)
+            .post('/api/simulation/start')
+            .send({ simulationName: `Bad Scenario ${Date.now()}`, dataMode: 'SIM', dataScenario: 'tsunami' });
+        expect(badScenario.status).toBe(400);
+    });
+
+    it('GET /api/simulation/suggest-name returns a fresh unique sim_<hex> name', async () => {
+        const first = await request(app).get('/api/simulation/suggest-name');
+        const second = await request(app).get('/api/simulation/suggest-name');
+        expect(first.status).toBe(200);
+        expect(second.status).toBe(200);
+        expect(first.body.suggestedName).toMatch(/^sim_[0-9a-f]{8}$/);
+        // Mage-style: every call yields a different random token.
+        expect(first.body.suggestedName).not.toBe(second.body.suggestedName);
+        // Must never collide with an existing simulation name.
+        await request(app)
+            .post('/api/simulation/start')
+            .send({ initialBalance: 10000, simulationName: first.body.suggestedName, dataMode: 'SIM' });
+        expect((await request(app).get('/api/simulation/suggest-name')).body.suggestedName)
+            .not.toBe(first.body.suggestedName);
     });
 
     // Hermetic dataset so the backtest endpoints never touch live oracles in

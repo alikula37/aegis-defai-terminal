@@ -284,6 +284,23 @@ export function checkSimulationNameExists(name, userId) {
     return !!row;
 }
 
+/**
+ * Mage-style unique simulation name (mage-ai/pipeline.py + schedules.py):
+ * a random `uuid4().hex` token with a collision loop that appends `_index`
+ * while the name is taken. `sim_<hex>` matches the `sim_` prefix convention.
+ */
+export function suggestSimulationName(userId) {
+    requireUserId(userId, 'suggestSimulationName');
+    const base = `sim_${crypto.randomBytes(4).toString('hex')}`;
+    let name = base;
+    let index = 1;
+    while (checkSimulationNameExists(name, userId)) {
+        name = `${base}_${index}`;
+        index++;
+    }
+    return name;
+}
+
 export function generateUniqueSimulationName(baseName, userId) {
     let newName = baseName;
     let counter = 1;

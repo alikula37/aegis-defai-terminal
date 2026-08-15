@@ -73,6 +73,7 @@ describe('Stress — API concurrency', () => {
                 initialBalance: 10000,
                 simulationName: `Stress Start ${i}-${Date.now()}`,
                 frequency: 'Low',
+                dataMode: 'SIM',
             }));
         const postResults = await Promise.all(posts);
         expect(postResults.every(r => r.status === 200)).toBe(true);
