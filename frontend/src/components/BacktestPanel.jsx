@@ -86,8 +86,16 @@ export default function BacktestPanel() {
                 </div>
             </div>
 
+            {/* What this is — the only answer to "should I deploy at 4x?" */}
+            <p className="font-[JetBrains_Mono] text-[11px] leading-[16px] text-on-surface-variant mb-4 -mt-2">
+                Replays the <strong className="text-on-surface">Pendle PT-sUSDe delta-neutral loop</strong> over real
+                historical rates (sUSDe APY, Morpho USDC borrow, Hyperliquid ETH funding) — no wallet, no deployment,
+                no API keys. It answers <em>“what would this strategy have earned and risked over the last N days?”</em>
+                before you commit capital.
+            </p>
+
             {/* Controls */}
-            <div className="flex flex-wrap items-end gap-4 mb-4">
+            <div className="flex flex-wrap items-end gap-4 mb-2">
                 {tab === 'Backtest' && (
                     <>
                         {numberInput('Range (days)', 'rangeDays')}
@@ -130,6 +138,17 @@ export default function BacktestPanel() {
                     </>
                 )}
             </div>
+            <p className="font-[JetBrains_Mono] text-[10px] leading-[15px] text-on-surface-variant mb-4">
+                {tab === 'Backtest' && (
+                    <>Day-by-day replay on the real last <strong className="text-on-surface">{params.rangeDays} days</strong> of rates: how much a <strong className="text-on-surface">{params.leverage}x</strong> loop earned (total return, CAGR, Sharpe, max drawdown) — and the liquidation price at that leverage.</>
+                )}
+                {tab === 'Monte Carlo' && (
+                    <>Runs <strong className="text-on-surface">{params.simulations.toLocaleString()}</strong> simulated {params.rangeDays}-day periods with random APY noise (mean {params.meanApy}% ± {params.sigmaApy}%) plus sUSDe depeg risk → <strong className="text-on-surface">liquidation probability</strong> and the P5/P50/P95 return distribution.</>
+                )}
+                {tab === 'Leverage Sweep' && (
+                    <>The same backtest repeated at 2x–6x leverage: pick the level with the best risk-adjusted return (Sharpe) before deploying — higher leverage also raises the liquidation risk of a depeg.</>
+                )}
+            </p>
 
             {error && (
                 <p className="font-[JetBrains_Mono] text-[12px] text-error mb-3">⚠ {error}</p>
