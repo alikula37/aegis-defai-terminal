@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import StrategyDetailsModal from './StrategyDetailsModal';
+import { useI18n } from '../i18n/I18nProvider';
 
 export default function StrategyMarketplace({ strategies = [] }) {
+    const { t } = useI18n();
     const [selectedStrategy, setSelectedStrategy] = useState(null);
     const getStrategyUI = (s) => {
         let icon = 'currency_exchange';
@@ -47,13 +49,13 @@ export default function StrategyMarketplace({ strategies = [] }) {
     return (
         <div className="bg-surface-container border border-outline-variant rounded-xl overflow-hidden">
             <div className="p-6 border-b border-outline-variant flex justify-between items-center">
-                <h3 className="font-[Inter] text-[20px] leading-[28px] font-semibold text-on-surface">Active Positions & Market</h3>
+                <h3 className="font-[Inter] text-[20px] leading-[28px] font-semibold text-on-surface">{t('market.positions')}</h3>
                 <div className="flex gap-2">
                     <button className="px-3 py-1.5 border border-outline-variant rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors font-[JetBrains_Mono] text-[13px] flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[16px]">filter_list</span> Filter
+                        <span className="material-symbols-outlined text-[16px]">filter_list</span> {t('market.filter')}
                     </button>
                     <button className="px-3 py-1.5 bg-surface-variant border border-outline rounded-md text-on-surface transition-colors font-[JetBrains_Mono] text-[13px]">
-                        All Strategies
+                        {t('market.all')}
                     </button>
                 </div>
             </div>
@@ -61,20 +63,20 @@ export default function StrategyMarketplace({ strategies = [] }) {
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b border-outline-variant/50 bg-surface-container-low/50">
-                            <th className="p-4 font-[JetBrains_Mono] text-[13px] text-on-surface-variant font-normal w-1/3">Strategy Name</th>
-                            <th className="p-4 font-[JetBrains_Mono] text-[13px] text-on-surface-variant font-normal">Protocol</th>
-                            <th className="p-4 font-[JetBrains_Mono] text-[13px] text-on-surface-variant font-normal hidden lg:table-cell">Borrow Via</th>
-                            <th className="p-4 font-[JetBrains_Mono] text-[13px] text-on-surface-variant font-normal">Risk Level</th>
-                            <th className="p-4 font-[JetBrains_Mono] text-[13px] text-on-surface-variant font-normal text-right">Current APY</th>
-                            <th className="p-4 font-[JetBrains_Mono] text-[13px] text-on-surface-variant font-normal text-center">Status</th>
-                            <th className="p-4 font-[JetBrains_Mono] text-[13px] text-on-surface-variant font-normal text-right">Action</th>
+                            <th className="p-4 font-[JetBrains_Mono] text-[13px] text-on-surface-variant font-normal w-1/3">{t('market.strategyName')}</th>
+                            <th className="p-4 font-[JetBrains_Mono] text-[13px] text-on-surface-variant font-normal">{t('market.protocol')}</th>
+                            <th className="p-4 font-[JetBrains_Mono] text-[13px] text-on-surface-variant font-normal hidden lg:table-cell">{t('market.borrowVia')}</th>
+                            <th className="p-4 font-[JetBrains_Mono] text-[13px] text-on-surface-variant font-normal">{t('details.riskLevel')}</th>
+                            <th className="p-4 font-[JetBrains_Mono] text-[13px] text-on-surface-variant font-normal text-right">{t('details.currentApy')}</th>
+                            <th className="p-4 font-[JetBrains_Mono] text-[13px] text-on-surface-variant font-normal text-center">{t('market.status')}</th>
+                            <th className="p-4 font-[JetBrains_Mono] text-[13px] text-on-surface-variant font-normal text-right">{t('market.action')}</th>
                         </tr>
                     </thead>
                     <tbody className="text-[14px]">
                         {strategies.length === 0 ? (
                             <tr>
                                 <td colSpan="6" className="p-8 text-center text-on-surface-variant font-[JetBrains_Mono] text-[13px]">
-                                    Waiting for live agent data...
+                                    {t('market.waiting')}
                                 </td>
                             </tr>
                         ) : (

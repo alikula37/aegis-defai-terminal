@@ -4,8 +4,10 @@ import LiveYieldChart from '../components/LiveYieldChart';
 import RiskAlerts from '../components/RiskAlerts';
 import AgentTerminal from '../components/AgentTerminal';
 import TvlProjectionChart from '../components/TvlProjectionChart';
+import { useI18n } from '../i18n/I18nProvider';
 
 export default function Overview() {
+    const { t } = useI18n();
     const { isSimulationRunning, hasData, setIsStartModalOpen, setIsResumeModalOpen } = useWebSocket();
 
     const isSimulationStarted = isSimulationRunning || hasData;
@@ -17,9 +19,9 @@ export default function Overview() {
                     <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
                         <span className="material-symbols-outlined text-primary text-3xl">rocket_launch</span>
                     </div>
-                    <h2 className="font-[Inter] text-[24px] font-bold text-on-surface mb-2">Simulation Idle</h2>
+                    <h2 className="font-[Inter] text-[24px] font-bold text-on-surface mb-2">{t('yield.idleTitle')}</h2>
                     <p className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant mb-8">
-                        The AI agent is currently idle. Start the simulation to view live portfolio metrics and agent activity.
+                        {t('yield.idleMsg')}
                     </p>
                     <div className="flex gap-4 max-w-sm mx-auto">
                         <button

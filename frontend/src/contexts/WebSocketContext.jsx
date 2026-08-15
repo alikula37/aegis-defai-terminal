@@ -1,9 +1,10 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import SimulationStartModal from '../components/SimulationStartModal';
 import SimulationResumeModal from '../components/SimulationResumeModal';
 import { apiFetch } from '../lib/apiClient';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
+import { useI18n } from '../i18n/I18nProvider';
 
 export const WebSocketContext = createContext();
 
@@ -99,6 +100,9 @@ export function applyWsMessage(data, setters) {
 export const WebSocketProvider = ({ children }) => {
     const { isAuthenticated } = useAuth();
     const toast = useToast();
+    const { t } = useI18n();
+    const tRef = useRef(t);
+    tRef.current = t;
     const [portfolioData, setPortfolioData] = useState(null);
     const [agentLogs, setAgentLogs] = useState([]);
     const [isConnected, setIsConnected] = useState(false);
@@ -164,7 +168,7 @@ export const WebSocketProvider = ({ children }) => {
             }
         } catch (error) {
             console.error('Failed to start simulation:', error);
-            toast.error(`Failed to start simulation: ${error.message}`);
+            toast.error(t('toast.failedToStart', { error: error.message }));
         } finally {
             setIsStarting(false);
         }
@@ -188,7 +192,7 @@ export const WebSocketProvider = ({ children }) => {
             }
         } catch (error) {
             console.error('Failed to resume simulation:', error);
-            toast.error(`Failed to resume simulation: ${error.message}`);
+            toast.error(t('toast.failedToResume', { error: error.message }));
         } finally {
             setIsStarting(false);
         }
@@ -210,7 +214,7 @@ export const WebSocketProvider = ({ children }) => {
             }
         } catch (error) {
             console.error('Failed to stop simulation:', error);
-            toast.error(`Failed to stop simulation: ${error.message}`);
+            toast.error(t('toast.failedToStop', { error: error.message }));
         }
     };
 
@@ -295,7 +299,7 @@ export const WebSocketProvider = ({ children }) => {
                         // user knows the pages may be showing stale data.
                         setNotifications(prev => [...prev.slice(-9), {
                             type: 'error',
-                            message: 'Live connection lost — reconnection attempts exhausted. Refresh the page to reconnect.',
+                            message: tRef.current('toast.wsLost'),
                             timestamp: new Date().toISOString(),
                         }]);
                     }

@@ -1,9 +1,11 @@
 import React from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useModalA11y } from '../hooks/useModalA11y';
+import { useI18n } from '../i18n/I18nProvider';
 import { deriveStrategyBreakdown, deriveAgentTimeline } from './strategyDetailsLogic';
 
 export default function StrategyDetailsModal({ isOpen, onClose, strategy }) {
+    const { t } = useI18n();
     const { modalRef } = useModalA11y({ isOpen: Boolean(isOpen && strategy), onClose });
     const { portfolioData, agentLogs } = useWebSocket();
 
@@ -40,7 +42,7 @@ export default function StrategyDetailsModal({ isOpen, onClose, strategy }) {
                                 {strategy.borrowProtocol && (
                                     <>
                                         <span className="w-1 h-1 rounded-full bg-outline-variant"></span>
-                                        <span>Borrow: {strategy.borrowProtocol}</span>
+                                        <span>{t('details.borrowLabel', { protocol: strategy.borrowProtocol })}</span>
                                     </>
                                 )}
                             </p>
@@ -60,13 +62,13 @@ export default function StrategyDetailsModal({ isOpen, onClose, strategy }) {
                     {/* Key Metrics */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 rounded-xl bg-surface-container border border-outline-variant">
-                            <p className="font-[Inter] text-[13px] text-on-surface-variant mb-1">Allocated Capital (TVL)</p>
+                            <p className="font-[Inter] text-[13px] text-on-surface-variant mb-1">{t('details.allocatedCapital')}</p>
                             <p className="font-[JetBrains_Mono] text-[24px] font-bold text-on-surface">
                                 ${Number(tvl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
                         </div>
                         <div className="p-4 rounded-xl bg-surface-container border border-outline-variant">
-                            <p className="font-[Inter] text-[13px] text-on-surface-variant mb-1">Net APY (live)</p>
+                            <p className="font-[Inter] text-[13px] text-on-surface-variant mb-1">{t('details.netApyLive')}</p>
                             <p className={`font-[JetBrains_Mono] text-[24px] font-bold ${netApy >= 0 ? 'text-success' : 'text-error'}`}>
                                 {formatPct(netApy)}
                             </p>
@@ -77,7 +79,7 @@ export default function StrategyDetailsModal({ isOpen, onClose, strategy }) {
                     <div>
                         <h3 className="font-[Inter] text-[16px] font-semibold text-on-surface mb-3 flex items-center gap-2">
                             <span className="material-symbols-outlined text-[18px] text-primary">pie_chart</span>
-                            Yield Breakdown
+                            {t('details.yieldBreakdown')}
                             {portfolioData?.oracleStatus && (
                                 <span className="ml-auto font-[JetBrains_Mono] text-[11px] font-normal text-on-surface-variant border border-outline-variant rounded px-2 py-0.5">
                                     {portfolioData.oracleStatus}
@@ -86,19 +88,19 @@ export default function StrategyDetailsModal({ isOpen, onClose, strategy }) {
                         </h3>
                         <div className="p-4 rounded-xl bg-surface-container border border-outline-variant space-y-3">
                             <div className="flex justify-between items-center">
-                                <span className="font-[Inter] text-[14px] text-on-surface-variant">Base Yield</span>
+                                <span className="font-[Inter] text-[14px] text-on-surface-variant">{t('details.baseYield')}</span>
                                 <span className="font-[JetBrains_Mono] text-[14px] text-success">{formatPct(baseYield)}</span>
                             </div>
                             <div className="flex justify-between items-center">
-                                <span className="font-[Inter] text-[14px] text-on-surface-variant">Points / Airdrop Est.</span>
+                                <span className="font-[Inter] text-[14px] text-on-surface-variant">{t('details.pointsEst')}</span>
                                 <span className="font-[JetBrains_Mono] text-[14px] text-success">{formatPct(pointsApy)}</span>
                             </div>
                             <div className="flex justify-between items-center">
-                                <span className="font-[Inter] text-[14px] text-on-surface-variant">Borrow Cost</span>
+                                <span className="font-[Inter] text-[14px] text-on-surface-variant">{t('details.borrowCost')}</span>
                                 <span className="font-[JetBrains_Mono] text-[14px] text-error">{formatPct(-borrowApy)}</span>
                             </div>
                             <div className="pt-3 border-t border-outline-variant flex justify-between items-center">
-                                <span className="font-[Inter] text-[14px] font-semibold text-on-surface">Net APY</span>
+                                <span className="font-[Inter] text-[14px] font-semibold text-on-surface">{t('dash.netApy')}</span>
                                 <span className={`font-[JetBrains_Mono] text-[16px] font-bold ${netApy >= 0 ? 'text-success' : 'text-error'}`}>
                                     {formatPct(netApy)}
                                 </span>
@@ -110,12 +112,12 @@ export default function StrategyDetailsModal({ isOpen, onClose, strategy }) {
                     <div>
                         <h3 className="font-[Inter] text-[16px] font-semibold text-on-surface mb-3 flex items-center gap-2">
                             <span className="material-symbols-outlined text-[18px] text-primary">history</span>
-                            Recent Agent Actions
+                            {t('details.recentActions')}
                         </h3>
                         <div className="p-4 rounded-xl bg-surface-container border border-outline-variant">
                             {timeline.length === 0 ? (
                                 <p className="text-[13px] text-on-surface-variant font-[JetBrains_Mono]">
-                                    No agent activity recorded yet. Start a simulation to populate live events.
+                                    {t('details.noActivity')}
                                 </p>
                             ) : (
                                 <div className="space-y-4">

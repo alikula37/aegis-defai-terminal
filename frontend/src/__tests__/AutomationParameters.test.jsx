@@ -3,6 +3,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import AutomationParameters from '../components/AutomationParameters';
 import { addRule, removeRule, toggleRule, buildRule } from '../components/automationRulesLogic';
 
+vi.mock('../i18n/I18nProvider', async () => {
+    const en = (await import('../i18n/messages.en.js')).default;
+    const api = { t: (k, vars) => { let s = en[k] ?? k; if (vars) s = String(s).replace(/\{(\w+)\}/g, (m, n) => vars[n] !== undefined ? String(vars[n]) : m); return s; }, lang: 'en', setLang: () => {} };
+    return { useI18n: () => api };
+});
+
 const updateSettings = vi.fn(async () => true);
 const mockSettings = {
     targetHf: 1.25,

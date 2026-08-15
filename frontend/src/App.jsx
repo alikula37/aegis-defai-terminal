@@ -11,16 +11,18 @@ import { WebSocketProvider } from './contexts/WebSocketContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { I18nProvider, useI18n } from './i18n/I18nProvider';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function AppShell() {
     const { user, loading } = useAuth();
+    const { t } = useI18n();
     // Open mode (AUTH_REQUIRED=false): me() resolves to the local user, so the
     // login screen never appears. Required mode: block until identity resolves.
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-background text-muted">
-                Loading…
+                {t('app.loading')}
             </div>
         );
     }
@@ -53,17 +55,19 @@ function AppShell() {
 function App() {
     return (
         <ErrorBoundary>
-            <ToastProvider>
-                <AuthProvider>
-                    <SettingsProvider>
-                        <WebSocketProvider>
-                            <Router>
-                                <AppShell />
-                            </Router>
-                        </WebSocketProvider>
-                    </SettingsProvider>
-                </AuthProvider>
-            </ToastProvider>
+            <I18nProvider>
+                <ToastProvider>
+                    <AuthProvider>
+                        <SettingsProvider>
+                            <WebSocketProvider>
+                                <Router>
+                                    <AppShell />
+                                </Router>
+                            </WebSocketProvider>
+                        </SettingsProvider>
+                    </AuthProvider>
+                </ToastProvider>
+            </I18nProvider>
         </ErrorBoundary>
     );
 }

@@ -3,18 +3,23 @@
 // bulletproof overlay-scroll pattern (content is never cut off on short
 // viewports).
 import { useModalA11y } from '../hooks/useModalA11y';
+import { useI18n } from '../i18n/I18nProvider';
 
 export default function ConfirmDialog({
     isOpen,
-    title = 'Are you sure?',
+    title,
     message,
-    confirmLabel = 'Confirm',
-    cancelLabel = 'Cancel',
+    confirmLabel,
+    cancelLabel,
     danger = true,
     onConfirm,
     onCancel,
 }) {
+    const { t } = useI18n();
     const { modalRef } = useModalA11y({ isOpen, onClose: onCancel });
+    const resolvedTitle = title ?? t('confirm.title');
+    const resolvedConfirmLabel = confirmLabel ?? t('common.confirm');
+    const resolvedCancelLabel = cancelLabel ?? t('common.cancel');
 
     if (!isOpen) return null;
 
@@ -27,7 +32,7 @@ export default function ConfirmDialog({
                             {danger ? 'warning' : 'help'}
                         </span>
                         <h2 id="confirm-dialog-title" className="font-[Inter] text-[16px] font-semibold text-on-surface">
-                            {title}
+                            {resolvedTitle}
                         </h2>
                     </div>
                     {message && (
@@ -40,7 +45,7 @@ export default function ConfirmDialog({
                             onClick={onCancel}
                             className="px-4 py-2 rounded-md font-[JetBrains_Mono] text-[13px] font-medium border border-outline-variant text-on-surface hover:bg-surface-container-highest transition-colors"
                         >
-                            {cancelLabel}
+                            {resolvedCancelLabel}
                         </button>
                         <button
                             onClick={onConfirm}
@@ -48,7 +53,7 @@ export default function ConfirmDialog({
                                 ? 'bg-error text-on-error hover:bg-error-container hover:text-on-error-container'
                                 : 'bg-primary text-on-primary hover:bg-primary-fixed hover:text-on-primary-fixed'}`}
                         >
-                            {confirmLabel}
+                            {resolvedConfirmLabel}
                         </button>
                     </div>
                 </div>

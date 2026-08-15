@@ -1,4 +1,5 @@
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { useI18n } from '../i18n/I18nProvider';
 
 const PointItem = ({ icon, label, apy, color, description, negative = false }) => (
     <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all">
@@ -27,6 +28,7 @@ const POINT_COLORS = {
 };
 
 export default function PointsTracker() {
+    const { t } = useI18n();
     const { portfolioData } = useWebSocket();
     const points = portfolioData?.points;
 
@@ -34,9 +36,9 @@ export default function PointsTracker() {
         return (
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
                 <h3 className="text-sm font-semibold text-white/60 mb-3 flex items-center gap-2">
-                    <span>🎯</span> Points &amp; Airdrop Yield
+                    <span>🎯</span> {t('points.titleFull')}
                 </h3>
-                <p className="text-xs text-white/30 text-center py-4">Awaiting first oracle cycle…</p>
+                <p className="text-xs text-white/30 text-center py-4">{t('crossChain.awaiting')}</p>
             </div>
         );
     }
@@ -48,59 +50,59 @@ export default function PointsTracker() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white/80 flex items-center gap-2">
-                    <span>🎯</span> Points &amp; Airdrop Yield
+                    <span>🎯</span> {t('points.titleFull')}
                 </h3>
                 <div className="flex items-center gap-2">
-                    <span className="text-xs text-white/40">Total Bonus:</span>
+                    <span className="text-xs text-white/40">{t('points.totalBonus')}</span>
                     <span className={`text-sm font-mono font-bold ${totalBonus > 0 ? 'text-emerald-400' : 'text-error'}`}>
-                        {totalBonus > 0 ? '+' : ''}{totalBonus.toFixed(2)}% APY
+                        {totalBonus > 0 ? '+' : ''}{t('crossChain.apy', { apy: totalBonus.toFixed(2) })}
                     </span>
                 </div>
             </div>
 
             {/* Explanation */}
             <p className="text-xs text-white/40 leading-relaxed">
-                Extra yield layer on top of base strategy APY. Points are not immediately liquid — estimated at 50% face-value realization.
+                {t('points.desc')}
             </p>
 
             {/* Point Items */}
             <div className="space-y-2">
                 <PointItem
                     icon="🟣"
-                    label="Morpho MOR Points"
+                    label={t('points.morphoTitle')}
                     apy={points.morphoPointsApy}
                     color="violet"
-                    description="Earned on USDC borrow / supply positions. Distributed as MOR tokens on snapshot."
+                    description={t('points.morphoDesc')}
                 />
                 <PointItem
                     icon="🔵"
-                    label="Ethena ENA Season 6"
+                    label={t('points.ethenaTitle')}
                     apy={points.enaPointsApy}
                     color="blue"
-                    description="40× multiplier via sENA lock. Applies to all sUSDe-adjacent positions. Ethereal & Derive airdrop eligible."
+                    description={t('points.ethenaDesc')}
                 />
                 <PointItem
                     icon="🟡"
-                    label="Boros YU Funding Yield"
+                    label={t('points.borosTitle')}
                     apy={points.borosFundingYield}
                     color="yellow"
-                    description="Funding rate tokenization via Pendle Boros. Positive when perpetual funding is bullish; earns Roots points."
+                    description={t('points.borosDesc')}
                 />
                 <PointItem
                     icon="🔴"
-                    label="Cork Depeg Hedge Cost"
+                    label={t('points.corkTitle')}
                     apy={points.corkHedgeCost}
                     color="red"
                     negative={true}
-                    description="Insurance cost for sUSDe:USDT depeg swap (Cork Protocol). Protects against flash-crash liquidations."
+                    description={t('points.corkDesc')}
                 />
             </div>
 
             {/* Net summary bar */}
             <div className="mt-2 pt-3 border-t border-white/10 flex items-center justify-between text-xs">
-                <span className="text-white/40">Realized bonus (50% of face value)</span>
+                <span className="text-white/40">{t('points.realizedBonus')}</span>
                 <span className="font-mono text-emerald-300 font-bold">
-                    +{Math.max(0, totalBonus * 0.5).toFixed(2)}% effective APY
+                    {t('points.effectiveApy', { bonus: Math.max(0, totalBonus * 0.5).toFixed(2) })}
                 </span>
             </div>
         </div>

@@ -4,6 +4,7 @@ import { useWebSocket } from '../contexts/WebSocketContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { getApiKey, setApiKey } from '../lib/apiClient';
+import { useI18n } from '../i18n/I18nProvider';
 
 const LLM_MODELS = [
     { value: 'google/gemini-2.5-flash-exp:free', label: 'Gemini 2.5 Flash (Free)' },
@@ -29,6 +30,7 @@ export default function Settings() {
     const [isClearing, setIsClearing] = useState(false);
     const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
     const [apiKeyInput, setApiKeyInput] = useState(getApiKey());
+    const { t } = useI18n();
 
     const handleChange = (field, value) => {
         setLocalSettings({ ...settings, [field]: value });
@@ -41,10 +43,10 @@ export default function Settings() {
         setSaved(false);
         if (success) {
             setSaved(true);
-            toast.success('Settings saved');
+            toast.success(t('toast.settingsSaved'));
             setTimeout(() => setSaved(false), 3000);
         } else {
-            toast.error('Failed to save settings — check the backend connection');
+            toast.error(t('toast.settingsSaveFailed'));
         }
         setIsSaving(false);
     };
@@ -54,9 +56,9 @@ export default function Settings() {
         const success = await clearSettings();
         if (success) {
             setSaved(false);
-            toast.success('Settings history cleared');
+            toast.success(t('toast.settingsCleared'));
         } else {
-            toast.error('Failed to clear settings — check the backend connection');
+            toast.error(t('toast.settingsClearFailed'));
         }
         setIsClearing(false);
     };
@@ -65,8 +67,8 @@ export default function Settings() {
         <div className="flex-1 overflow-y-auto p-[2rem] bg-background">
             <div className="max-w-[960px] mx-auto space-y-6">
                 <div>
-                    <h2 className="font-[Inter] text-[24px] leading-[32px] font-semibold text-on-surface">System Configuration</h2>
-                    <p className="text-[14px] text-on-surface-variant mt-1">Manage your agent's blockchain, API, and model settings.</p>
+                    <h2 className="font-[Inter] text-[24px] leading-[32px] font-semibold text-on-surface">{t('settings.title')}</h2>
+                    <p className="text-[14px] text-on-surface-variant mt-1">{t('settings.subtitle')}</p>
                 </div>
 
                 {/* Blockchain Settings */}
@@ -74,21 +76,21 @@ export default function Settings() {
                     <div className="absolute top-0 left-0 w-1 h-full bg-primary"></div>
                     <h3 className="font-[Inter] text-[18px] font-semibold text-on-surface mb-4 flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary text-[20px]">link</span>
-                        Blockchain Connection
+                        {t('settings.blockchain')}
                     </h3>
                     <div className="space-y-4">
                         <div>
-                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">Sepolia RPC URL</label>
+                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">{t('settings.rpcUrl')}</label>
                             <input
-                                type="url"
+                                type="text" inputMode="url"
                                 value={settings.rpcUrl}
                                 onChange={e => handleChange('rpcUrl', e.target.value)}
-                                placeholder="https://sepolia.infura.io/v3/YOUR_KEY"
+                                placeholder={t('settings.rpcPlaceholder')}
                                 className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-on-surface font-[JetBrains_Mono] text-[13px] outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder-outline"
                             />
                         </div>
                         <div>
-                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">Slippage Tolerance (%)</label>
+                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">{t('settings.slippage')}</label>
                             <div className="flex gap-2 items-center">
                                 <input
                                     type="number"
@@ -118,35 +120,35 @@ export default function Settings() {
                     <div className="absolute top-0 left-0 w-1 h-full bg-warning"></div>
                     <h3 className="font-[Inter] text-[18px] font-semibold text-on-surface mb-4 flex items-center gap-2">
                         <span className="material-symbols-outlined text-warning text-[20px]">database</span>
-                        Market Data Source
+                        {t('startModal.dataSourceLabel')}
                     </h3>
                     <div className="space-y-4">
                         <div>
-                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">Mode</label>
+                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">{t('settings.mode')}</label>
                             <select
                                 value={settings.dataMode || 'LIVE'}
                                 onChange={e => handleChange('dataMode', e.target.value)}
                                 className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-on-surface font-[JetBrains_Mono] text-[13px] outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                             >
-                                <option value="LIVE">LIVE — Real market data (DefiLlama, Morpho, Hyperliquid)</option>
-                                <option value="SIM">SIM — Seeded scenario (stress testing, no network)</option>
+                                <option value="LIVE">{t('startModal.liveOption')}</option>
+                                <option value="SIM">{t('startModal.simOption')}</option>
                             </select>
                             <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mt-1">
-                                LIVE uses real-time oracles. SIM uses deterministic scenarios for stress-testing the agent without network calls.
+                                {t('settings.modeHint')}
                             </p>
                         </div>
                         {(settings.dataMode || 'LIVE') === 'SIM' && (
                             <div>
-                                <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">Scenario</label>
+                                <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">{t('settings.scenario')}</label>
                                 <select
                                     value={settings.dataScenario || 'stable'}
                                     onChange={e => handleChange('dataScenario', e.target.value)}
                                     className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-on-surface font-[JetBrains_Mono] text-[13px] outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                                 >
-                                    <option value="stable">Stable — baseline spread</option>
-                                    <option value="bull">Bull — positive spread, high funding</option>
-                                    <option value="bear">Bear — negative spread</option>
-                                    <option value="depeg">sUSDe depeg — liquidation stress</option>
+                                    <option value="stable">{t('settings.scenarioStable')}</option>
+                                    <option value="bull">{t('startModal.scenarioBull')}</option>
+                                    <option value="bear">{t('settings.scenarioBear')}</option>
+                                    <option value="depeg">{t('startModal.scenarioDepeg')}</option>
                                 </select>
                             </div>
                         )}
@@ -158,30 +160,30 @@ export default function Settings() {
                     <div className="absolute top-0 left-0 w-1 h-full bg-success"></div>
                     <h3 className="font-[Inter] text-[18px] font-semibold text-on-surface mb-4 flex items-center gap-2">
                         <span className="material-symbols-outlined text-success text-[20px]">rocket_launch</span>
-                        Execution Backend
+                        {t('docs.execution')}
                     </h3>
                     {!executionStatus ? (
-                        <p className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant">Loading status…</p>
+                        <p className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant">{t('common.loading')}</p>
                     ) : (
                         <div className="space-y-3">
                             <div className="flex items-center justify-between bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5">
-                                <span className="font-[JetBrains_Mono] text-[13px] text-on-surface-variant uppercase tracking-wider">Mode</span>
+                                <span className="font-[JetBrains_Mono] text-[13px] text-on-surface-variant uppercase tracking-wider">{t('settings.mode')}</span>
                                 <span className={`px-2 py-0.5 rounded-md text-[12px] font-[JetBrains_Mono] border ${executionStatus.mode === 'onchain' ? (executionStatus.ready ? 'bg-success/10 text-success border-success/25' : 'bg-error/10 text-error border-error/25') : 'bg-surface-variant/50 text-on-surface-variant border-outline-variant'}`}>
-                                    {executionStatus.mode === 'onchain' ? `ONCHAIN · chain ${executionStatus.chainId}` : 'SIMULATION'}
+                                    {executionStatus.mode === 'onchain' ? t('settings.onchainChain', { chainId: executionStatus.chainId }) : t('settings.simulation')}
                                 </span>
                             </div>
                             {executionStatus.mode === 'onchain' && (
                                 <div className="bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 space-y-1.5">
                                     <div className="flex items-center justify-between">
-                                        <span className="font-[JetBrains_Mono] text-[13px] text-on-surface-variant uppercase tracking-wider">Wallet</span>
+                                        <span className="font-[JetBrains_Mono] text-[13px] text-on-surface-variant uppercase tracking-wider">{t('settings.wallet')}</span>
                                         <span className={`font-[JetBrains_Mono] text-[12px] ${executionStatus.signerConfigured ? 'text-success' : 'text-error'}`}>
-                                            {executionStatus.signerAddress || 'NOT CONFIGURED'}
+                                            {executionStatus.signerAddress || t('settings.notConfigured')}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="font-[JetBrains_Mono] text-[13px] text-on-surface-variant uppercase tracking-wider">Status</span>
+                                        <span className="font-[JetBrains_Mono] text-[13px] text-on-surface-variant uppercase tracking-wider">{t('market.status')}</span>
                                         <span className={`font-[JetBrains_Mono] text-[12px] ${executionStatus.ready ? 'text-success' : 'text-error'}`}>
-                                            {executionStatus.ready ? 'Ready — trades broadcast on-chain' : 'Read-only — no trades broadcast'}
+                                            {executionStatus.ready ? t('settings.readyOnchain') : t('settings.readOnly')}
                                         </span>
                                     </div>
                                 </div>
@@ -189,9 +191,7 @@ export default function Settings() {
                             <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 flex items-start gap-2">
                                 <span className="material-symbols-outlined text-warning text-[16px] mt-0.5">info</span>
                                 <p className="font-[JetBrains_Mono] text-[11px] leading-[16px] text-on-surface-variant">
-                                    The execution backend is chosen at server startup: <span className="text-primary">EXECUTION_MODE=onchain</span> (default <span className="text-primary">simulation</span>).
-                                    Onchain mode needs <span className="text-primary">EVM_PROVIDER_URL</span> + <span className="text-primary">EVM_PRIVATE_KEY</span> (testnet only) in <span className="text-primary">backend/.env</span>.
-                                    Without a wallet the agent runs read-only — it observes and records, but never broadcasts trades.
+                                    {t('settings.executionBackendBody')}
                                 </p>
                             </div>
                         </div>
@@ -203,17 +203,17 @@ export default function Settings() {
                     <div className="absolute top-0 left-0 w-1 h-full bg-tertiary"></div>
                     <h3 className="font-[Inter] text-[18px] font-semibold text-on-surface mb-4 flex items-center gap-2">
                         <span className="material-symbols-outlined text-tertiary text-[20px]">psychology</span>
-                        LLM Configuration (OpenRouter)
+                        {t('settings.llmConfig')}
                     </h3>
                     <div className="space-y-4">
                         <div>
-                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">OpenRouter API Key</label>
+                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">{t('settings.apiKey')}</label>
                             <div className="relative">
                                 <input
                                     type={showKey ? 'text' : 'password'}
                                     value={settings.openRouterKey}
                                     onChange={e => handleChange('openRouterKey', e.target.value)}
-                                    placeholder="sk-or-v1-xxxxxxxxxxxxxxxx"
+                                    placeholder={t('settings.apiKeyPlaceholder')}
                                     className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 pr-12 text-on-surface font-[JetBrains_Mono] text-[13px] outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder-outline"
                                 />
                                 <button
@@ -225,7 +225,7 @@ export default function Settings() {
                             </div>
                         </div>
                         <div>
-                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">Active LLM Model</label>
+                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">{t('settings.model')}</label>
                             <select
                                 value={settings.activeModel}
                                 onChange={e => handleChange('activeModel', e.target.value)}
@@ -237,7 +237,7 @@ export default function Settings() {
                         <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 flex items-start gap-2">
                             <span className="material-symbols-outlined text-warning text-[16px] mt-0.5">info</span>
                             <p className="font-[JetBrains_Mono] text-[11px] leading-[16px] text-on-surface-variant">
-                                <strong className="text-on-surface">Cost Optimization:</strong> The agent uses <span className="text-success">Llama 3.1 70B</span> for routine market scans and <span className="text-primary">Claude 3.5 Sonnet</span> for critical rebalance decisions.
+                                {t('settings.costOpt')}
                             </p>
                         </div>
                     </div>
@@ -248,11 +248,11 @@ export default function Settings() {
                     <div className="absolute top-0 left-0 w-1 h-full bg-success"></div>
                     <h3 className="font-[Inter] text-[18px] font-semibold text-on-surface mb-4 flex items-center gap-2">
                         <span className="material-symbols-outlined text-success text-[20px]">smart_toy</span>
-                        Automation Parameters
+                        {t('settings.automationParams')}
                     </h3>
                     <div className="space-y-4">
                         <div>
-                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">Target Health Factor</label>
+                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">{t('settings.targetHf')}</label>
                             <input
                                 type="number"
                                 step="0.05"
@@ -262,10 +262,10 @@ export default function Settings() {
                                 onChange={e => handleChange('targetHf', e.target.value === '' ? settings.targetHf : parseFloat(e.target.value))}
                                 className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-on-surface font-[JetBrains_Mono] text-[13px] outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                             />
-                            <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mt-1">Agent will rebalance if Health Factor drops below this value.</p>
+                            <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mt-1">{t('settings.targetHfHint')}</p>
                         </div>
                         <div>
-                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">Max Gas for Claiming (gwei)</label>
+                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">{t('settings.maxGasClaim')}</label>
                             <input
                                 type="number"
                                 step="1"
@@ -275,7 +275,7 @@ export default function Settings() {
                                 onChange={e => handleChange('maxGasClaim', e.target.value === '' ? settings.maxGasClaim : parseInt(e.target.value))}
                                 className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-on-surface font-[JetBrains_Mono] text-[13px] outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                             />
-                            <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mt-1">Agent will only claim rewards if current gas price is below this value.</p>
+                            <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mt-1">{t('settings.maxGasHint')}</p>
                         </div>
                     </div>
                 </div>
@@ -285,28 +285,28 @@ export default function Settings() {
                     <div className="absolute top-0 left-0 w-1 h-full bg-warning"></div>
                     <h3 className="font-[Inter] text-[18px] font-semibold text-on-surface mb-4 flex items-center gap-2">
                         <span className="material-symbols-outlined text-warning text-[20px]">key</span>
-                        API Access Key (optional)
+                        {t('settings.apiKeyOptional')}
                     </h3>
                     <div className="space-y-3">
                         <div>
-                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">x-api-key Header</label>
+                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">{t('settings.apiKeyHeader')}</label>
                             <div className="flex gap-2 items-center">
                                 <input
                                     type="password"
                                     value={apiKeyInput}
                                     onChange={e => setApiKeyInput(e.target.value)}
-                                    placeholder="Required only if the backend sets AEGIS_API_KEY"
+                                    placeholder={t('settings.apiKeyRequiredOnly')}
                                     className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-on-surface font-[JetBrains_Mono] text-[13px] outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder-outline"
                                 />
                                 <button
                                     onClick={() => { setApiKey(apiKeyInput); setSaved(true); setTimeout(() => setSaved(false), 3000); }}
                                     className="bg-primary-container text-on-primary-container px-4 py-2 rounded-lg font-[Inter] text-[13px] font-medium hover:brightness-110 transition-all"
                                 >
-                                    Save Key
+                                    {t('settings.saveKey')}
                                 </button>
                             </div>
                             <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mt-1">
-                                Stored locally in your browser and sent as <span className="text-primary">x-api-key</span> on every API request.
+                                {t('settings.apiKeyStored')}
                             </p>
                         </div>
                     </div>
@@ -317,17 +317,17 @@ export default function Settings() {
                     {saved && (
                         <div className="flex items-center gap-2 text-success font-[JetBrains_Mono] text-[13px]">
                             <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                            Settings saved
+                            {t('toast.settingsSaved')}
                         </div>
                     )}
                     <button
                         onClick={() => setIsClearConfirmOpen(true)}
                         disabled={isClearing || isSaving}
                         className="bg-error-container text-on-error-container px-4 py-2 rounded-lg font-[Inter] text-[14px] font-medium hover:brightness-110 transition-all flex items-center gap-2 disabled:opacity-50"
-                        title="Clear Settings History"
+                        title={t('settings.clearHistory')}
                     >
                         <span className="material-symbols-outlined text-[18px]">delete</span>
-                        {isClearing ? 'Clearing...' : 'Clear'}
+                        {isClearing ? t('settings.clearing') : t('settings.clear')}
                     </button>
                     <button
                         onClick={handleSave}
@@ -335,15 +335,15 @@ export default function Settings() {
                         className="bg-primary-container text-on-primary-container px-6 py-2 rounded-lg font-[Inter] text-[14px] font-medium hover:brightness-110 transition-all glow-active flex items-center gap-2 disabled:opacity-50"
                     >
                         <span className="material-symbols-outlined text-[18px]">save</span>
-                        {isSaving ? 'Saving...' : 'Save Configuration'}
+                        {isSaving ? t('common.saving') : t('settings.save')}
                     </button>
                 </div>
             </div>
             <ConfirmDialog
                 isOpen={isClearConfirmOpen}
-                title="Clear settings history?"
-                message="Every stored preference, API credential and history row will be removed. This cannot be undone."
-                confirmLabel="Clear"
+                title={t('confirm.clearSettingsTitle')}
+                message={t('confirm.clearSettingsMsg')}
+                confirmLabel={t('confirm.clear')}
                 onCancel={() => setIsClearConfirmOpen(false)}
                 onConfirm={() => {
                     setIsClearConfirmOpen(false);

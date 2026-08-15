@@ -2,6 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ConfirmDialog from '../components/ConfirmDialog';
 
+vi.mock('../i18n/I18nProvider', async () => {
+    const en = (await import('../i18n/messages.en.js')).default;
+    const api = { t: (k, vars) => { let s = en[k] ?? k; if (vars) s = String(s).replace(/\{(\w+)\}/g, (m, n) => vars[n] !== undefined ? String(vars[n]) : m); return s; }, lang: 'en', setLang: () => {} };
+    return { useI18n: () => api };
+});
 vi.mock('../hooks/useModalA11y', () => ({
     useModalA11y: () => ({ modalRef: { current: null } }),
 }));

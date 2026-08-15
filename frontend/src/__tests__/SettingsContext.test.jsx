@@ -1,15 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { SettingsProvider, useSettings } from '../contexts/SettingsContext';
+vi.mock('../i18n/I18nProvider', async () => {
+    const en = (await import('../i18n/messages.en.js')).default;
+    const api = { t: (k, vars) => { let s = en[k] ?? k; if (vars) s = String(s).replace(/\{(\w+)\}/g, (m, n) => vars[n] !== undefined ? String(vars[n]) : m); return s; }, lang: 'en', setLang: () => {} };
+    return { useI18n: () => api };
+});
 
 // SettingsProvider gates its initial fetch on auth state — present a session.
 vi.mock('../contexts/AuthContext', () => ({
     useAuth: () => ({ isAuthenticated: true }),
 }));
 
-vi.mock('../contexts/ToastContext', () => ({
-    useToast: () => ({ error: vi.fn(), success: vi.fn(), info: vi.fn() }),
-}));
+vi.mock('../contexts/ToastContext', () => {
+    const api = { error: vi.fn(), success: vi.fn(), info: vi.fn() };
+    return { useToast: () => api };
+});
 
 const apiFetch = vi.fn();
 

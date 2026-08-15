@@ -2,6 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import RiskAlerts from '../components/RiskAlerts';
 import { deriveRiskAlerts } from '../components/riskAlertsLogic';
+vi.mock('../i18n/I18nProvider', async () => {
+    const en = (await import('../i18n/messages.en.js')).default;
+    const api = { t: (k) => en[k] ?? k, lang: 'en', setLang: () => {} };
+    return { useI18n: () => api };
+});
 
 const mockWs = { portfolioData: null };
 const mockSettings = { targetHf: 1.25, maxGasClaim: 20 };

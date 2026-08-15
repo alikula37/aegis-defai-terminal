@@ -2,14 +2,15 @@ import { apiFetch } from '../lib/apiClient';
 import { useState, useEffect } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import TvlHistoryModal from './TvlHistoryModal';
+import { useI18n } from '../i18n/I18nProvider';
 
 // Formatting for a live metric value; keeps the render callback flat (S3776).
-function formatMetric(metric, rawValue, targetHf) {
+function formatMetric(metric, rawValue, targetHf, t) {
     const out = {
         displayValue: metric.defaultValue,
         valueColor: metric.valueColor,
         iconColor: metric.iconColor,
-        badgeText: metric.badge.text,
+        badgeText: metric.badge ? t(metric.badge.textKey, metric.badge.badgeVars) : null,
     };
     if (rawValue === null || rawValue === undefined) return out;
     if (metric.key === 'tvl') {
@@ -27,7 +28,7 @@ function formatMetric(metric, rawValue, targetHf) {
         }
     } else if (metric.key === 'healthFactor') {
         out.displayValue = Number(rawValue).toFixed(2);
-        out.badgeText = `Target: >${targetHf}`;
+        out.badgeText = t('dash.target', { targetHf });
     }
     return out;
 }
@@ -41,7 +42,7 @@ const DEFAULT_METRICS = [
         iconColor: 'text-primary/70',
         valueColor: 'text-paper',
         hoverBg: 'group-hover:bg-primary/5',
-        badge: { text: 'Leveraged Position', style: 'bg-primary-container/20 text-primary border border-primary/20' },
+        badge: { textKey: 'dash.leveragedPosition', style: 'bg-primary-container/20 text-primary border border-primary/20' },
         bar: null,
     },
     {
@@ -52,7 +53,7 @@ const DEFAULT_METRICS = [
         iconColor: 'text-success/70',
         valueColor: 'text-success',
         hoverBg: 'group-hover:bg-success/5',
-        badge: { text: 'Realized Yield', style: 'bg-surface-variant text-on-surface-variant' },
+        badge: { textKey: 'dash.realizedYield', style: 'bg-surface-variant text-on-surface-variant' },
         bar: null,
     },
     {
@@ -63,7 +64,7 @@ const DEFAULT_METRICS = [
         iconColor: 'text-warning/70',
         valueColor: 'text-warning',
         hoverBg: 'group-hover:bg-warning/5',
-        badge: { text: 'Target: >1.25', style: 'bg-surface-variant text-on-surface-variant' },
+        badge: { textKey: 'dash.target', badgeVars: { targetHf: 1.25 }, style: 'bg-surface-variant text-on-surface-variant' },
         bar: true,
     },
 ];
@@ -72,9 +73,16 @@ const DEFAULT_METRICS = [
 
 export default function DashboardMetrics() {
     const { portfolioData: liveData } = useWebSocket();
+    const { t } = useI18n();
     const [isApyModalOpen, setIsApyModalOpen] = useState(false);
     const [isTvlModalOpen, setIsTvlModalOpen] = useState(false);
     const [targetHf, setTargetHf] = useState('1.25');
+
+    const METRIC_LABEL_KEYS = {
+        'Total Value Locked': 'yield.tvl',
+        'Net APY': 'dash.netApy',
+        'Health Factor': 'liveData.healthFactor',
+    };
 
     useEffect(() => {
         apiFetch('/api/settings')
@@ -92,19 +100,19 @@ export default function DashboardMetrics() {
             <div className="flex items-center gap-6 bg-surface-container border border-outline rounded-lg p-4">
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">lan</span>
-                    <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">Active Chain:</span>
+                    <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">{t('dash.activeChain')}</span>
                     <span className="font-bold text-on-surface">{liveData?.activeChain || '—'}</span>
                 </div>
                 <div className="w-px h-6 bg-outline-variant"></div>
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">account_balance</span>
-                    <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">Active Protocol:</span>
+                    <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">{t('dash.activeProtocol')}</span>
                     <span className="font-bold text-on-surface">{liveData?.activeProtocol || '—'}</span>
                 </div>
                 <div className="w-px h-6 bg-outline-variant"></div>
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">monitoring</span>
-                    <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">Current Leverage:</span>
+                    <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">{t('dash.currentLeverage')}</span>
                     <span className="font-bold text-on-surface">{liveData?.leverage != null ? `${liveData.leverage}x` : '—'}</span>
                 </div>
             </div>
@@ -112,7 +120,7 @@ export default function DashboardMetrics() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-[1rem]">
                 {DEFAULT_METRICS.map((m) => {
                     const rawValue = liveData && liveData[m.key] != null ? liveData[m.key] : null;
-                    const formatted = formatMetric(m, rawValue, targetHf);
+                    const formatted = formatMetric(m, rawValue, targetHf, t);
                     const { displayValue, valueColor, iconColor, badgeText } = formatted;
                     const isApyCard = m.key === 'netApy';
                     const isTvlCard = m.key === 'tvl';
@@ -128,7 +136,7 @@ export default function DashboardMetrics() {
                         >
                             <div className={`absolute inset-0 ${m.hoverBg} transition-colors duration-300 pointer-events-none`}></div>
                             <div className="flex justify-between items-start mb-4">
-                                <h3 className="font-[JetBrains_Mono] text-[13px] leading-[16px] font-medium text-on-surface-variant uppercase tracking-wider">{m.label}</h3>
+                                <h3 className="font-[JetBrains_Mono] text-[13px] leading-[16px] font-medium text-on-surface-variant uppercase tracking-wider">{t(METRIC_LABEL_KEYS[m.label] ?? m.label)}</h3>
                                 <span className={`material-symbols-outlined ${iconColor}`}>{m.icon}</span>
                             </div>
 
@@ -166,30 +174,30 @@ export default function DashboardMetrics() {
 
                             <h2 className="font-[Inter] text-[20px] font-[510] text-paper mb-6 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary">analytics</span>
-                                Yield Breakdown (4x Looping)
+                                {t('dash.apyBreakdownTitle')}
                             </h2>
 
                             <div className="space-y-4 font-[JetBrains_Mono] text-[14px]">
                                 <div className="flex justify-between items-center pb-3 border-b border-outline-variant/50">
-                                    <span className="text-on-surface-variant">Base sUSDe Staking Yield</span>
+                                    <span className="text-on-surface-variant">{t('dash.baseSusde')}</span>
                                     <span className="text-success">+{liveData?.susdeApy != null ? `${Number(liveData.susdeApy).toFixed(2)}%` : '—'}</span>
                                 </div>
                                 <div className="flex justify-between items-center pb-3 border-b border-outline-variant/50">
-                                    <span className="text-on-surface-variant">USDC Borrow Cost</span>
+                                    <span className="text-on-surface-variant">{t('dash.borrowCost')}</span>
                                     <span className="text-error">{liveData?.morphoBorrowApy != null ? `-${Number(liveData.morphoBorrowApy).toFixed(2)}%` : '—'}</span>
                                 </div>
                                 <div className="flex justify-between items-center pb-3 border-b border-outline-variant/50">
-                                    <span className="text-on-surface-variant">Base Spread</span>
+                                    <span className="text-on-surface-variant">{t('dash.baseSpread')}</span>
                                     <span className={liveData?.baseSpread > 0 ? 'text-success' : 'text-error'}>
                                         {liveData?.baseSpread != null ? `${liveData.baseSpread > 0 ? '+' : ''}${Number(liveData.baseSpread).toFixed(2)}%` : '—'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-center pb-3 border-b border-outline-variant/50">
-                                    <span className="text-on-surface-variant">Leverage Multiplier</span>
+                                    <span className="text-on-surface-variant">{t('dash.leverageMult')}</span>
                                     <span className="text-primary">{liveData?.leverage != null ? `x${liveData.leverage}` : '—'}</span>
                                 </div>
                                 <div className="flex justify-between items-center pt-2">
-                                    <span className="text-on-surface font-bold">Net APY</span>
+                                    <span className="text-on-surface font-bold">{t('dash.netApy')}</span>
                                     <span className={`font-bold text-[18px] ${liveData?.netApy > 0 ? 'text-success' : 'text-error'}`}>
                                         {liveData?.netApy != null ? `${liveData.netApy > 0 ? '+' : ''}${Number(liveData.netApy).toFixed(2)}%` : '—'}
                                     </span>
@@ -200,7 +208,7 @@ export default function DashboardMetrics() {
                                 <div className="mt-6 bg-error-container/20 border border-error/30 rounded-lg p-4 flex items-start gap-3">
                                     <span className="material-symbols-outlined text-error mt-0.5">warning</span>
                                     <p className="text-error font-[Inter] text-[13px] leading-relaxed">
-                                        <strong>Warning:</strong> Borrow cost exceeds yield (Yield Inversion). Agent is preparing to unwind leverage to prevent losses.
+                                        {t('dash.inversionWarn')}
                                     </p>
                                 </div>
                             )}

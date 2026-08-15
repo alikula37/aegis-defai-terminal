@@ -3,10 +3,13 @@
 // Esc close, focus trap, backdrop click).
 import { NavLink } from 'react-router-dom';
 import { useModalA11y } from '../hooks/useModalA11y';
+import { useI18n } from '../i18n/I18nProvider';
 import { navItems } from './Sidebar';
+import LanguageToggle from './LanguageToggle';
 
 export default function MobileNav({ isOpen, onClose }) {
     const { modalRef } = useModalA11y({ isOpen, onClose });
+    const { t } = useI18n();
 
     if (!isOpen) return null;
 
@@ -23,17 +26,17 @@ export default function MobileNav({ isOpen, onClose }) {
                     </div>
                     <button
                         onClick={onClose}
-                        aria-label="Close navigation"
+                        aria-label={t('common.close')}
                         className="text-on-surface-variant hover:text-on-surface p-1.5 rounded-lg hover:bg-surface-variant transition-colors"
                     >
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
 
-                <nav className="flex-1 flex flex-col gap-1" aria-label="Main navigation">
+                <nav className="flex-1 flex flex-col gap-1" aria-label={t('nav.overview')}>
                     {navItems.map((item) => (
                         <NavLink
-                            key={item.label}
+                            key={item.labelKey}
                             to={item.to}
                             end={item.to === '/'}
                             onClick={onClose}
@@ -45,14 +48,17 @@ export default function MobileNav({ isOpen, onClose }) {
                             }
                         >
                             <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-                            <span className="font-[Inter] text-[16px] leading-[24px]">{item.label}</span>
+                            <span className="font-[Inter] text-[16px] leading-[24px]">{t(item.labelKey)}</span>
                         </NavLink>
                     ))}
                 </nav>
 
-                <p className="mt-auto text-[11px] text-on-surface-variant font-[JetBrains_Mono] text-center">
-                    Aegis DeFAI Terminal
-                </p>
+                <div className="mt-auto flex flex-col items-center gap-3">
+                    <LanguageToggle />
+                    <p className="text-[11px] text-on-surface-variant font-[JetBrains_Mono] text-center">
+                        Aegis DeFAI Terminal
+                    </p>
+                </div>
             </div>
         </div>
     );

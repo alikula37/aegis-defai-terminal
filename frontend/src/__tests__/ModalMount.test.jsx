@@ -3,6 +3,11 @@ import { render } from '@testing-library/react';
 import SimulationResumeModal from '../components/SimulationResumeModal';
 import DocsModal from '../components/DocsModal';
 
+vi.mock('../i18n/I18nProvider', async () => {
+    const en = (await import('../i18n/messages.en.js')).default;
+    const api = { t: (k, vars) => { let s = en[k] ?? k; if (vars) s = String(s).replace(/\{(\w+)\}/g, (m, n) => vars[n] !== undefined ? String(vars[n]) : m); return s; }, lang: 'en', setLang: () => {} };
+    return { useI18n: () => api };
+});
 
 vi.mock('../contexts/ToastContext', () => ({
     useToast: () => ({ error: vi.fn(), success: vi.fn(), info: vi.fn() }),

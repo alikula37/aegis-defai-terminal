@@ -2,15 +2,10 @@ import { useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useI18n } from '../i18n/I18nProvider';
 import { safeFormatTime } from '../lib/timeFormat';
+import LanguageToggle from './LanguageToggle';
 import MobileNav from './MobileNav';
-
-const pageTitles = {
-    '/': 'Portfolio Overview',
-    '/yield-strategies': 'Yield Strategies',
-    '/ai-agent-logs': 'AI Agent Logs',
-    '/settings': 'Settings',
-};
 
 // Execution-backend status pill (simulation vs onchain ready/not-ready).
 function ExecutionBadge({ executionStatus }) {
@@ -43,12 +38,19 @@ export default function TopNav() {
     const location = useLocation();
     const { notifications, setNotifications, simulationName, isSimulationRunning, executionStatus } = useWebSocket();
     const { user, authRequired, logout } = useAuth();
+    const { t, lang } = useI18n();
     const [showNotifications, setShowNotifications] = useState(false);
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
     const closeMobileNav = useCallback(() => setIsMobileNavOpen(false), []);
 
-    const title = pageTitles[location.pathname] || 'Portfolio Overview';
-    const currentDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const pageTitles = {
+        '/': t('nav.overview'),
+        '/yield-strategies': t('nav.yieldStrategies'),
+        '/ai-agent-logs': t('nav.agentLogs'),
+        '/settings': t('nav.settings'),
+    };
+    const title = pageTitles[location.pathname] || t('nav.overview');
+    const currentDate = new Date().toLocaleDateString(lang, { month: 'short', day: 'numeric', year: 'numeric' });
 
     return (
         <header className="flex justify-between items-center h-16 px-[1.5rem] border-b border-outline-variant bg-surface-container-low sticky top-0 z-40 w-full">
@@ -76,11 +78,12 @@ export default function TopNav() {
             </div>
             <div className="flex items-center gap-4">
                 <ExecutionBadge executionStatus={executionStatus} />
+                <LanguageToggle />
                 <div className="relative">
                     <button
                         onClick={() => setShowNotifications(!showNotifications)}
                         className="text-on-surface-variant hover:text-primary transition-colors p-1.5 rounded-full hover:bg-surface-variant relative"
-                        aria-label="Notifications"
+                        aria-label={t('nav.notifications')}
                     >
                         <span className="material-symbols-outlined">notifications</span>
                         {notifications && notifications.length > 0 && (
@@ -91,20 +94,20 @@ export default function TopNav() {
                     {showNotifications && (
                         <div className="absolute right-0 mt-2 w-80 bg-surface-container-high border border-outline-variant rounded-xl shadow-lg z-50 overflow-hidden">
                             <div className="p-3 border-b border-outline-variant flex justify-between items-center">
-                                <h3 className="font-semibold text-on-surface text-sm">Notifications</h3>
+                                <h3 className="font-semibold text-on-surface text-sm">{t('nav.notifications')}</h3>
                                 {notifications && notifications.length > 0 && (
                                     <button
                                         onClick={() => setNotifications([])}
                                         className="text-xs text-primary hover:underline"
                                     >
-                                        Clear All
+                                        {t('nav.clearAll')}
                                     </button>
                                 )}
                             </div>
                             <div className="max-h-96 overflow-y-auto">
                                 {!notifications || notifications.length === 0 ? (
                                     <div className="p-4 text-center text-on-surface-variant text-sm">
-                                        No new notifications
+                                        {t('nav.noNotifications')}
                                     </div>
                                 ) : (
                                     notifications.map((notif, idx) => (
@@ -137,8 +140,8 @@ export default function TopNav() {
                         </div>
                         <button
                             onClick={() => logout()}
-                            title="Sign out"
-                            aria-label="Sign out"
+                            title={t('nav.logout')}
+                            aria-label={t('nav.logout')}
                             className="ml-1 text-on-surface-variant hover:text-error transition-colors"
                         >
                             <span className="material-symbols-outlined text-[18px]">logout</span>
@@ -151,7 +154,7 @@ export default function TopNav() {
                     className="bg-primary-container text-on-primary-container px-4 py-1.5 rounded-lg text-[14px] font-medium opacity-50 cursor-not-allowed flex items-center gap-2"
                 >
                     <span className="material-symbols-outlined text-[18px]">account_balance_wallet</span>
-                    Connect Wallet
+                    {t('nav.wallet')}
                 </button>
             </div>
             <MobileNav isOpen={isMobileNavOpen} onClose={closeMobileNav} />

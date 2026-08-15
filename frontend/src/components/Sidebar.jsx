@@ -3,21 +3,23 @@ import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useToast } from '../contexts/ToastContext';
+import { useI18n } from '../i18n/I18nProvider';
 import ConfirmDialog from './ConfirmDialog';
 import DocsModal from './DocsModal';
 import SupportModal from './SupportModal';
 
 export const navItems = [
-    { to: '/', icon: 'dashboard', label: 'Overview' },
-    { to: '/yield-strategies', icon: 'account_balance_wallet', label: 'Yield Strategies' },
-    { to: '/live-data', icon: 'sensors', label: 'Live Data' },
-    { to: '/ai-agent-logs', icon: 'terminal', label: 'AI Agent Logs' },
-    { to: '/settings', icon: 'settings', label: 'Settings' },
+    { to: '/', icon: 'dashboard', labelKey: 'nav.overview' },
+    { to: '/yield-strategies', icon: 'account_balance_wallet', labelKey: 'nav.yieldStrategies' },
+    { to: '/live-data', icon: 'sensors', labelKey: 'nav.liveData' },
+    { to: '/ai-agent-logs', icon: 'terminal', labelKey: 'nav.agentLogs' },
+    { to: '/settings', icon: 'settings', labelKey: 'nav.settings' },
 ];
 
 export default function Sidebar() {
     const { isSimulationRunning: isRunning, setIsSimulationRunning, setIsStartModalOpen, setIsResumeModalOpen, simulationStartTime, clearSimulationData } = useWebSocket();
     const toast = useToast();
+    const { t } = useI18n();
     const [isDocsOpen, setIsDocsOpen] = useState(false);
     const [isSupportOpen, setIsSupportOpen] = useState(false);
     const [uptime, setUptime] = useState('00:00:00');
@@ -62,17 +64,17 @@ export default function Sidebar() {
                 // Sharp separation: dropping the old run's data immediately,
                 // without waiting for the WS broadcast.
                 clearSimulationData();
-                toast.success('Simulation stopped');
+                toast.success(t('toast.simStopped'));
             } else {
                 // Revert if failed
                 setIsSimulationRunning(true);
                 const errData = await res.json();
-                toast.error(`Failed to stop simulation: ${errData.error || 'Unknown error'}`);
+                toast.error(t('toast.failedToStop', { error: errData.error || 'Unknown error' }));
             }
         } catch (error) {
             console.error('Failed to stop simulation:', error);
             setIsSimulationRunning(true);
-            toast.error(`Failed to stop simulation: ${error.message}`);
+            toast.error(t('toast.failedToStop', { error: error.message }));
         }
     };
 
@@ -91,14 +93,14 @@ export default function Sidebar() {
             if (res.ok) {
                 setHasPastSim(false);
                 clearSimulationData();
-                toast.success('Simulation deleted');
+                toast.success(t('toast.simDeleted'));
             } else {
                 const errData = await res.json();
-                toast.error(`Failed to delete simulation: ${errData.error || 'Unknown error'}`);
+                toast.error(t('toast.failedToDelete', { error: errData.error || 'Unknown error' }));
             }
         } catch (error) {
             console.error('Failed to delete simulation:', error);
-            toast.error(`Failed to delete simulation: ${error.message}`);
+            toast.error(t('toast.failedToDelete', { error: error.message }));
         } finally {
             setIsDeleting(false);
         }
@@ -119,7 +121,7 @@ export default function Sidebar() {
                         <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-success' : 'bg-outline'} relative`}>
                             {isRunning && <span className="absolute inset-0 rounded-full bg-success pulse-ring"></span>}
                         </span>
-                        {isRunning ? 'AI-Agent Active' : 'AI-Agent Idle'}
+                        {isRunning ? t('app.agentActive') : t('app.agentIdle')}
                     </p>
                 </div>
             </div>
@@ -128,7 +130,7 @@ export default function Sidebar() {
             <nav className="flex-1 flex flex-col gap-1">
                 {navItems.map((item) => (
                     <NavLink
-                        key={item.label}
+                        key={item.to}
                         to={item.to}
                         end={item.to === '/'}
                         className={({ isActive }) =>
@@ -139,7 +141,7 @@ export default function Sidebar() {
                         }
                     >
                         <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-                        <span className="font-[Inter] text-[14px] leading-[20px] tracking-[-0.01em]">{item.label}</span>
+                        <span className="font-[Inter] text-[14px] leading-[20px] tracking-[-0.01em]">{t(item.labelKey)}</span>
                     </NavLink>
                 ))}
             </nav>
@@ -151,18 +153,18 @@ export default function Sidebar() {
                     <div className="flex justify-between items-center mb-3">
                         <h3 className="font-[Inter] text-[14px] font-semibold text-on-surface flex items-center gap-2">
                             <span className="material-symbols-outlined text-[18px] text-primary">play_circle</span>
-                            Simulation Control
+                            {t('nav.simulationControl')}
                         </h3>
                         {/* Status Badge */}
                         <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-[JetBrains_Mono] font-bold ${isRunning ? 'bg-success/10 text-success border border-success/20' : 'bg-error/10 text-error border border-error/20'}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-success animate-pulse' : 'bg-error'}`}></span>
-                            {isRunning ? 'RUNNING' : 'STOPPED'}
+                            {isRunning ? t('nav.running') : t('nav.stopped')}
                         </div>
                     </div>
 
                     {isRunning && (
                         <div className="mb-3 flex justify-between items-center text-[12px] font-[JetBrains_Mono] text-on-surface-variant bg-surface-container-highest px-3 py-1.5 rounded-md border border-outline-variant/30">
-                            <span>Uptime:</span>
+                            <span>{t('nav.uptime')}</span>
                             <span className="text-primary font-bold tracking-wider">{uptime}</span>
                         </div>
                     )}
@@ -175,14 +177,14 @@ export default function Sidebar() {
                                         className="flex-1 py-2 rounded-md font-[JetBrains_Mono] text-[13px] font-medium transition-colors flex items-center justify-center gap-1 bg-primary text-on-primary hover:bg-primary-fixed hover:text-on-primary-fixed"
                                     >
                                         <span className="material-symbols-outlined text-[16px]">play_circle</span>
-                                        Start New
+                                        {t('nav.startNew')}
                                     </button>
                                     <button
                                         onClick={() => setIsResumeModalOpen(true)}
                                         className="flex-1 py-2 rounded-md font-[JetBrains_Mono] text-[13px] font-medium transition-colors flex items-center justify-center gap-1 border border-primary text-primary hover:bg-primary/10"
                                     >
                                         <span className="material-symbols-outlined text-[16px]">restore</span>
-                                        Resume
+                                        {t('nav.resume')}
                                     </button>
                                 </div>
                                 {hasPastSim && (
@@ -190,10 +192,10 @@ export default function Sidebar() {
                                         onClick={() => setIsDeleteConfirmOpen(true)}
                                         disabled={isDeleting}
                                         className="w-full flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-[JetBrains_Mono] text-on-surface-variant hover:text-error transition-colors rounded-md hover:bg-error/5 disabled:opacity-50"
-                                        title="Delete the last simulation and all its data"
+                                        title={t('sidebar.deleteLastSimTitle')}
                                     >
                                         <span className="material-symbols-outlined text-[14px]">delete_forever</span>
-                                        {isDeleting ? 'Deleting...' : 'Delete last simulation'}
+                                        {isDeleting ? t('nav.deleting') : t('nav.deleteLastSim')}
                                     </button>
                                 )}
                             </>
@@ -205,7 +207,7 @@ export default function Sidebar() {
                                 className="w-full py-2 rounded-md font-[JetBrains_Mono] text-[13px] font-medium transition-colors flex items-center justify-center gap-2 bg-error text-on-error hover:bg-error-container hover:text-on-error-container"
                             >
                                 <span className="material-symbols-outlined text-[16px]">stop_circle</span>
-                                Stop Simulation
+                                {t('nav.stopSimulation')}
                             </button>
                         )}
                     </div>
@@ -214,11 +216,11 @@ export default function Sidebar() {
                 <div className="flex border-t border-outline-variant pt-4 gap-1">
                     <button onClick={() => setIsDocsOpen(true)} className="flex-1 flex items-center justify-center gap-2 py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-md transition-colors">
                         <span className="material-symbols-outlined text-[18px]">description</span>
-                        <span className="text-[14px]">Docs</span>
+                        <span className="text-[14px]">{t('nav.docs')}</span>
                     </button>
                     <button onClick={() => setIsSupportOpen(true)} className="flex-1 flex items-center justify-center gap-2 py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-md transition-colors">
                         <span className="material-symbols-outlined text-[18px]">help</span>
-                        <span className="text-[14px]">Support</span>
+                        <span className="text-[14px]">{t('nav.support')}</span>
                     </button>
                 </div>
             </div>
@@ -227,7 +229,7 @@ export default function Sidebar() {
             <SupportModal isOpen={isSupportOpen} onClose={() => setIsSupportOpen(false)} />
             <ConfirmDialog
                 isOpen={isDeleteConfirmOpen}
-                title="Delete last simulation?"
+                title={t('confirm.deleteLastSimTitle')}
                 message="Its portfolio, logs and decisions will be permanently removed. This cannot be undone."
                 confirmLabel="Delete"
                 onCancel={() => setIsDeleteConfirmOpen(false)}

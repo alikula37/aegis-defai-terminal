@@ -1,5 +1,6 @@
 import { apiFetch } from '../lib/apiClient';
 import { useModalA11y } from '../hooks/useModalA11y';
+import { useI18n } from '../i18n/I18nProvider';
 import { useState, useEffect } from 'react';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -28,6 +29,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default function TvlHistoryModal({ isOpen, onClose }) {
+    const { t } = useI18n();
     const { modalRef } = useModalA11y({ isOpen, onClose });
     const [data, setData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -51,10 +53,10 @@ export default function TvlHistoryModal({ isOpen, onClose }) {
             })
             .catch(err => {
                 console.error('Failed to fetch TVL history:', err);
-                setLoadError('Could not load TVL history — check the backend connection.');
+                setLoadError(t('tvl.loadFailed'));
             })
             .finally(() => setIsLoading(false));
-    }, [isOpen]);
+    }, [isOpen, t]);
 
     if (!isOpen) return null;
 
@@ -70,7 +72,7 @@ export default function TvlHistoryModal({ isOpen, onClose }) {
 
                 <h2 id="tvl-modal-title" className="font-[Inter] text-[20px] font-semibold text-on-surface mb-6 flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">account_balance</span>
-                    Total Value Locked (History)
+                    {t('tvl.title')}
                 </h2>
 
                 <div className="h-[300px] w-full">
@@ -85,7 +87,7 @@ export default function TvlHistoryModal({ isOpen, onClose }) {
                         </div>
                     ) : data.length === 0 ? (
                         <div className="w-full h-full flex items-center justify-center text-on-surface-variant font-[JetBrains_Mono] text-sm">
-                            No history data available yet.
+                            {t('tvl.noData')}
                         </div>
                     ) : (
                         <ResponsiveContainer width="100%" height="100%">

@@ -3,6 +3,7 @@ import { useWebSocket } from '../contexts/WebSocketContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { safeFormatTime } from '../lib/timeFormat';
 import { Link } from 'react-router-dom';
+import { useI18n } from '../i18n/I18nProvider';
 
 // --- Sub-components ---
 
@@ -78,6 +79,7 @@ export default function LiveData() {
     const [lastUpdated, setLastUpdated] = useState(null);
     const logContainerRef = useRef(null);
     const [status, setStatus] = useState('LIVE');
+    const { t } = useI18n();
 
     useEffect(() => {
         if (!isConnected) {
@@ -129,12 +131,12 @@ export default function LiveData() {
                     <div className="flex items-center gap-3">
                         <span className="material-symbols-outlined text-error text-[24px]">warning</span>
                         <div>
-                            <h3 className="font-[Inter] text-[15px] font-semibold text-on-surface">System Not Configured</h3>
-                            <p className="text-[13px] text-on-surface-variant mt-0.5">RPC URL and OpenRouter API Key are required to fetch live data and run the agent.</p>
+                            <h3 className="font-[Inter] text-[15px] font-semibold text-on-surface">{t('liveData.notConfiguredTitle')}</h3>
+                            <p className="text-[13px] text-on-surface-variant mt-0.5">{t('liveData.notConfiguredMsg')}</p>
                         </div>
                     </div>
                     <Link to="/settings" className="bg-error text-on-error px-4 py-2 rounded-lg font-[Inter] text-[13px] font-medium hover:brightness-110 transition-all">
-                        Configure Settings
+                        {t('liveData.configure')}
                     </Link>
                 </div>
             )}
@@ -142,8 +144,8 @@ export default function LiveData() {
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h2 className="font-[Inter] text-[24px] font-semibold text-on-surface">Live Oracle Feed</h2>
-                    <p className="text-[14px] text-on-surface-variant mt-1">Real-time data from DeFiLlama, Morph, and Pendle oracles</p>
+                    <h2 className="font-[Inter] text-[24px] font-semibold text-on-surface">{t('liveData.title')}</h2>
+                    <p className="text-[14px] text-on-surface-variant mt-1">{t('liveData.subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-2 bg-surface-container border border-outline-variant px-4 py-2 rounded-full">
                     <span className={`w-2 h-2 rounded-full ${getStatusColor()} animate-pulse`}></span>
@@ -225,7 +227,7 @@ export default function LiveData() {
                         sub="Morpho 91.5% LLTV loop"
                     />
                     <DataBadge
-                        label="Net APY"
+                        label={t('dash.netApy')}
                         value={portfolioData?.netApy ? `${Number(portfolioData.netApy).toFixed(2)}%` : '—'}
                         color="text-success"
                         icon="auto_graph"
@@ -234,57 +236,57 @@ export default function LiveData() {
                 </DataCard>
 
                 {/* 4. Portfolio Health */}
-                <DataCard title="Portfolio Health" icon="shield" badge="Risk Monitor" badgeColor="text-error">
+                <DataCard title={t('liveData.portfolioHealth')} icon="shield" badge={t('liveData.riskMonitor')} badgeColor="text-error">
                     <DataBadge
-                        label="Health Factor"
+                        label={t('liveData.healthFactor')}
                         value={hf != null ? Number(hf).toFixed(2) : '—'}
                         color={hfColor}
                         icon="monitor_heart"
-                        sub={hf == null ? 'Waiting for oracle data' : hf >= 1.25 ? 'Safe — above target' : hf >= 1.21 ? 'Warning — rebalance soon' : 'CRITICAL — de-leverage now'}
+                        sub={hf == null ? t('liveData.hfWaiting') : hf >= 1.25 ? t('liveData.hfSafe') : hf >= 1.21 ? t('liveData.hfWarn') : t('liveData.hfCritical')}
                     />
                     <DataBadge
-                        label="Total Value Locked"
+                        label={t('liveData.tvl')}
                         value={portfolioData?.tvl ? `$${Number(portfolioData.tvl).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—'}
                         color="text-on-surface"
                         icon="account_balance_wallet"
-                        sub="Simulated virtual balance"
+                        sub={t('liveData.tvlSub')}
                     />
                     <DataBadge
-                        label="Active Strategies"
+                        label={t('liveData.activeStrategies')}
                         value={portfolioData?.activeAgents != null ? portfolioData.activeAgents : '—'}
                         color="text-primary"
                         icon="hub"
-                        sub="Running agent instances"
+                        sub={t('liveData.agentsSub')}
                     />
                 </DataCard>
 
                 {/* 5. RPC / Blockchain Data */}
-                <DataCard title="Blockchain Data" icon="link" badge="Sepolia RPC" badgeColor="text-primary">
+                <DataCard title={t('liveData.blockchainData')} icon="link" badge={t('liveData.sepoliaRpc')} badgeColor="text-primary">
                     <DataBadge
-                        label="Gas Price"
+                        label={t('liveData.gasPrice')}
                         value={portfolioData?.gasPrice != null ? `${Number(portfolioData.gasPrice).toFixed(1)} gwei` : '—'}
                         color={portfolioData?.gasPrice == null ? 'text-on-surface-variant' : portfolioData?.gasPrice < 20 ? 'text-success' : portfolioData?.gasPrice < 45 ? 'text-warning' : 'text-error'}
                         icon="local_gas_station"
-                        sub={portfolioData?.gasPrice == null ? 'Waiting for RPC data' : portfolioData?.gasPrice < 20 ? 'Low — good for claiming' : portfolioData?.gasPrice < 45 ? 'Moderate' : 'High — avoid transactions'}
+                        sub={portfolioData?.gasPrice == null ? t('liveData.gasWaiting') : portfolioData?.gasPrice < 20 ? t('liveData.gasLow') : portfolioData?.gasPrice < 45 ? t('liveData.gasModerate') : t('liveData.gasHigh')}
                     />
                     <DataBadge
-                        label="Block Number"
-                        value={portfolioData?.blockNumber ? `#${Number(portfolioData.blockNumber).toLocaleString()}` : 'Not connected'}
+                        label={t('liveData.blockNumber')}
+                        value={portfolioData?.blockNumber ? `#${Number(portfolioData.blockNumber).toLocaleString()}` : t('liveData.notConnected')}
                         color={portfolioData?.blockNumber ? 'text-success' : 'text-on-surface-variant'}
                         icon="layers"
-                        sub={portfolioData?.blockNumber ? 'Live from RPC provider' : 'Set RPC URL in Settings'}
+                        sub={portfolioData?.blockNumber ? t('liveData.liveFromRpc') : t('liveData.setRpcInSettings')}
                     />
                     <DataBadge
-                        label="RPC Status"
-                        value={portfolioData?.blockNumber ? 'Connected' : 'Simulated'}
+                        label={t('liveData.rpcStatus')}
+                        value={portfolioData?.blockNumber ? t('liveData.connected') : t('liveData.simulated')}
                         color={portfolioData?.blockNumber ? 'text-success' : 'text-warning'}
                         icon="cast_connected"
-                        sub={portfolioData?.blockNumber ? 'Reading live on-chain data' : 'Configure in Settings → RPC URL'}
+                        sub={portfolioData?.blockNumber ? t('liveData.readingChain') : t('liveData.configureRpc')}
                     />
                 </DataCard>
 
                 {/* 6. Avg Strategy APY */}
-                <DataCard title="Strategy Breakdown" icon="pie_chart" badge="Allocation" badgeColor="text-tertiary">
+                <DataCard title={t('liveData.strategyBreakdown')} icon="pie_chart" badge={t('liveData.allocation')} badgeColor="text-tertiary">
                     {(portfolioData?.strategies || []).map((s, i) => {
                         const apy = Number(s.apy);
                         const tvl = Number(s.tvl);
@@ -302,7 +304,7 @@ export default function LiveData() {
                         );
                     })}
                     {!portfolioData?.strategies?.length && (
-                        <p className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant py-2">Start simulation to see strategy data.</p>
+                        <p className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant py-2">{t('liveData.noStrategyData')}</p>
                     )}
                 </DataCard>
 
@@ -313,7 +315,7 @@ export default function LiveData() {
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-[20px] text-primary">rss_feed</span>
-                        <h3 className="font-[Inter] text-[15px] font-semibold text-on-surface">Live Agent Event Stream</h3>
+                        <h3 className="font-[Inter] text-[15px] font-semibold text-on-surface">{t('liveData.logStream')}</h3>
                     </div>
                     <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">
                         {logs?.length || 0} events captured
@@ -329,7 +331,7 @@ export default function LiveData() {
                         ))
                     ) : (
                         <div className="flex items-center justify-center h-full text-on-surface-variant font-[JetBrains_Mono] text-[13px]">
-                            Waiting for agent events...
+                            {t('yield.waitingData')}
                         </div>
                     )}
                 </div>

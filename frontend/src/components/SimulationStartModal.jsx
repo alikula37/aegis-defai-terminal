@@ -1,6 +1,7 @@
 import { apiFetch } from '../lib/apiClient';
 import { useState, useEffect } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { useI18n } from '../i18n/I18nProvider';
 import { useModalA11y } from '../hooks/useModalA11y';
 
 const SCENARIOS = [
@@ -12,6 +13,7 @@ const SCENARIOS = [
 
 export default function SimulationStartModal({ isOpen, onClose, onStart }) {
     const { isStarting, executionStatus } = useWebSocket();
+    const { t } = useI18n();
     const [settings, setSettings] = useState({
         simulationName: '',
         initialBalance: '10000',
@@ -79,11 +81,11 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                     console.error("Failed to fetch settings:", err);
                     // Never leave a silently-broken form: surface the failure
                     // with a retry instead of an empty name + dead fields.
-                    setLoadError("Could not load your settings. Check the backend connection and try again.");
+                    setLoadError(t('startModal.loadError'));
                 })
                 .finally(() => setIsLoadingSettings(false));
         }
-    }, [isOpen, loadAttempt]);
+    }, [isOpen, loadAttempt, t]);
 
     // E10 — a11y: role=dialog + Esc + focus trap. Called unconditionally
     // (rules-of-hooks): the hook no-ops when isOpen is false.
@@ -107,10 +109,10 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
     const validate = () => {
         if (settings.dataMode !== 'SIM') {
             if (!systemConfig.rpcUrl && !configFlags.hasRpcUrl) {
-                return 'LIVE market data requires a Sepolia RPC URL — add one below or switch the Market Data Source to SIM (seeded scenario).';
+                return t('startModal.errLiveRpc');
             }
             if (!systemConfig.openRouterKey && !configFlags.hasOpenRouterKey) {
-                return 'LIVE market data requires an OpenRouter API key — add one below or switch the Market Data Source to SIM (seeded scenario).';
+                return t('startModal.errLiveKey');
             }
         }
         return null;
@@ -183,7 +185,7 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                 <div className="bg-surface-container border border-outline-variant rounded-xl p-6 w-full max-w-lg shadow-2xl relative">
                     <button
                         onClick={onClose}
-                        aria-label="Close start simulation dialog"
+                        aria-label={t('startModal.close')}
                         className="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface transition-colors"
                     >
                         <span className="material-symbols-outlined">close</span>
@@ -191,13 +193,13 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
 
                     <h2 id="start-modal-title" className="font-[Inter] text-[20px] font-semibold text-on-surface mb-6 flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary">play_circle</span>
-                        Start Simulation
+                        {t('startModal.title')}
                     </h2>
 
                     {isLoadingSettings ? (
                         <div className="py-10 flex flex-col items-center gap-3 text-on-surface-variant">
                             <span className="material-symbols-outlined text-[24px] animate-spin">progress_activity</span>
-                            <p className="font-[JetBrains_Mono] text-[12px]">Loading your settings…</p>
+                            <p className="font-[JetBrains_Mono] text-[12px]">{t('startModal.loading')}</p>
                         </div>
                     ) : loadError ? (
                         <div className="py-8 flex flex-col items-center gap-4 text-center">
@@ -208,60 +210,58 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                                 onClick={() => setLoadAttempt(a => a + 1)}
                                 className="px-4 py-2 rounded-md font-[JetBrains_Mono] text-[12px] bg-primary text-accent-contrast hover:brightness-110"
                             >
-                                Try again
+                                {t('common.retry')}
                             </button>
                         </div>
                     ) : (
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmit} noValidate className="space-y-4">
                     {executionStatus?.mode === 'onchain' && !executionStatus.ready && (
                         <div className="bg-error/10 border border-error/25 rounded-md px-3 py-2.5 flex items-start gap-2">
                             <span className="material-symbols-outlined text-error text-[18px] mt-0.5">warning</span>
                             <p className="text-[12px] leading-[16px] text-error">
-                                Onchain execution is <strong>not ready</strong> (no wallet configured). The agent will run
-                                read-only: it observes and records market data, but <strong>no trades will be broadcast</strong>.
-                                Configure <span className="font-[JetBrains_Mono]">EVM_PRIVATE_KEY</span> to enable live trades.
+                                {t('startModal.onchainNotReady')}
                             </p>
                         </div>
                     )}
 
                     {/* Simulation Name — auto-suggested unique (mage.ai style) */}
                     <div>
-                        <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Simulation Name</label>
+                        <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('startModal.nameLabel')}</label>
                         <div className="flex gap-2 items-center">
                             <input
                                 type="text"
                                 name="simulationName"
                                 value={settings.simulationName}
                                 onChange={handleChange}
-                                required
+                                aria-required="true"
                                 className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
                             />
                             <button
                                 type="button"
                                 onClick={refreshName}
                                 title="Generate a new unique name"
-                                aria-label="Generate a new unique simulation name"
+                                aria-label={t('startModal.refreshName')}
                                 className="shrink-0 px-3 py-2 rounded-md border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary transition-colors"
                             >
                                 <span className="material-symbols-outlined text-[18px]">refresh</span>
                             </button>
                         </div>
                         <p className="font-[JetBrains_Mono] text-[10px] text-on-surface-variant mt-1">
-                            Unique name suggested automatically — edit freely, the system keeps it per-user.
+                            {t('startModal.nameHint')}
                         </p>
                     </div>
 
                     {/* Market Data Source — selectable right at the start */}
                     <div>
-                        <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Market Data Source</label>
+                        <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('startModal.dataSourceLabel')}</label>
                         <select
                             name="dataMode"
                             value={settings.dataMode}
                             onChange={handleChange}
                             className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
                         >
-                            <option value="LIVE">LIVE — Real market data (DefiLlama, Morpho, Hyperliquid)</option>
-                            <option value="SIM">SIM — Seeded scenario (stress testing, no network)</option>
+                            <option value="LIVE">{t('startModal.liveOption')}</option>
+                            <option value="SIM">{t('startModal.simOption')}</option>
                         </select>
                         {settings.dataMode === 'SIM' && (
                             <select
@@ -275,8 +275,8 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                         )}
                         <p className="font-[JetBrains_Mono] text-[10px] text-on-surface-variant mt-1">
                             {modeIsLive
-                                ? 'LIVE uses real-time oracles and requires the API keys below.'
-                                : 'SIM uses deterministic scenarios for stress-testing the agent — no network or API keys needed.'}
+                                ? t('startModal.liveHint')
+                                : t('startModal.simHint')}
                         </p>
                     </div>
 
@@ -285,7 +285,7 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 text-on-surface">
                                 <span className="material-symbols-outlined text-primary text-[18px]">key</span>
-                                <h3 className="font-[Inter] text-[14px] font-semibold">Blockchain &amp; AI Keys</h3>
+                                <h3 className="font-[Inter] text-[14px] font-semibold">{t('startModal.keysTitle')}</h3>
                             </div>
                             <button
                                 type="button"
@@ -293,51 +293,45 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                                 className="font-[JetBrains_Mono] text-[11px] text-primary hover:underline flex items-center gap-1"
                             >
                                 <span className="material-symbols-outlined text-[14px]">help</span>
-                                {showKeyGuide ? 'Hide guide' : 'Where do I get these?'}
+                                {showKeyGuide ? t('startModal.keysGuideHide') : t('startModal.keysGuide')}
                             </button>
                         </div>
 
                         {showKeyGuide && (
                             <div className="bg-surface-container-lowest border border-outline-variant rounded-md p-3 space-y-2">
                                 <p className="font-[JetBrains_Mono] text-[11px] leading-[16px] text-on-surface-variant">
-                                    <strong className="text-on-surface">OpenRouter API Key</strong> — powers the agent's AI decisions.
-                                    Sign up at <a href="https://openrouter.ai" target="_blank" rel="noreferrer" className="text-primary hover:underline">openrouter.ai</a>,
-                                    open <span className="text-primary">Keys</span> and click <span className="text-primary">Create Key</span>
-                                    (format <span className="text-on-surface">sk-or-v1-...</span>). A few dollars of credit keeps the agent running.
+                                    {t('startModal.keysGuideOpenRouter', { link: <a key="l" href="https://openrouter.ai" target="_blank" rel="noreferrer" className="text-primary hover:underline">openrouter.ai</a>, format: <span key="f" className="text-on-surface">sk-or-v1-...</span> })}
                                 </p>
                                 <p className="font-[JetBrains_Mono] text-[11px] leading-[16px] text-on-surface-variant">
-                                    <strong className="text-on-surface">Sepolia RPC URL</strong> — reads blockchain data for LIVE mode.
-                                    Create a free app at <a href="https://www.alchemy.com/" target="_blank" rel="noreferrer" className="text-primary hover:underline">Alchemy</a> or
-                                    <a href="https://www.infura.io/" target="_blank" rel="noreferrer" className="text-primary hover:underline"> Infura</a>,
-                                    pick the <span className="text-primary">Sepolia</span> network and copy the HTTPS URL
-                                    (format <span className="text-on-surface">https://sepolia.infura.io/v3/YOUR_KEY</span>).
+                                    {t('startModal.keysGuideRpc', { alchemy: <a key="a" href="https://www.alchemy.com/" target="_blank" rel="noreferrer" className="text-primary hover:underline">Alchemy</a>, infura: <a key="i" href="https://www.infura.io/" target="_blank" rel="noreferrer" className="text-primary hover:underline">Infura</a>, format: <span key="f" className="text-on-surface">https://sepolia.infura.io/v3/YOUR_KEY</span> })}
                                 </p>
                                 <p className="font-[JetBrains_Mono] text-[11px] leading-[16px] text-on-surface-variant">
-                                    Keys are encrypted (AES-256-GCM) before storage. <strong className="text-on-surface">SIM</strong> mode needs neither.
+                                    {t('startModal.keysGuideEncrypted')}
                                 </p>
                             </div>
                         )}
 
                         <div>
                             <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">
-                                Sepolia RPC URL {configFlags.hasRpcUrl && <span className="text-success">· ✓ configured</span>}
+                                {t('startModal.rpcLabel')} {configFlags.hasRpcUrl && <span className="text-success">· ✓ {t('common.configured')}</span>}
                             </label>
                             <input
-                                type="url"
+                                type="text"
+                                inputMode="url"
                                 name="rpcUrl"
                                 value={systemConfig.rpcUrl}
                                 onChange={handleConfigChange}
                                 aria-required={liveMissingRpc || undefined}
-                                placeholder={configFlags.hasRpcUrl ? 'Leave empty to keep the stored URL' : 'https://sepolia.infura.io/v3/...'}
+                                placeholder={configFlags.hasRpcUrl ? t('startModal.rpcPlaceholderStored') : t('startModal.rpcPlaceholderEmpty')}
                                 className={`w-full bg-surface-variant border rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary ${liveMissingRpc ? 'border-error' : 'border-outline-variant'}`}
                             />
                             {liveMissingRpc && (
-                                <p className="font-[JetBrains_Mono] text-[10px] text-error mt-1">Required for LIVE market data.</p>
+                                <p className="font-[JetBrains_Mono] text-[10px] text-error mt-1">{t('startModal.keyRequiredHint')}</p>
                             )}
                         </div>
                         <div>
                             <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">
-                                OpenRouter API Key {configFlags.hasOpenRouterKey && <span className="text-success">· ✓ configured</span>}
+                                {t('startModal.keyLabel')} {configFlags.hasOpenRouterKey && <span className="text-success">· ✓ {t('common.configured')}</span>}
                             </label>
                             <input
                                 type="password"
@@ -345,23 +339,23 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                                 value={systemConfig.openRouterKey}
                                 onChange={handleConfigChange}
                                 aria-required={liveMissingKey || undefined}
-                                placeholder={configFlags.hasOpenRouterKey ? 'Leave empty to keep the stored key' : 'sk-or-v1-...'}
+                                placeholder={configFlags.hasOpenRouterKey ? t('startModal.keyPlaceholderStored') : t('startModal.keyPlaceholderEmpty')}
                                 className={`w-full bg-surface-variant border rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary ${liveMissingKey ? 'border-error' : 'border-outline-variant'}`}
                             />
                             {liveMissingKey && (
-                                <p className="font-[JetBrains_Mono] text-[10px] text-error mt-1">Required for LIVE market data.</p>
+                                <p className="font-[JetBrains_Mono] text-[10px] text-error mt-1">{t('startModal.keyRequiredHint')}</p>
                             )}
                         </div>
                     </div>
 
                     <div>
-                        <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Initial Virtual Balance (USD)</label>
+                        <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('startModal.initialBalance')}</label>
                         <input
                             type="number"
                             name="initialBalance"
                             value={settings.initialBalance}
                             onChange={handleChange}
-                            required
+                            aria-required="true"
                             min="100"
                             className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
                         />
@@ -369,44 +363,44 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Duration</label>
+                            <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('startModal.duration')}</label>
                             <select
                                 name="duration"
                                 value={settings.duration}
                                 onChange={handleChange}
                                 className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
                             >
-                                <option value="Continuous">Continuous (Manual Stop)</option>
-                                <option value="1 Hour">1 Hour</option>
-                                <option value="24 Hours">24 Hours</option>
+                                <option value="Continuous">{t('startModal.durationContinuous')}</option>
+                                <option value="1 Hour">{t('startModal.duration1h')}</option>
+                                <option value="24 Hours">{t('startModal.duration24h')}</option>
                             </select>
                         </div>
                         <div>
-                            <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Frequency</label>
+                            <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('startModal.frequency')}</label>
                             <select
                                 name="frequency"
                                 value={settings.frequency}
                                 onChange={handleChange}
                                 className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
                             >
-                                <option value="High">High (Aggressive Scanning)</option>
-                                <option value="Medium">Medium (Balanced)</option>
-                                <option value="Low">Low (Conservative Scanning)</option>
+                                <option value="High">{t('startModal.freqHigh')}</option>
+                                <option value="Medium">{t('startModal.freqMedium')}</option>
+                                <option value="Low">{t('startModal.freqLow')}</option>
                             </select>
                         </div>
                     </div>
 
                     <div>
-                        <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Risk Appetite</label>
+                        <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('startModal.riskAppetite')}</label>
                         <select
                             name="riskAppetite"
                             value={settings.riskAppetite}
                             onChange={handleChange}
                             className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
                         >
-                            <option value="Conservative">Conservative (Deleverage &lt; 1.30 HF)</option>
-                            <option value="Balanced">Balanced (Deleverage &lt; 1.21 HF)</option>
-                            <option value="Aggressive">Aggressive (Deleverage &lt; 1.10 HF)</option>
+                            <option value="Conservative">{t('startModal.riskConservative')}</option>
+                            <option value="Balanced">{t('startModal.riskBalanced')}</option>
+                            <option value="Aggressive">{t('startModal.riskAggressive')}</option>
                         </select>
                     </div>
 
@@ -418,29 +412,29 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                             className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant hover:text-on-surface flex items-center gap-1"
                         >
                             <span className="material-symbols-outlined text-[14px]">{showAdvanced ? 'expand_less' : 'expand_more'}</span>
-                            Advanced
+                            {t('startModal.advanced')}
                         </button>
                         {showAdvanced && (
                             <div className="mt-3 space-y-4">
                                 <div>
-                                    <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Random Seed (optional)</label>
+                                    <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('startModal.seedLabel')}</label>
                                     <input
                                         type="text"
                                         name="seed"
                                         value={settings.seed}
                                         onChange={handleChange}
-                                        placeholder="Same seed → same market events (deterministic)"
+                                        placeholder={t('startModal.seedPlaceholder')}
                                         className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Active LLM Model</label>
+                                    <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('startModal.modelLabel')}</label>
                                     <input
                                         type="text"
                                         name="activeModel"
                                         value={settings.activeModel}
                                         onChange={handleChange}
-                                        placeholder="e.g. google/gemini-2.5-flash-exp:free"
+                                        placeholder={t('startModal.modelPlaceholder')}
                                         className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
                                     />
                                 </div>
@@ -452,11 +446,11 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                         <div className="mt-4 p-3 bg-error-container text-on-error-container rounded-md text-[13px] font-[Inter]">
                             <div className="flex items-center gap-2 mb-1">
                                 <span className="material-symbols-outlined text-[16px]">error</span>
-                                <strong>Error:</strong> {error}
+                                <strong>{t('startModal.error')}</strong> {error}
                             </div>
                             {suggestedName && (
                                 <div className="mt-2">
-                                    Suggested name: <strong>{suggestedName}</strong>
+                                    {t('startModal.suggestedName')} <strong>{suggestedName}</strong>
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -479,7 +473,7 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                         className="w-full py-2.5 mt-4 rounded-md font-[JetBrains_Mono] text-[14px] font-[510] transition-colors flex items-center justify-center gap-2 bg-linear-to-r from-[#0f8a7e] via-[#17c3b2] to-[#7ff0e3] text-accent-contrast hover:brightness-110 disabled:opacity-50"
                     >
                         <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
-                        {isStarting ? 'Starting...' : isSaving ? 'Saving & Launching...' : 'Launch Agent'}
+                        {isStarting ? t('startModal.starting') : isSaving ? t('startModal.savingLaunching') : t('startModal.launch')}
                     </button>
                         </form>
                     )}

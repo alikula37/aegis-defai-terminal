@@ -2,6 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SimulationStartModal from '../components/SimulationStartModal';
 
+vi.mock('../i18n/I18nProvider', async () => {
+    const en = (await import('../i18n/messages.en.js')).default;
+    const api = { t: (k, vars) => { let s = en[k] ?? k; if (vars) s = String(s).replace(/\{(\w+)\}/g, (m, n) => vars[n] !== undefined ? String(vars[n]) : m); return s; }, lang: 'en', setLang: () => {} };
+    return { useI18n: () => api };
+});
+
 const apiFetch = vi.fn();
 
 vi.mock('../lib/apiClient', () => ({
@@ -153,7 +159,7 @@ describe('SimulationStartModal', () => {
         // Retry re-runs the fetches and recovers.
         apiFetch.mockReset();
         mockRoutes();
-        fireEvent.click(screen.getByRole('button', { name: /Try again/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Retry/i }));
         await waitFor(() => {
             expect(screen.getByDisplayValue('sim_1a2b3c4d')).not.toBeNull();
         });

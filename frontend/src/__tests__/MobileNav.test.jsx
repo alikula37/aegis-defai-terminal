@@ -2,6 +2,11 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import MobileNav from '../components/MobileNav';
+vi.mock('../i18n/I18nProvider', async () => {
+    const en = (await import('../i18n/messages.en.js')).default;
+    const api = { t: (k) => en[k] ?? k, lang: 'en', setLang: () => {} };
+    return { useI18n: () => api };
+});
 
 vi.mock('../contexts/WebSocketContext', () => ({
     useWebSocket: () => ({}),
@@ -36,7 +41,7 @@ describe('MobileNav (E10)', () => {
         for (const label of ['Overview', 'Yield Strategies', 'Live Data', 'AI Agent Logs', 'Settings']) {
             expect(screen.getByText(label)).toBeInTheDocument();
         }
-        expect(screen.getByLabelText('Close navigation')).toBeInTheDocument();
+        expect(screen.getByLabelText('Close')).toBeInTheDocument();
     });
 
     it('closes on Escape', () => {

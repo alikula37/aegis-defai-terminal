@@ -13,6 +13,11 @@ vi.mock('../lib/apiClient', () => ({
 }));
 
 import { apiFetch } from '../lib/apiClient';
+vi.mock('../i18n/I18nProvider', async () => {
+    const en = (await import('../i18n/messages.en.js')).default;
+    const api = { t: (k) => en[k] ?? k, lang: 'en', setLang: () => {} };
+    return { useI18n: () => api };
+});
 
 const DECISION_LOG = {
     timestamp: '2026-08-14T10:00:00.000Z',

@@ -2,11 +2,13 @@ import { apiFetch, fetchJson } from '../lib/apiClient';
 import { useState, useEffect } from 'react';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { useToast } from '../contexts/ToastContext';
+import { useI18n } from '../i18n/I18nProvider';
 import { safeFormatDateTime } from '../lib/timeFormat';
 import ConfirmDialog from './ConfirmDialog';
 
 export default function SimulationResumeModal({ isOpen, onClose, onResume }) {
     const toast = useToast();
+    const { t } = useI18n();
     const [pendingDeleteId, setPendingDeleteId] = useState(null);
     // While the delete confirmation is open it owns Escape (the ConfirmDialog
     // is rendered inside this modal's subtree, so both a11y hooks would
@@ -28,11 +30,11 @@ export default function SimulationResumeModal({ isOpen, onClose, onResume }) {
                 })
                 .catch(err => {
                     console.error("Failed to fetch simulations:", err);
-                    setLoadError('Could not load simulations — check the backend connection.');
+                    setLoadError(t('resume.loadFailed'));
                 })
                 .finally(() => setIsLoading(false));
         }
-    }, [isOpen]);
+    }, [isOpen, t]);
 
     const handleDelete = async (id) => {
         setIsLoading(true);
@@ -46,14 +48,14 @@ export default function SimulationResumeModal({ isOpen, onClose, onResume }) {
                 if (selectedSimId === id) {
                     setSelectedSimId(newSims.length > 0 ? newSims[0].id : null);
                 }
-                toast.success('Simulation deleted');
+                toast.success(t('toast.simDeleted'));
             } else {
                 const errData = await res.json();
-                toast.error(`Failed to delete simulation: ${errData.error || 'Unknown error'}`);
+                toast.error(t('toast.failedToDelete', { error: errData.error || 'Unknown error' }));
             }
         } catch (error) {
             console.error('Failed to delete simulation:', error);
-            toast.error(`Failed to delete simulation: ${error.message}`);
+            toast.error(t('toast.failedToDelete', { error: error.message }));
         } finally {
             setIsLoading(false);
         }
@@ -65,7 +67,7 @@ export default function SimulationResumeModal({ isOpen, onClose, onResume }) {
         <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="resume-modal-title" className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
             <div className="bg-surface-container border border-outline-variant rounded-xl p-6 max-w-md w-full shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
-                    <h2 id="resume-modal-title" className="font-[Inter] text-[20px] font-bold text-on-surface">Resume Simulation</h2>
+                    <h2 id="resume-modal-title" className="font-[Inter] text-[20px] font-bold text-on-surface">{t('resume.title')}</h2>
                     <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">
                         <span className="material-symbols-outlined">close</span>
                     </button>
@@ -81,7 +83,7 @@ export default function SimulationResumeModal({ isOpen, onClose, onResume }) {
                         {loadError}
                     </p>
                 ) : simulations.length === 0 ? (
-                    <p className="text-center text-on-surface-variant py-4 font-[JetBrains_Mono] text-[14px]">No simulations found.</p>
+                    <p className="text-center text-on-surface-variant py-4 font-[JetBrains_Mono] text-[14px]">{t('resume.noSims')}</p>
                 ) : (
                     <div className="space-y-4 mb-6 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-outline-variant">
                         {simulations.map(sim => (
@@ -111,7 +113,7 @@ export default function SimulationResumeModal({ isOpen, onClose, onResume }) {
                                             setPendingDeleteId(sim.id);
                                         }}
                                         className="text-on-surface-variant hover:text-error transition-colors p-1 flex items-center justify-center rounded-full hover:bg-error/10"
-                                        title="Delete Simulation"
+                                        title={t('resume.deleteTitle')}
                                     >
                                         <span className="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
@@ -126,22 +128,22 @@ export default function SimulationResumeModal({ isOpen, onClose, onResume }) {
                         onClick={onClose}
                         className="flex-1 py-2 rounded-md font-[Inter] text-[14px] font-medium border border-outline-variant text-on-surface hover:bg-surface-container-highest transition-colors"
                     >
-                        Cancel
+                        {t('common.cancel')}
                     </button>
                     <button
                         onClick={() => onResume(selectedSimId)}
                         disabled={!selectedSimId || isLoading}
                         className="flex-1 py-2 rounded-md font-[Inter] text-[14px] font-medium bg-primary text-on-primary hover:bg-primary-fixed hover:text-on-primary-fixed transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Resume
+                        {t('resume.resume')}
                     </button>
                 </div>
             </div>
             <ConfirmDialog
                 isOpen={pendingDeleteId !== null}
-                title="Delete this simulation?"
-                message="All its portfolio, logs and decisions will be permanently removed. This cannot be undone."
-                confirmLabel="Delete"
+                title={t('confirm.deleteSimTitle')}
+                message={t('confirm.deleteSimMsg')}
+                confirmLabel={t('common.delete')}
                 onCancel={() => setPendingDeleteId(null)}
                 onConfirm={() => {
                     const id = pendingDeleteId;

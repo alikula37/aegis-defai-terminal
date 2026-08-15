@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import StrategyMarketplace from '../components/StrategyMarketplace';
 import AutomationParameters from '../components/AutomationParameters';
@@ -6,9 +5,11 @@ import TransactionAnalytics from '../components/TransactionAnalytics';
 import PortfolioAllocationChart from '../components/PortfolioAllocationChart';
 import PointsTracker from '../components/PointsTracker';
 import CrossChainArbitrage from '../components/CrossChainArbitrage';
+import { useI18n } from '../i18n/I18nProvider';
 
 export default function YieldStrategies() {
     const { portfolioData: liveData, isSimulationRunning, hasData, setIsStartModalOpen, setIsResumeModalOpen } = useWebSocket();
+    const { t } = useI18n();
 
     // Real data only — never fall back to fabricated strategy rows.
     const strategies = liveData?.strategies?.length > 0 ? liveData.strategies : [];
@@ -22,9 +23,9 @@ export default function YieldStrategies() {
                     <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
                         <span className="material-symbols-outlined text-primary text-3xl">rocket_launch</span>
                     </div>
-                    <h2 className="font-[Inter] text-[24px] font-bold text-on-surface mb-2">Simulation Idle</h2>
+                    <h2 className="font-[Inter] text-[24px] font-bold text-on-surface mb-2">{t('yield.idleTitle')}</h2>
                     <p className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant mb-8">
-                        The AI agent is currently idle. Start the simulation to view live portfolio metrics and agent activity.
+                        {t('yield.idleMsg')}
                     </p>
                     <div className="flex gap-4 max-w-sm mx-auto">
                         <button
@@ -32,14 +33,14 @@ export default function YieldStrategies() {
                             className="flex-1 py-3 rounded-md font-[JetBrains_Mono] text-[14px] font-medium transition-colors flex items-center justify-center gap-2 bg-primary text-on-primary hover:bg-primary-fixed hover:text-on-primary-fixed"
                         >
                             <span className="material-symbols-outlined text-[18px]">play_circle</span>
-                            Start New
+                            {t('nav.startNew')}
                         </button>
                         <button
                             onClick={() => setIsResumeModalOpen(true)}
                             className="flex-1 py-3 rounded-md font-[JetBrains_Mono] text-[14px] font-medium transition-colors flex items-center justify-center gap-2 border border-primary text-primary hover:bg-primary/10"
                         >
                             <span className="material-symbols-outlined text-[18px]">restore</span>
-                            Resume
+                            {t('nav.resume')}
                         </button>
                     </div>
                 </div>
@@ -59,29 +60,29 @@ export default function YieldStrategies() {
 
     const yieldMetrics = [
         {
-            label: 'Total Value Locked',
+            label: t('yield.tvl'),
             value: totalValueLocked,
             glowColor: 'bg-primary/5 group-hover:bg-primary/10',
             valueColor: 'text-on-surface',
-            sub: { icon: 'trending_up', text: 'Live Agent Capital', color: 'text-success' },
+            sub: { icon: 'trending_up', text: t('yield.tvlSub'), color: 'text-success' },
             bar: null,
         },
         {
-            label: 'Net APY',
+            label: t('yield.netApy'),
             value: netApy,
             glowColor: 'bg-success/5 group-hover:bg-success/10',
             valueColor: Number(liveData?.netApy) > 0 ? 'text-success' : 'text-error',
-            sub: { icon: 'info', text: 'Aggregated return', color: 'text-on-surface-variant' },
+            sub: { icon: 'info', text: t('yield.netApySub'), color: 'text-on-surface-variant' },
             bar: null,
         },
         {
-            label: 'Active Agents',
+            label: t('yield.activeAgents'),
             value: activeAgents,
             glowColor: 'bg-tertiary-container/5 group-hover:bg-tertiary-container/10',
             valueColor: 'text-on-surface',
             sub: null,
             bar: true,
-            suffix: 'Running',
+            suffix: t('yield.running'),
         },
     ];
 
@@ -92,19 +93,19 @@ export default function YieldStrategies() {
                 <div className="flex items-center gap-6 bg-surface-container border border-outline-variant rounded-md p-4">
                     <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary">lan</span>
-                        <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">Active Chain:</span>
+                        <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">{t('yield.activeChain')}</span>
                         <span className="font-bold text-on-surface">{liveData?.activeChain || '—'}</span>
                     </div>
                     <div className="w-px h-6 bg-outline-variant"></div>
                     <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary">account_balance</span>
-                        <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">Active Protocol:</span>
+                        <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">{t('yield.activeProtocol')}</span>
                         <span className="font-bold text-on-surface">{liveData?.activeProtocol || '—'}</span>
                     </div>
                     <div className="w-px h-6 bg-outline-variant"></div>
                     <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary">monitoring</span>
-                        <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">Current Leverage:</span>
+                        <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">{t('yield.currentLeverage')}</span>
                         <span className="font-bold text-on-surface">{liveData?.leverage != null ? `${liveData.leverage}x` : '—'}</span>
                     </div>
                 </div>

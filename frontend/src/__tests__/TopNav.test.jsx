@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import TopNav from '../components/TopNav';
+vi.mock('../i18n/I18nProvider', async () => {
+    const en = (await import('../i18n/messages.en.js')).default;
+    const api = { t: (k) => en[k] ?? k, lang: 'en', setLang: () => {} };
+    return { useI18n: () => api };
+});
 
 const mockLocation = { pathname: '/yield-strategies' };
 let mockWs;

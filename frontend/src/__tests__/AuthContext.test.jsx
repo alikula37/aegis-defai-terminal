@@ -3,6 +3,11 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import LoginPage from '../pages/LoginPage';
 import { fetchJson } from '../lib/apiClient';
+vi.mock('../i18n/I18nProvider', async () => {
+    const en = (await import('../i18n/messages.en.js')).default;
+    const api = { t: (k) => en[k] ?? k, lang: 'en', setLang: () => {} };
+    return { useI18n: () => api };
+});
 
 vi.mock('../lib/apiClient', () => ({
     apiFetch: vi.fn(async () => ({ ok: true, status: 200 })),

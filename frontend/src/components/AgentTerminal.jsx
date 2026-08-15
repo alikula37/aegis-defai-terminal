@@ -2,10 +2,7 @@ import { apiFetch } from '../lib/apiClient';
 import { useState, useEffect, useRef } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { safeFormatTime } from '../lib/timeFormat';
-
-const INITIAL_LOGS = [
-    { time: '--:--:--', text: '🤖 Agent system initialized. Waiting for backend connection...', color: 'text-on-surface-variant' }
-];
+import { useI18n } from '../i18n/I18nProvider';
 
 const typeColorMap = {
     scan: 'text-on-surface',
@@ -40,27 +37,31 @@ function normalizeLog(logData) {
 }
 
 function ReasoningPanel({ reasoning }) {
+    const { t } = useI18n();
     if (!reasoning) return null;
     return (
         <div className="mt-1.5 ml-5 pl-3 border-l border-outline-variant bg-surface-variant/30 rounded-r-md px-2 py-1.5 text-[11px] leading-[16px]">
-            <div className="text-on-surface-variant"><span className="text-cyan-300/70">situation:</span> {reasoning.situation}</div>
-            <div className="text-on-surface-variant"><span className="text-cyan-300/70">analysis:</span> {reasoning.analysis}</div>
+            <div className="text-on-surface-variant"><span className="text-cyan-300/70">{t('terminal.situation')}</span> {reasoning.situation}</div>
+            <div className="text-on-surface-variant"><span className="text-cyan-300/70">{t('terminal.analysis')}</span> {reasoning.analysis}</div>
             {Array.isArray(reasoning.alternatives) && reasoning.alternatives.length > 0 && (
                 <div className="text-on-surface-variant">
-                    <span className="text-cyan-300/70">alternatives:</span>
+                    <span className="text-cyan-300/70">{t('terminal.alternatives')}</span>
                     <ul className="list-disc list-inside ml-1">
                         {reasoning.alternatives.map((alt, i) => <li key={i}>{alt}</li>)}
                     </ul>
                 </div>
             )}
-            <div className="text-on-surface-variant"><span className="text-cyan-300/70">chosen:</span> {reasoning.chosen}</div>
+            <div className="text-on-surface-variant"><span className="text-cyan-300/70">{t('terminal.chosen')}</span> {reasoning.chosen}</div>
         </div>
     );
 }
 
 export default function AgentTerminal() {
+    const { t } = useI18n();
     const { agentLogs: wsLogs, isConnected: connected } = useWebSocket();
-    const [logs, setLogs] = useState(INITIAL_LOGS);
+    const [logs, setLogs] = useState(() => [
+        { time: '--:--:--', text: t('terminal.initial'), color: 'text-on-surface-variant' }
+    ]);
     const bottomRef = useRef(null);
     const seenKeys = useRef(new Set());
 
@@ -108,10 +109,10 @@ export default function AgentTerminal() {
         <div className="bg-background border border-outline rounded-lg flex flex-col overflow-hidden">
             <div className="bg-surface-container-highest px-4 py-2 border-b border-outline-variant flex items-center gap-2">
                 <span className="material-symbols-outlined text-on-surface-variant text-[16px]">terminal</span>
-                <h3 className="font-[JetBrains_Mono] text-[13px] leading-[16px] font-medium text-on-surface">AI Agent Execution Logs</h3>
+                <h3 className="font-[JetBrains_Mono] text-[13px] leading-[16px] font-medium text-on-surface">{t('terminal.title')}</h3>
                 <div className={`ml-auto inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-[JetBrains_Mono] uppercase tracking-wider ${connected ? 'bg-success/10 border-success/20 text-success' : 'bg-surface-variant border-outline-variant text-on-surface-variant'}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-success' : 'bg-outline'}`}></span>
-                    {connected ? 'WS' : 'OFF'}
+                    {connected ? t('terminal.ws') : t('terminal.off')}
                 </div>
             </div>
             <div className="p-4 font-[JetBrains_Mono] text-[12px] leading-[18px] text-on-surface-variant h-72 overflow-y-auto flex flex-col gap-2">
@@ -126,7 +127,7 @@ export default function AgentTerminal() {
                 ))}
                 {connected && (
                     <div ref={bottomRef} className="flex gap-3 p-1 mt-2 items-center">
-                        <span className="text-outline shrink-0">[Live]</span>
+                        <span className="text-outline shrink-0">[{t('terminal.live')}]</span>
                         <span className="w-2 h-4 bg-primary/70 animate-pulse inline-block"></span>
                     </div>
                 )}

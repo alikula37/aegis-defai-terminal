@@ -2,10 +2,12 @@ import { apiFetch } from '../lib/apiClient';
 import { useState, useEffect, useRef } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { safeFormatTime } from '../lib/timeFormat';
+import { useI18n } from '../i18n/I18nProvider';
 
 const LOG_TYPES = ['All', 'scan', 'flash_loan', 'rebalance', 'claim', 'alert', 'system'];
 
 export default function AIAgentLogs() {
+    const { t } = useI18n();
     const { agentLogs: wsLogs, isConnected: connected } = useWebSocket();
     const [logs, setLogs] = useState([]);
     const [filterType, setFilterType] = useState('All');
@@ -21,12 +23,13 @@ export default function AIAgentLogs() {
             .then(data => setLogs(Array.isArray(data) ? data : []))
             .catch(err => {
                 console.error("Failed to fetch logs:", err);
-                setLoadError("Could not load the agent logs — check the backend connection.");
+                setLoadError(t('logs.loadFailed'));
             });
     };
 
     useEffect(() => {
         loadHistory();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // WebSocket for live logs
@@ -72,10 +75,10 @@ export default function AIAgentLogs() {
             {/* Header + Filters */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div className="flex items-center gap-3">
-                    <h2 className="font-[Inter] text-[20px] leading-[28px] font-semibold text-on-surface">Agent Execution Logs</h2>
+                    <h2 className="font-[Inter] text-[20px] leading-[28px] font-semibold text-on-surface">{t('logs.title')}</h2>
                     <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-[JetBrains_Mono] uppercase tracking-wider ${connected ? 'bg-success/10 border-success/20 text-success' : 'bg-surface-variant border-outline-variant text-on-surface-variant'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-success' : 'bg-outline'}`}></span>
-                        {connected ? 'Live' : 'Offline'}
+                        {connected ? t('logs.live') : t('logs.offline')}
                     </div>
                 </div>
                 <div className="flex gap-2 items-center flex-wrap">
@@ -90,9 +93,9 @@ export default function AIAgentLogs() {
                         onChange={e => setFilterType(e.target.value)}
                         className="bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5 text-on-surface text-[13px] font-[JetBrains_Mono] outline-none focus:border-primary transition-colors"
                     >
-                        {LOG_TYPES.map(t => <option key={t} value={t}>{t === 'All' ? 'All Types' : t.replace('_', ' ').toUpperCase()}</option>)}
+                        {LOG_TYPES.map(type => <option key={type} value={type}>{type === 'All' ? t('logs.allTypes') : type.replace('_', ' ').toUpperCase()}</option>)}
                     </select>
-                    <span className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant">{filtered.length} entries</span>
+                    <span className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant">{t('logs.entries', { count: filtered.length })}</span>
                 </div>
             </div>
 
@@ -100,7 +103,7 @@ export default function AIAgentLogs() {
             <div className="flex-1 bg-[#020617] border border-outline-variant rounded-md flex flex-col overflow-hidden min-h-0">
                 <div className="bg-surface-container-highest px-4 py-2 border-b border-outline-variant flex items-center gap-2 shrink-0">
                     <span className="material-symbols-outlined text-on-surface-variant text-[16px]">terminal</span>
-                    <span className="font-[JetBrains_Mono] text-[13px] font-medium text-on-surface">aegis-defai-agent</span>
+                    <span className="font-[JetBrains_Mono] text-[13px] font-medium text-on-surface">{t('logs.agentName')}</span>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 font-[JetBrains_Mono] text-[12px] leading-[20px] flex flex-col gap-1">
                     {loadError && (
@@ -111,7 +114,7 @@ export default function AIAgentLogs() {
                                 onClick={loadHistory}
                                 className="px-3 py-1 rounded-md border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors"
                             >
-                                Retry
+                                {t('common.retry')}
                             </button>
                         </div>
                     )}
@@ -124,7 +127,7 @@ export default function AIAgentLogs() {
                     ))}
                     {connected && (
                         <div ref={bottomRef} className="flex gap-3 px-2 py-1 mt-1 items-center">
-                            <span className="text-outline shrink-0">[Live]</span>
+                            <span className="text-outline shrink-0">[{t('terminal.live')}]</span>
                             <span className="w-2 h-4 bg-primary/70 animate-pulse inline-block"></span>
                         </div>
                     )}

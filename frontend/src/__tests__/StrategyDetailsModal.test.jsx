@@ -2,6 +2,11 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import StrategyDetailsModal from '../components/StrategyDetailsModal';
 import { deriveStrategyBreakdown, deriveAgentTimeline } from '../components/strategyDetailsLogic';
+vi.mock('../i18n/I18nProvider', async () => {
+    const en = (await import('../i18n/messages.en.js')).default;
+    const api = { t: (k) => en[k] ?? k, lang: 'en', setLang: () => {} };
+    return { useI18n: () => api };
+});
 
 const mockWs = { portfolioData: null, agentLogs: [] };
 vi.mock('../contexts/WebSocketContext', () => ({

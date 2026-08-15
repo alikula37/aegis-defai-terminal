@@ -1,16 +1,18 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { useI18n } from '../i18n/I18nProvider';
 
 const COLORS = ['#17c3b2', '#27a644', '#8b5cf6', '#f5a623', '#eb5757'];
 
 export default function PortfolioAllocationChart() {
+    const { t } = useI18n();
     const { portfolioData } = useWebSocket();
     const strategies = portfolioData?.strategies || [];
 
     if (strategies.length === 0) {
         return (
             <div className="bg-surface-container border border-outline-variant rounded-xl p-5 flex flex-col h-full min-h-[300px] items-center justify-center">
-                <p className="text-on-surface-variant font-[JetBrains_Mono] text-[13px]">No strategy data available.</p>
+                <p className="text-on-surface-variant font-[JetBrains_Mono] text-[13px]">{t('alloc.noData')}</p>
             </div>
         );
     }
@@ -30,13 +32,13 @@ export default function PortfolioAllocationChart() {
                 <div className="bg-surface-container-high border border-outline-variant p-3 rounded-lg shadow-xl">
                     <p className="text-on-surface font-bold text-[13px] mb-1">{data.name}</p>
                     <p className="text-on-surface-variant text-[12px] font-[JetBrains_Mono]">
-                        TVL: ${data.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {t('alloc.tvl')} ${data.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                     <p className="text-on-surface-variant text-[12px] font-[JetBrains_Mono]">
-                        Allocation: {percent}%
+                        {t('alloc.allocation')} {percent}%
                     </p>
                     <p className="text-primary text-[12px] font-[JetBrains_Mono]">
-                        APY: {data.apy.toFixed(2)}%
+                        {t('alloc.apy')} {data.apy.toFixed(2)}%
                     </p>
                 </div>
             );
@@ -48,7 +50,7 @@ export default function PortfolioAllocationChart() {
         <div className="bg-surface-container border border-outline-variant rounded-xl p-5 flex flex-col h-full">
             <h3 className="font-[Inter] text-[16px] font-semibold text-on-surface mb-4 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[20px] text-primary">pie_chart</span>
-                Portfolio Allocation
+                {t('alloc.portfolioAllocation')}
             </h3>
             <div className="flex-1 min-h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">

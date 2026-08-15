@@ -4,6 +4,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     ScatterChart, Scatter, ZAxis, Cell
 } from 'recharts';
+import { useI18n } from '../i18n/I18nProvider';
 
 function fmtTime(iso) {
     const d = new Date(iso);
@@ -11,6 +12,7 @@ function fmtTime(iso) {
 }
 
 export default function TransactionAnalytics() {
+    const { t } = useI18n();
     const [transactions, setTransactions] = useState([]);
     const [portfolioStats, setPortfolioStats] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -53,10 +55,10 @@ export default function TransactionAnalytics() {
             })
             .catch(err => {
                 console.error('Failed to fetch analytics data:', err);
-                setLoadError('Could not load transaction analytics — check the backend connection.');
+                setLoadError(t('txn.loadFailed'));
             })
             .finally(() => setIsLoading(false));
-    }, []);
+    }, [t]);
 
     if (isLoading) {
         return (
@@ -79,7 +81,7 @@ export default function TransactionAnalytics() {
         return (
             <div className="bg-surface-container border border-outline-variant rounded-xl p-6 flex flex-col items-center justify-center min-h-[300px]">
                 <span className="material-symbols-outlined text-on-surface-variant text-4xl mb-2">analytics</span>
-                <p className="font-[JetBrains_Mono] text-sm text-on-surface-variant">No transactions recorded yet.</p>
+                <p className="font-[JetBrains_Mono] text-sm text-on-surface-variant">{t('txn.noData')}</p>
             </div>
         );
     }
@@ -94,26 +96,26 @@ export default function TransactionAnalytics() {
                 </p>
                 <p className="font-[Inter] text-[13px] text-on-surface mb-2">{data.action}</p>
                 <div className="flex justify-between items-center gap-4">
-                    <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">Status:</span>
+                    <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">{t('market.status')}:</span>
                     <span className={`font-[Inter] text-[13px] font-bold ${data.isSuccessful ? 'text-success' : 'text-error'}`}>
-                        {data.isSuccessful ? 'Executed (Closed)' : 'Executed (Net Loss)'}
+                        {data.isSuccessful ? t('txn.executedClosed') : t('txn.executedLoss')}
                     </span>
                 </div>
                 <div className="flex justify-between items-center gap-4">
-                    <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">Est. Tx Impact:</span>
+                    <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">{t('txn.estImpact')}</span>
                     <span className={`font-[Inter] text-[13px] font-bold ${Number(data.pnl) >= 0 ? 'text-success' : 'text-error'}`}>
                         ${Number(data.pnl ?? 0).toFixed(2)}
                     </span>
                 </div>
                 <div className="flex justify-between items-center gap-4">
-                    <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">Net APY:</span>
+                    <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">{t('txn.netApy')}</span>
                     <span className="font-[Inter] text-[13px] font-bold text-primary">
                         {Number(data.netApy ?? 0).toFixed(2)}%
                     </span>
                 </div>
                 {data.pnl < 0 && (
                     <p className="font-[Inter] text-[10px] text-on-surface-variant mt-2 pt-2 border-t border-white/10 leading-tight">
-                        * Reflects immediate execution costs (gas/bridge fees), not a loss on deployed capital. This transaction is completed.
+                        {t('txn.impactNote')}
                     </p>
                 )}
             </div>
@@ -137,25 +139,25 @@ export default function TransactionAnalytics() {
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-[1rem]">
                 <div className="bg-surface-container border border-outline-variant rounded-xl p-5 flex flex-col justify-center">
-                    <span className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Total Yield Accrued</span>
+                    <span className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('txn.totalYield')}</span>
                     <span className={`font-[Inter] text-[24px] font-bold ${totalYieldAccrued >= 0 ? 'text-success' : 'text-error'}`}>
                         {formatCurrency(totalYieldAccrued)}
                     </span>
-                    <span className="font-[Inter] text-[11px] text-on-surface-variant mt-1">Realized portfolio growth</span>
+                    <span className="font-[Inter] text-[11px] text-on-surface-variant mt-1">{t('txn.realizedGrowth')}</span>
                 </div>
                 <div className="bg-surface-container border border-outline-variant rounded-xl p-5 flex flex-col justify-center">
-                    <span className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Total Execution Costs</span>
+                    <span className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('txn.executionCosts')}</span>
                     <span className="font-[Inter] text-[24px] font-bold text-error">
                         -${Math.abs(totalTxCosts).toFixed(2)}
                     </span>
-                    <span className="font-[Inter] text-[11px] text-on-surface-variant mt-1">Gas, bridge fees & rebalances</span>
+                    <span className="font-[Inter] text-[11px] text-on-surface-variant mt-1">{t('txn.executionCostsSub')}</span>
                 </div>
                 <div className="bg-surface-container border border-outline-variant rounded-xl p-5 flex flex-col justify-center">
-                    <span className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Estimated Value Created</span>
+                    <span className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('txn.valueCreated')}</span>
                     <span className="font-[Inter] text-[24px] font-bold text-success">
                         +${totalTxProfits.toFixed(2)}
                     </span>
-                    <span className="font-[Inter] text-[11px] text-on-surface-variant mt-1">Projected savings & arb profits</span>
+                    <span className="font-[Inter] text-[11px] text-on-surface-variant mt-1">{t('txn.valueCreatedSub')}</span>
                 </div>
             </div>
 
@@ -164,7 +166,7 @@ export default function TransactionAnalytics() {
                 <div className="bg-surface-container border border-outline-variant rounded-xl p-6">
                     <h3 className="font-[Inter] text-[16px] font-semibold text-on-surface mb-6 flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary">bar_chart</span>
-                        Estimated Transaction Impact (PnL)
+                        {t('txn.impactTitle')}
                     </h3>
                     <div className="h-[250px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -187,7 +189,7 @@ export default function TransactionAnalytics() {
                 <div className="bg-surface-container border border-outline-variant rounded-xl p-6">
                     <h3 className="font-[Inter] text-[16px] font-semibold text-on-surface mb-6 flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary">scatter_plot</span>
-                        Yield Rate at Transaction
+                        {t('txn.yieldRateAtTx')}
                     </h3>
                     <div className="h-[250px] w-full">
                         <ResponsiveContainer width="100%" height="100%">

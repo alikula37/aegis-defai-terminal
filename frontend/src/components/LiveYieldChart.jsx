@@ -5,6 +5,7 @@ import {
     Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { useI18n } from '../i18n/I18nProvider';
 
 // ---- Helpers ----
 function fmtTime(iso) {
@@ -55,26 +56,30 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 // ---- Legend item ----
-const ChartLegend = ({ series }) => (
-    <div className="flex flex-wrap gap-x-5 gap-y-1 mt-1">
-        {series.map(s => (
-            <span key={s.key} className="flex items-center gap-1.5 font-[JetBrains_Mono] text-[11px] text-on-surface-variant">
-                <span className="w-3 h-0.5 inline-block rounded" style={{ backgroundColor: s.color }}></span>
-                {s.label}
-            </span>
-        ))}
-    </div>
-);
+const ChartLegend = ({ series }) => {
+    const { t } = useI18n();
+    return (
+        <div className="flex flex-wrap gap-x-5 gap-y-1 mt-1">
+            {series.map(s => (
+                <span key={s.key} className="flex items-center gap-1.5 font-[JetBrains_Mono] text-[11px] text-on-surface-variant">
+                    <span className="w-3 h-0.5 inline-block rounded" style={{ backgroundColor: s.color }}></span>
+                    {t(s.labelKey)}
+                </span>
+            ))}
+        </div>
+    );
+};
 
 const SERIES = [
-    { key: 'netApy', label: 'Net APY (Leveraged)', color: '#17c3b2' },
-    { key: 'pendleApy', label: 'Pendle PT Fixed', color: '#27a644' },
-    { key: 'morphoBorrow', label: 'Morpho Borrow Cost', color: '#eb5757' },
+    { key: 'netApy', labelKey: 'chart.netApyLeveraged', color: '#17c3b2' },
+    { key: 'pendleApy', labelKey: 'chart.pendleFixed', color: '#27a644' },
+    { key: 'morphoBorrow', labelKey: 'chart.morphoBorrow', color: '#eb5757' },
 ];
 
 const MAX_POINTS = 1000; // Keep up to 1000 data points in memory
 
 export default function LiveYieldChart() {
+    const { t } = useI18n();
     const { portfolioData: liveData } = useWebSocket();
     const [data, setData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -103,10 +108,10 @@ export default function LiveYieldChart() {
             .catch(() => {
                 // Live WS data will still fill the chart, but the failure must
                 // not masquerade as "no data".
-                setLoadError('History unavailable — backend unreachable');
+                setLoadError(t('toast.historyUnavailable'));
             })
             .finally(() => setIsLoading(false));
-    }, [timeRange]);
+    }, [timeRange, t]);
 
     // ---- Append live cycle data ----
     useEffect(() => {
@@ -151,10 +156,10 @@ export default function LiveYieldChart() {
             <div className="flex justify-between items-start mb-3 relative z-10">
                 <div>
                     <h3 className="font-[Inter] text-[16px] leading-[24px] font-semibold text-on-surface">
-                        Realized APY Trend
+                        {t('chart.title')}
                     </h3>
                     <p className="font-[JetBrains_Mono] text-[11px] leading-[16px] text-on-surface-variant mt-0.5">
-                        Net leveraged yield · Pendle fixed rate · Morpho borrow cost
+                        {t('chart.subtitle')}
                     </p>
                     <ChartLegend series={SERIES} />
                 </div>
@@ -162,7 +167,7 @@ export default function LiveYieldChart() {
                     <div className="flex items-center gap-2 bg-surface-container-lowest px-3 py-1.5 rounded-full border border-outline-variant/50">
                         <span className={`w-2 h-2 rounded-full ${hasData ? 'bg-primary animate-pulse' : 'bg-on-surface-variant'}`}></span>
                         <span className="font-[JetBrains_Mono] text-[11px] font-bold text-primary tracking-wider">
-                            {isLoading ? 'LOADING' : hasData ? 'LIVE' : 'WAITING'}
+                            {isLoading ? t('chart.loading') : hasData ? t('chart.live') : t('chart.waiting')}
                         </span>
                     </div>
                     <div className="flex gap-1 bg-surface-container-lowest rounded-lg p-1 border border-outline-variant/30">
@@ -189,10 +194,10 @@ export default function LiveYieldChart() {
                         <span className={`material-symbols-outlined text-[40px] ${loadError ? 'text-error opacity-70' : 'opacity-30'}`}>show_chart</span>
                         <p className="font-[JetBrains_Mono] text-[12px] text-center opacity-50 max-w-[220px]">
                             {isLoading
-                                ? 'Loading historical data...'
+                                ? t('chart.loadingHistory')
                                 : loadError
                                     ? loadError
-                                    : 'Start simulation to begin recording APY data'}
+                                    : t('chart.noData')}
                         </p>
                     </div>
                 ) : (

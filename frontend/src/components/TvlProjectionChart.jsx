@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { useI18n } from '../i18n/I18nProvider';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 
 export default function TvlProjectionChart() {
+    const { t } = useI18n();
     const { portfolioData: liveData } = useWebSocket();
 
     const projectionData = useMemo(() => {
@@ -41,13 +43,13 @@ export default function TvlProjectionChart() {
                     {data.time}
                 </p>
                 <div className="flex justify-between items-center gap-4">
-                    <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">Projected TVL:</span>
+                    <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">{t('tvl.projectedTvl')}</span>
                     <span className="font-[Inter] text-[13px] font-bold text-primary">
                         ${data.tvl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                 </div>
                 <div className="flex justify-between items-center gap-4 mt-1">
-                    <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">Est. Profit:</span>
+                    <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">{t('tvl.estProfit')}</span>
                     <span className="font-[Inter] text-[13px] font-bold text-success">
                         +${(data.tvl - currentTvl).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
@@ -65,11 +67,11 @@ export default function TvlProjectionChart() {
                         TVL Growth Projection
                     </h3>
                     <p className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mt-1">
-                        Based on current Net APY ({Number(liveData.netApy).toFixed(2)}%)
+                        {t('tvl.basedOnNetApy', { apy: Number(liveData.netApy).toFixed(2) })}
                     </p>
                 </div>
                 <div className="text-right">
-                    <p className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">Projected 1-Year Yield</p>
+                    <p className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('tvl.projected1y')}</p>
                     <p className="font-[Inter] text-[20px] font-bold text-success">
                         +${projected1YearYield.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
