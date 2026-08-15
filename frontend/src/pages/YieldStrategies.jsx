@@ -6,7 +6,6 @@ import TransactionAnalytics from '../components/TransactionAnalytics';
 import PortfolioAllocationChart from '../components/PortfolioAllocationChart';
 import PointsTracker from '../components/PointsTracker';
 import CrossChainArbitrage from '../components/CrossChainArbitrage';
-import BacktestPanel from '../components/BacktestPanel';
 
 const PLACEHOLDER_STRATEGIES = [
     { name: 'Pendle PT-sUSDe Arb', protocol: 'Pendle Finance', apy: 35.5, risk: 'Low', tvl: 0, borrowProtocol: 'Aave V4 E-Mode', status: 'ACTIVE' },
@@ -173,11 +172,6 @@ export default function YieldStrategies() {
                 {/* Strategy Marketplace */}
                 <div className="mt-8">
                     <StrategyMarketplace strategies={strategies} />
-                </div>
-
-                {/* Strategy Backtest */}
-                <div className="mt-8">
-                    <BacktestPanel />
                 </div>
 
                 {/* Automation Parameters */}
