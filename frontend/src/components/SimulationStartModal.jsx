@@ -1,6 +1,7 @@
 import { apiFetch } from '../lib/apiClient';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { useI18n } from '../i18n/I18nProvider';
 import { useModalA11y } from '../hooks/useModalA11y';
 
@@ -14,6 +15,14 @@ const SCENARIOS = [
 export default function SimulationStartModal({ isOpen, onClose, onStart }) {
     const { isStarting, executionStatus } = useWebSocket();
     const { t } = useI18n();
+    // The SettingsContext already fetched /api/settings at login — reuse that
+    // cache so the form renders instantly; the /api/settings call below only
+    // refreshes it in the background (no spinner in the common case).
+    const { settings: contextSettings, isLoading: contextSettingsLoading } = useSettings();
+    const contextSettingsRef = useRef(contextSettings);
+    contextSettingsRef.current = contextSettings;
+    const contextLoadingRef = useRef(contextSettingsLoading);
+    contextLoadingRef.current = contextSettingsLoading;
     const [settings, setSettings] = useState({
         simulationName: '',
         initialBalance: '10000',
@@ -31,6 +40,9 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
     const [systemConfig, setSystemConfig] = useState({ rpcUrl: '', openRouterKey: '' });
     const [configFlags, setConfigFlags] = useState({ hasRpcUrl: false, hasOpenRouterKey: false });
     const [carryOver, setCarryOver] = useState({});
+    // The form renders as soon as we have settings — from the context cache
+    // (instant) or from the refresh fetch. Only the first-ever open without a
+    // cache shows the loading state.
     const [isLoadingSettings, setIsLoadingSettings] = useState(true);
     const [loadError, setLoadError] = useState(null);
     const [loadAttempt, setLoadAttempt] = useState(0);
@@ -39,51 +51,84 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
     const [suggestedName, setSuggestedName] = useState(null);
     const [showKeyGuide, setShowKeyGuide] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
+    const nameTouchedRef = useRef(false);
+    const renderedRef = useRef(false);
 
     useEffect(() => {
         if (isOpen) {
-            setIsLoadingSettings(true);
+            let cancelled = false;
             setLoadError(null);
             setError(null);
             setSuggestedName(null);
-            Promise.all([
-                apiFetch('/api/settings')
-                    .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))),
-                apiFetch('/api/simulation/suggest-name')
-                    .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))),
-            ])
-                .then(([data, nameData]) => {
-                    // Secrets are masked server-side (never returned to the
-                    // browser); only "is it set?" flags come back. Empty fields
-                    // mean "keep the stored value" on save.
-                    setSystemConfig({ rpcUrl: '', openRouterKey: '' });
-                    setConfigFlags({ hasRpcUrl: !!data.hasRpcUrl, hasOpenRouterKey: !!data.hasOpenRouterKey });
-                    // Carry forward every stored preference so the settings
-                    // append-row save never silently resets them (slippage,
-                    // risk thresholds, rules, model).
-                    setCarryOver({
-                        slippage: data.slippage,
-                        targetHf: data.targetHf,
-                        maxGasClaim: data.maxGasClaim,
-                        automationRules: data.automationRules,
-                        llmToolsEnabled: data.llmToolsEnabled,
-                    });
-                    setSettings(prev => ({
-                        ...prev,
-                        // Mage-style unique suggestion every time the modal opens.
-                        simulationName: nameData.suggestedName || prev.simulationName,
-                        dataMode: data.dataMode || 'LIVE',
-                        dataScenario: data.dataScenario || 'stable',
-                        activeModel: data.activeModel || '',
-                    }));
+            nameTouchedRef.current = false;
+            renderedRef.current = false;
+
+            const applySettings = (data) => {
+                if (cancelled || !data) return;
+                // Secrets are masked server-side (never returned to the
+                // browser); only "is it set?" flags come back. Empty fields
+                // mean "keep the stored value" on save.
+                setSystemConfig({ rpcUrl: '', openRouterKey: '' });
+                setConfigFlags({ hasRpcUrl: !!data.hasRpcUrl, hasOpenRouterKey: !!data.hasOpenRouterKey });
+                // Carry forward every stored preference so the settings
+                // append-row save never silently resets them (slippage,
+                // risk thresholds, rules, model).
+                setCarryOver({
+                    slippage: data.slippage,
+                    targetHf: data.targetHf,
+                    maxGasClaim: data.maxGasClaim,
+                    automationRules: data.automationRules,
+                    llmToolsEnabled: data.llmToolsEnabled,
+                });
+                setSettings(prev => ({
+                    ...prev,
+                    dataMode: data.dataMode || 'LIVE',
+                    dataScenario: data.dataScenario || 'stable',
+                    activeModel: data.activeModel || '',
+                }));
+            };
+
+            // 1) Render immediately from the context cache when available —
+            //    the /api/settings round-trip is the slow part (decrypt + the
+            //    generally throttled container), so we must not block on it.
+            if (!contextLoadingRef.current) {
+                applySettings(contextSettingsRef.current);
+                renderedRef.current = true;
+                setIsLoadingSettings(false);
+            }
+
+            // 2) Background refresh — catches newer settings than the cache.
+            apiFetch('/api/settings')
+                .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
+                .then(data => {
+                    applySettings(data);
+                    renderedRef.current = true;
+                    setIsLoadingSettings(false);
                 })
                 .catch(err => {
                     console.error("Failed to fetch settings:", err);
-                    // Never leave a silently-broken form: surface the failure
-                    // with a retry instead of an empty name + dead fields.
-                    setLoadError(t('startModal.loadError'));
+                    // Only surface the failure if nothing rendered yet —
+                    // with a cache the form is already usable.
+                    setIsLoadingSettings(false);
+                    if (!renderedRef.current) {
+                        setLoadError(t('startModal.loadError'));
+                    }
+                });
+
+            // 3) Mage-style unique name suggestion — fills in asynchronously,
+            //    never overwriting what the user typed since opening.
+            apiFetch('/api/simulation/suggest-name')
+                .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
+                .then(nameData => {
+                    if (cancelled) return;
+                    setSettings(prev => {
+                        if (nameTouchedRef.current) return prev;
+                        return { ...prev, simulationName: nameData.suggestedName || prev.simulationName };
+                    });
                 })
-                .finally(() => setIsLoadingSettings(false));
+                .catch(err => console.error("Failed to suggest name:", err));
+
+            return () => { cancelled = true; };
         }
     }, [isOpen, loadAttempt, t]);
 
@@ -164,6 +209,9 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+        // Once the user edits the name, the async suggestion must not
+        // overwrite their typing.
+        if (name === 'simulationName') nameTouchedRef.current = true;
         setSettings(prev => ({ ...prev, [name]: value }));
     };
 

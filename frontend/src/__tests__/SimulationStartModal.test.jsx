@@ -18,6 +18,22 @@ vi.mock('../contexts/WebSocketContext', () => ({
     useWebSocket: () => ({ isStarting: false, executionStatus: null }),
 }));
 
+// The modal renders instantly from the SettingsContext cache and refreshes
+// from /api/settings in the background — tests drive the real values through
+// apiFetch (mockRoutes), the cache only shapes the very first paint.
+const useSettingsMock = vi.fn(() => ({
+    settings: {
+        dataMode: 'LIVE', dataScenario: 'stable', slippage: '0.5',
+        targetHf: 1.25, maxGasClaim: 20, automationRules: [],
+        llmToolsEnabled: true, hasRpcUrl: false, hasOpenRouterKey: false,
+        activeModel: '',
+    },
+    isLoading: false,
+}));
+vi.mock('../contexts/SettingsContext', () => ({
+    useSettings: (...args) => useSettingsMock(...args),
+}));
+
 vi.mock('../hooks/useModalA11y', () => ({
     useModalA11y: () => ({ modalRef: { current: null } }),
 }));
@@ -65,6 +81,16 @@ function submitForm(container) {
 describe('SimulationStartModal', () => {
     beforeEach(() => {
         apiFetch.mockReset();
+        useSettingsMock.mockReset();
+        useSettingsMock.mockImplementation(() => ({
+            settings: {
+                dataMode: 'LIVE', dataScenario: 'stable', slippage: '0.5',
+                targetHf: 1.25, maxGasClaim: 20, automationRules: [],
+                llmToolsEnabled: true, hasRpcUrl: false, hasOpenRouterKey: false,
+                activeModel: '',
+            },
+            isLoading: false,
+        }));
     });
 
     it('pre-fills the simulation name with a unique suggestion (mage-style)', async () => {
@@ -140,16 +166,20 @@ describe('SimulationStartModal', () => {
         });
     });
 
-    it('does not render the form until settings + name have loaded', async () => {
-        // Pending promises: the form must stay hidden and non-interactive —
-        // no half-empty name, no flippable data source while the fetch runs.
+    it('renders the form instantly from the settings cache (no loading gate)', async () => {
+        // Even with both fetches hanging, the cached SettingsContext data is
+        // enough for the form to be interactive — the modal never blocks on
+        // the network round-trip.
         apiFetch.mockImplementation(() => new Promise(() => {}));
         renderModal();
-        expect(screen.queryByRole('button', { name: /Launch Agent/i })).toBeNull();
-        expect(screen.queryByText('Loading your settings…')).not.toBeNull();
+        expect(screen.getByRole('button', { name: /Launch Agent/i })).toBeTruthy();
+        expect(screen.queryByText('Loading your settings…')).toBeNull();
     });
 
-    it('shows an error state with retry when settings fail to load', async () => {
+    it('shows an error state with retry when settings fail to load AND no cache exists', async () => {
+        // No usable cache (context still loading) + fetch failure -> the
+        // error state with retry must appear (previously silent forever).
+        useSettingsMock.mockImplementation(() => ({ settings: null, isLoading: true }));
         apiFetch.mockImplementation(() => Promise.reject(new Error('network down')));
         const { container } = renderModal();
         await waitFor(() => {
@@ -159,6 +189,15 @@ describe('SimulationStartModal', () => {
         // Retry re-runs the fetches and recovers.
         apiFetch.mockReset();
         mockRoutes();
+        useSettingsMock.mockImplementation(() => ({
+            settings: {
+                dataMode: 'LIVE', dataScenario: 'stable', slippage: '0.5',
+                targetHf: 1.25, maxGasClaim: 20, automationRules: [],
+                llmToolsEnabled: true, hasRpcUrl: false, hasOpenRouterKey: false,
+                activeModel: '',
+            },
+            isLoading: false,
+        }));
         fireEvent.click(screen.getByRole('button', { name: /Retry/i }));
         await waitFor(() => {
             expect(screen.getByDisplayValue('sim_1a2b3c4d')).not.toBeNull();
