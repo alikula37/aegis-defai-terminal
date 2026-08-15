@@ -48,3 +48,9 @@ Thumbs.db
 
 # graphify knowledge graph (AST-extracted, rebuilt on demand — exclude to keep prompt cache clean)
 graphify-out/
+
+# SonarQube scanner local state
+.scannerwork/
+# SQLite WAL/SHM (binary, derived from the ignored .db)
+backend/db/*.db-shm
+backend/db/*.db-wal
