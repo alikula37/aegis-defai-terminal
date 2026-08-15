@@ -420,6 +420,11 @@ app.post('/api/simulation/stop', async (req, res) => {
             if (!owned) return res.status(404).json({ error: 'Simulation not found' });
         }
         agent.stopSimulation();
+        // Sharp separation: a stopped simulation must not linger as ACTIVE in
+        // the list (the Resume modal badges past runs with their real state).
+        if (agent.activeSimulationId) {
+            await setSimulationStatus(agent.activeSimulationId, 'STOPPED', req.user.id);
+        }
         metrics.agentRunning.set(0);
         res.json({ success: true, message: 'Simulation stopped' });
     } catch (error) {

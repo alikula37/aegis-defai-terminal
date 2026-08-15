@@ -65,6 +65,36 @@ function defaultWsUrl() {
     return `${scheme}//${location.host}/ws`;
 }
 
+// Exponential backoff for reconnect attempts (1s, 2s, … capped at 30s).
+function reconnectDelayMs(retryCount, baseDelay = 1000) {
+    return Math.min(baseDelay * Math.pow(2, retryCount), 30000);
+}
+
+// Dispatch one parsed WS message to the context setters. Exported for tests.
+export function applyWsMessage(data, setters) {
+    if (data.type === 'portfolio_update') {
+        setters.setPortfolioData(normalizePortfolio(data.payload));
+    } else if (data.type === 'agent_log') {
+        setters.setAgentLogs(prev => [data.payload, ...prev].slice(0, 100));
+    } else if (data.type === 'simulation_status') {
+        setters.setIsSimulationRunning(data.payload.isRunning);
+        setters.setSimulationStartTime(data.payload.startTime);
+        if (!data.payload.isRunning) {
+            // Sharp separation between simulations: a stopped simulation
+            // leaves no trace on any page — portfolio, agent logs and the
+            // "has data" flag reset, so every view falls back to its idle
+            // state instead of showing the previous run's stale numbers.
+            setters.setPortfolioData(null);
+            setters.setAgentLogs([]);
+            setters.setHasData(false);
+        }
+        if (data.payload.simulationName) setters.setSimulationName(data.payload.simulationName);
+        if (data.payload.execution) setters.setExecutionStatus(data.payload.execution);
+    } else if (data.type === 'notification') {
+        setters.setNotifications(prev => [data.payload, ...prev].slice(0, 10));
+    }
+}
+
 export const WebSocketProvider = ({ children }) => {
     const { isAuthenticated } = useAuth();
     const [portfolioData, setPortfolioData] = useState(null);
@@ -167,6 +197,11 @@ export const WebSocketProvider = ({ children }) => {
             const res = await apiFetch('/api/simulation/stop', { method: 'POST' });
             if (res.ok) {
                 setIsSimulationRunning(false);
+                // Clear immediately instead of waiting for the WS broadcast —
+                // the UI must not show the previous run's data after a stop.
+                setPortfolioData(null);
+                setAgentLogs([]);
+                setHasData(false);
             } else {
                 const errData = await res.json();
                 alert(`Failed to stop simulation: ${errData.error || 'Unknown error'}`);
@@ -177,26 +212,15 @@ export const WebSocketProvider = ({ children }) => {
         }
     };
 
-// Exponential backoff for reconnect attempts (1s, 2s, … capped at 30s).
-function reconnectDelayMs(retryCount, baseDelay = 1000) {
-    return Math.min(baseDelay * Math.pow(2, retryCount), 30000);
-}
-
-// Dispatch one parsed WS message to the context setters.
-function applyWsMessage(data, setters) {
-    if (data.type === 'portfolio_update') {
-        setters.setPortfolioData(normalizePortfolio(data.payload));
-    } else if (data.type === 'agent_log') {
-        setters.setAgentLogs(prev => [data.payload, ...prev].slice(0, 100));
-    } else if (data.type === 'simulation_status') {
-        setters.setIsSimulationRunning(data.payload.isRunning);
-        setters.setSimulationStartTime(data.payload.startTime);
-        if (data.payload.simulationName) setters.setSimulationName(data.payload.simulationName);
-        if (data.payload.execution) setters.setExecutionStatus(data.payload.execution);
-    } else if (data.type === 'notification') {
-        setters.setNotifications(prev => [data.payload, ...prev].slice(0, 10));
-    }
-}
+    // Shared by stop/delete flows: drop every trace of the current run so the
+    // pages fall back to their idle states.
+    const clearSimulationData = () => {
+        setPortfolioData(null);
+        setAgentLogs([]);
+        setHasData(false);
+        setIsSimulationRunning(false);
+        setSimulationStartTime(null);
+    };
 
     useEffect(() => {
         let ws;
@@ -291,7 +315,7 @@ function applyWsMessage(data, setters) {
             notifications, setNotifications,
             isStartModalOpen, setIsStartModalOpen, hasData, setHasData,
             simulationStartTime, simulationName, isStarting, executionStatus,
-            isResumeModalOpen, setIsResumeModalOpen, stopSimulation
+            isResumeModalOpen, setIsResumeModalOpen, stopSimulation, clearSimulationData
         }}>
             {children}
             <SimulationStartModal

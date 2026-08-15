@@ -14,10 +14,12 @@ export const navItems = [
 ];
 
 export default function Sidebar() {
-    const { isSimulationRunning: isRunning, setIsSimulationRunning, setIsStartModalOpen, setIsResumeModalOpen, simulationStartTime } = useWebSocket();
+    const { isSimulationRunning: isRunning, setIsSimulationRunning, setIsStartModalOpen, setIsResumeModalOpen, simulationStartTime, clearSimulationData } = useWebSocket();
     const [isDocsOpen, setIsDocsOpen] = useState(false);
     const [isSupportOpen, setIsSupportOpen] = useState(false);
     const [uptime, setUptime] = useState('00:00:00');
+    const [hasPastSim, setHasPastSim] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         let interval;
@@ -35,6 +37,16 @@ export default function Sidebar() {
         return () => clearInterval(interval);
     }, [isRunning, simulationStartTime]);
 
+    // When stopped, learn whether there is anything to delete/resume.
+    useEffect(() => {
+        if (!isRunning) {
+            apiFetch('/api/simulations')
+                .then(res => res.ok ? res.json() : [])
+                .then(list => setHasPastSim(Array.isArray(list) && list.length > 0))
+                .catch(() => setHasPastSim(false));
+        }
+    }, [isRunning]);
+
     const handleStopSimulation = async () => {
         // Optimistic UI update
         setIsSimulationRunning(false);
@@ -42,7 +54,11 @@ export default function Sidebar() {
             const res = await apiFetch('/api/simulation/stop', {
                 method: 'POST'
             });
-            if (!res.ok) {
+            if (res.ok) {
+                // Sharp separation: dropping the old run's data immediately,
+                // without waiting for the WS broadcast.
+                clearSimulationData();
+            } else {
                 // Revert if failed
                 setIsSimulationRunning(true);
                 const errData = await res.json();
@@ -52,6 +68,34 @@ export default function Sidebar() {
             console.error('Failed to stop simulation:', error);
             setIsSimulationRunning(true);
             alert(`Failed to stop simulation: ${error.message}`);
+        }
+    };
+
+    const handleDeleteLastSimulation = async () => {
+        if (!confirm('Delete the last simulation? Its portfolio, logs and decisions will be permanently removed.')) return;
+        setIsDeleting(true);
+        try {
+            const list = await apiFetch('/api/simulations')
+                .then(res => res.ok ? res.json() : [])
+                .catch(() => []);
+            const latest = Array.isArray(list) && list.length > 0 ? list[0] : null;
+            if (!latest) {
+                setHasPastSim(false);
+                return;
+            }
+            const res = await apiFetch(`/api/simulation/${latest.id}`, { method: 'DELETE' });
+            if (res.ok) {
+                setHasPastSim(false);
+                clearSimulationData();
+            } else {
+                const errData = await res.json();
+                alert(`Failed to delete simulation: ${errData.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Failed to delete simulation:', error);
+            alert(`Failed to delete simulation: ${error.message}`);
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -119,22 +163,35 @@ export default function Sidebar() {
                     )}
                     <div className="space-y-3">
                         {!isRunning && (
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setIsStartModalOpen(true)}
-                                    className="flex-1 py-2 rounded-md font-[JetBrains_Mono] text-[13px] font-medium transition-colors flex items-center justify-center gap-1 bg-primary text-on-primary hover:bg-primary-fixed hover:text-on-primary-fixed"
-                                >
-                                    <span className="material-symbols-outlined text-[16px]">play_circle</span>
-                                    Start New
-                                </button>
-                                <button
-                                    onClick={() => setIsResumeModalOpen(true)}
-                                    className="flex-1 py-2 rounded-md font-[JetBrains_Mono] text-[13px] font-medium transition-colors flex items-center justify-center gap-1 border border-primary text-primary hover:bg-primary/10"
-                                >
-                                    <span className="material-symbols-outlined text-[16px]">restore</span>
-                                    Resume
-                                </button>
-                            </div>
+                            <>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setIsStartModalOpen(true)}
+                                        className="flex-1 py-2 rounded-md font-[JetBrains_Mono] text-[13px] font-medium transition-colors flex items-center justify-center gap-1 bg-primary text-on-primary hover:bg-primary-fixed hover:text-on-primary-fixed"
+                                    >
+                                        <span className="material-symbols-outlined text-[16px]">play_circle</span>
+                                        Start New
+                                    </button>
+                                    <button
+                                        onClick={() => setIsResumeModalOpen(true)}
+                                        className="flex-1 py-2 rounded-md font-[JetBrains_Mono] text-[13px] font-medium transition-colors flex items-center justify-center gap-1 border border-primary text-primary hover:bg-primary/10"
+                                    >
+                                        <span className="material-symbols-outlined text-[16px]">restore</span>
+                                        Resume
+                                    </button>
+                                </div>
+                                {hasPastSim && (
+                                    <button
+                                        onClick={handleDeleteLastSimulation}
+                                        disabled={isDeleting}
+                                        className="w-full flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-[JetBrains_Mono] text-on-surface-variant hover:text-error transition-colors rounded-md hover:bg-error/5 disabled:opacity-50"
+                                        title="Delete the last simulation and all its data"
+                                    >
+                                        <span className="material-symbols-outlined text-[14px]">delete_forever</span>
+                                        {isDeleting ? 'Deleting...' : 'Delete last simulation'}
+                                    </button>
+                                )}
+                            </>
                         )}
 
                         {isRunning && (

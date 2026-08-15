@@ -344,6 +344,17 @@ describe('API Integration Tests', () => {
         await updateSettings({ dataMode: 'LIVE', dataScenario: 'stable' }, null, TEST_USER());
     }, 20000);
 
+    it('a stopped simulation is marked STOPPED in the list (not lingering ACTIVE)', async () => {
+        // Fresh run so the assertion targets the simulation we control.
+        await request(app).post('/api/simulation/start').send({ simulationName: `stop-state ${Date.now()}` });
+        await new Promise(r => setTimeout(r, 800));
+        await request(app).post('/api/simulation/stop');
+        const list = await request(app).get('/api/simulations');
+        expect(list.status).toBe(200);
+        const latest = list.body[0];
+        expect(latest.status).toBe('STOPPED');
+    });
+
     it('GET /api/simulation/status reports the execution backend', async () => {
         const res = await request(app).get('/api/simulation/status');
         expect(res.status).toBe(200);
