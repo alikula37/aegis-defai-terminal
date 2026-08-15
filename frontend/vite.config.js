@@ -5,6 +5,15 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Dev server proxies the same-origin paths the production nginx serves:
+  // the app uses relative /api and /ws by default, so dev and prod behave
+  // identically (cookies stay first-party, no CORS involved).
+  server: {
+    proxy: {
+      '/api': { target: 'http://localhost:3001', changeOrigin: true },
+      '/ws': { target: 'ws://localhost:3001', ws: true },
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,

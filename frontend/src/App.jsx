@@ -23,7 +23,13 @@ function AppShell() {
             </div>
         );
     }
-    if (authRequired && !user) {
+    // Gate on the identity, not the authRequired flag: if me() fails (401 —
+    // expired/missing session, or the backend requiring auth while this tab
+    // holds no session) the app must show the login screen. authRequired only
+    // says whether the BACKEND demands auth; a failed me() leaves it false,
+    // which would otherwise render the whole dashboard unauthenticated
+    // (every fetch 401s, modals show "Could not load your settings").
+    if (!user) {
         return <LoginPage />;
     }
     return (

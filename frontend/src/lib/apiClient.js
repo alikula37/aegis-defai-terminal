@@ -1,8 +1,13 @@
 // Backend REST client: centralizes base URL + optional x-api-key header.
 // The key lives in localStorage (entered on the Settings page) so the browser
 // never hard-codes the server's AEGIS_API_KEY.
+//
+// Base URL: dev sets VITE_API_URL (e.g. http://localhost:3001) in .env; a
+// production build without it uses SAME-ORIGIN relative paths (/api/...) —
+// the shipped nginx reverse proxy forwards /api/ to the backend, so cookies
+// stay first-party and no CORS is involved.
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const BASE_URL = import.meta.env.VITE_API_URL || '';
 const STORAGE_KEY = 'aegisApiKey';
 
 export function getApiKey() {

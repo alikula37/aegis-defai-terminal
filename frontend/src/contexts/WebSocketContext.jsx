@@ -46,17 +46,23 @@ function normalizePortfolio(raw) {
 // WS URL: explicit VITE_WS_URL wins; otherwise derive it from VITE_API_URL so
 // REST and WS always point at the same host (same-origin, /ws path — matches
 // the shipped nginx proxy). Setting only one of the two no longer silently
-// leaves the other pointing at localhost.
+// leaves the other pointing at localhost. With neither set (production
+// build), the WS is same-origin relative: ws(s)://<current host>/ws — nginx
+// proxies it, cookies stay first-party.
 function defaultWsUrl() {
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-    try {
-        const u = new URL(base);
-        u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
-        u.pathname = `${u.pathname.replace(/\/$/, '')}/ws`;
-        return u.toString();
-    } catch {
-        return 'ws://localhost:3001/ws';
+    const base = import.meta.env.VITE_API_URL;
+    if (base) {
+        try {
+            const u = new URL(base);
+            u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+            u.pathname = `${u.pathname.replace(/\/$/, '')}/ws`;
+            return u.toString();
+        } catch {
+            // fall through to the same-origin derivation
+        }
     }
+    const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${scheme}//${location.host}/ws`;
 }
 
 export const WebSocketProvider = ({ children }) => {
