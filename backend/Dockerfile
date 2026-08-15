@@ -6,7 +6,12 @@ RUN npm ci --omit=dev
 
 # ---- Production Stage ----
 FROM node:22-alpine
-RUN apk add --no-cache tini
+RUN apk add --no-cache tini \
+    # npm/npx are only needed at build time (npm ci ran in the builder) — the
+    # runtime only executes `node server.js`. Removing npm drops bundled
+    # transitive CVEs (e.g. node-tar, sigstore, brace-expansion inside
+    # usr/local/lib/node_modules/npm) from the Trivy surface and shrinks the image.
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY . .
