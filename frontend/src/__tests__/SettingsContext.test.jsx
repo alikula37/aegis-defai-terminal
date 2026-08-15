@@ -2,6 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { SettingsProvider, useSettings } from '../contexts/SettingsContext';
 
+// SettingsProvider gates its initial fetch on auth state — present a session.
+vi.mock('../contexts/AuthContext', () => ({
+    useAuth: () => ({ isAuthenticated: true }),
+}));
+
 const apiFetch = vi.fn();
 
 vi.mock('../lib/apiClient', () => ({

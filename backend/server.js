@@ -27,13 +27,28 @@ const app = express();
 const server = createServer(app);
 const metrics = createMetrics();
 
+// E9 — auth: open mode (AUTH_REQUIRED=false, dev default) attaches the seeded
+// 'local' user; required mode (production default) validates the session cookie.
+// Decided once at startup — the WS handshake and /api/* middleware both depend
+// on it.
+const authRequired = isAuthRequired();
+
 // Phase 4 (D8) — OpenTelemetry spans folded into the prom-client registry.
 // Enable with OTEL_ENABLED=true (docs/OBSERVABILITY.md).
 initTracing({ registry: metrics.registry, enabled: process.env.OTEL_ENABLED === 'true' });
 const wss = new WebSocketServer({
     server,
-    // Auth via Sec-WebSocket-Protocol subprotocol (not query string)
+    // Auth via Sec-WebSocket-Protocol subprotocol (not query string) — in
+    // OPEN mode only. Required mode authenticates the socket with the session
+    // cookie in the connection handler, so the protocol handshake must not
+    // reject authenticated sessions when WS_API_KEY is unset.
     handleProtocols(protocols) {
+        if (authRequired) {
+            // Session cookie is the credential here; accept whatever
+            // subprotocol the client offers (the cookie check below closes
+            // unauthorized sockets with 1008).
+            return Array.from(protocols)[0] || false;
+        }
         const accepted = validateWsSubprotocol(protocols, expectedWsKey(), process.env.NODE_ENV === 'production');
         if (!accepted) {
             logger.warn('[SECURITY] WebSocket handshake rejected: no valid subprotocol.');
@@ -62,7 +77,6 @@ app.use(helmet());
 // E9 — auth: open mode (AUTH_REQUIRED=false, dev default) attaches the seeded
 // 'local' user; required mode (production default) validates the session cookie.
 // /api/auth/* is exempt: login/register must work before a session exists.
-const authRequired = isAuthRequired();
 const requireAuthMw = createAuthMiddleware({ authRequired });
 app.use('/api/', createOriginCheck({ allowedOrigins }));
 app.use('/api/', (req, res, next) => {

@@ -1,11 +1,13 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { apiFetch, fetchJson } from '../lib/apiClient';
+import { useAuth } from './AuthContext';
 
 const SettingsContext = createContext();
 
 export const useSettings = () => useContext(SettingsContext);
 
 export const SettingsProvider = ({ children }) => {
+    const { isAuthenticated } = useAuth();
     const [settings, setSettings] = useState({
         rpcUrl: '',
         slippage: '0.5',
@@ -22,6 +24,10 @@ export const SettingsProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        // Auth mode: the provider mounts before login, so a single mount-time
+        // fetch would 401 forever. Re-run whenever the session appears.
+        if (!isAuthenticated) return;
+        setIsLoading(true);
         fetchJson('/api/settings')
             .then(data => {
                 setSettings(data);
@@ -30,7 +36,7 @@ export const SettingsProvider = ({ children }) => {
             })
             .catch(err => console.error("Failed to fetch settings:", err))
             .finally(() => setIsLoading(false));
-    }, []);
+    }, [isAuthenticated]);
 
     const updateSettings = async (newSettings) => {
         try {

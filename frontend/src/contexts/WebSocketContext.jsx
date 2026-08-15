@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import SimulationStartModal from '../components/SimulationStartModal';
 import SimulationResumeModal from '../components/SimulationResumeModal';
 import { apiFetch } from '../lib/apiClient';
+import { useAuth } from './AuthContext';
 
 export const WebSocketContext = createContext();
 
@@ -59,6 +60,7 @@ function defaultWsUrl() {
 }
 
 export const WebSocketProvider = ({ children }) => {
+    const { isAuthenticated } = useAuth();
     const [portfolioData, setPortfolioData] = useState(null);
     const [agentLogs, setAgentLogs] = useState([]);
     const [isConnected, setIsConnected] = useState(false);
@@ -72,11 +74,17 @@ export const WebSocketProvider = ({ children }) => {
     const [executionStatus, setExecutionStatus] = useState(null);
     const [isStarting, setIsStarting] = useState(false);
 
+    // Refresh simulation status (running flag, execution backend). In auth
+    // mode the provider mounts before login, so the very first attempt gets a
+    // 401 and must NOT be the only one — re-run whenever the session appears
+    // (login/logout) and after every WS (re)connect.
     useEffect(() => {
-        // Fetch initial status on mount
+        if (!isAuthenticated) return;
+        let cancelled = false;
         apiFetch('/api/simulation/status')
             .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
             .then(data => {
+                if (cancelled) return;
                 if (data.execution) setExecutionStatus(data.execution);
                 if (data.isRunning) {
                     setIsSimulationRunning(true);
@@ -86,7 +94,8 @@ export const WebSocketProvider = ({ children }) => {
                 }
             })
             .catch(err => console.error("Failed to fetch simulation status:", err));
-    }, []);
+        return () => { cancelled = true; };
+    }, [isAuthenticated]);
 
     // Update hasData when portfolioData changes
     useEffect(() => {
@@ -204,6 +213,22 @@ function applyWsMessage(data, setters) {
                     console.log('WebSocket Connected');
                     setIsConnected(true);
                     retryCount = 0; // Reset on successful connect
+                    // Refresh status after (re)connect: the initial fetch may
+                    // have predated login, and a reconnect means the stream
+                    // restarted (missed messages may have carried status).
+                    apiFetch('/api/simulation/status')
+                        .then(res => res.ok ? res.json() : null)
+                        .then(data => {
+                            if (!data) return;
+                            if (data.execution) setExecutionStatus(data.execution);
+                            if (data.isRunning) {
+                                setIsSimulationRunning(true);
+                                setHasData(true);
+                                if (data.startTime) setSimulationStartTime(data.startTime);
+                                if (data.simulationName) setSimulationName(data.simulationName);
+                            }
+                        })
+                        .catch(() => { /* non-critical refresh */ });
                 };
 
                 ws.onmessage = (event) => {
