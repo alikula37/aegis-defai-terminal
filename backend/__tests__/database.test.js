@@ -78,18 +78,23 @@ describe('Database Operations', () => {
     });
 
     it('should insert and retrieve portfolio stats', async () => {
-        insertPortfolioStats(15000, 10.5, 1.4, [{ name: 'Test Strategy' }], { ethPrice: 3000 });
-        const latest = await getLatestPortfolio();
+        // Portfolio rows belong to a simulation: reads must be scoped by id.
+        const sim = await resetPortfolio(10000, 'stats test', null, USER());
+        insertPortfolioStats(15000, 10.5, 1.4, [{ name: 'Test Strategy' }], { ethPrice: 3000 }, sim.simulationId);
+        const latest = await getLatestPortfolio(sim.simulationId);
         expect(latest.tvl).toBe(15000);
         expect(latest.netApy).toBe(10.5);
         expect(latest.healthFactor).toBe(1.4);
         expect(latest.positions[0].name).toBe('Test Strategy');
         expect(latest.oracle.ethPrice).toBe(3000);
+        // No id => no row: a caller without a simulation must never read the
+        // global latest portfolio (would resurrect stale data after deletes).
+        expect(await getLatestPortfolio()).toBeNull();
     });
 
     it('should reset portfolio correctly', async () => {
-        await resetPortfolio(5000, 'Default Simulation', null, USER());
-        const latest = await getLatestPortfolio();
+        const sim = await resetPortfolio(5000, 'Default Simulation', null, USER());
+        const latest = await getLatestPortfolio(sim.simulationId);
         expect(latest.tvl).toBe(5000);
         expect(latest.netApy).toBe(0);
         expect(latest.healthFactor).toBe(1.5);

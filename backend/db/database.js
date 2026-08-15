@@ -230,12 +230,11 @@ export async function getPortfolioHistory(limit = 50, simulationId = null, timeR
 }
 
 export async function getLatestPortfolio(simulationId = null) {
-    let row;
-    if (simulationId) {
-        row = db.prepare('SELECT * FROM portfolio_stats WHERE simulation_id = ? ORDER BY id DESC LIMIT 1').get(simulationId);
-    } else {
-        row = db.prepare('SELECT * FROM portfolio_stats ORDER BY id DESC LIMIT 1').get();
-    }
+    // A null simulation id must NOT read the global latest row: portfolio
+    // rows belong to simulations, and a caller without an id has no business
+    // seeing (or broadcasting) another simulation's data.
+    if (!simulationId) return null;
+    const row = db.prepare('SELECT * FROM portfolio_stats WHERE simulation_id = ? ORDER BY id DESC LIMIT 1').get(simulationId);
     if (row) {
         return {
             id: row.id,

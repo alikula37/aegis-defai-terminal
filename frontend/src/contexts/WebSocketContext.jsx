@@ -139,12 +139,15 @@ export const WebSocketProvider = ({ children }) => {
         return () => { cancelled = true; };
     }, [isAuthenticated]);
 
-    // Update hasData when portfolioData changes
+    // Update hasData when portfolioData changes — but only while a simulation
+    // is RUNNING: a stale/queued portfolio_update must never resurrect the
+    // dashboard after a stop or delete (the oracle ticker used to broadcast
+    // the last portfolio every 60s even when idle).
     useEffect(() => {
-        if (portfolioData && portfolioData.tvl > 0) {
+        if (isSimulationRunning && portfolioData && portfolioData.tvl > 0) {
             setHasData(true);
         }
-    }, [portfolioData]);
+    }, [portfolioData, isSimulationRunning]);
 
     const handleStartSimulation = async (settings) => {
         setIsStarting(true);

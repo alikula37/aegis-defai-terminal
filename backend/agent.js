@@ -154,6 +154,13 @@ export class AegisAgent {
     }
 
     async _broadcastOracle() {
+        // The ticker is always-on, but it must never broadcast portfolio data
+        // while NO simulation is active: getLatestPortfolio(null) would read
+        // the latest row of any simulation ever, and the frontend's hasData
+        // flag would resurrect deleted/stale values on the dashboard (the
+        // "values come back after delete" bug). Only the oracle snapshot
+        // itself is idle-safe; the portfolio payload requires a live sim.
+        if (!this.activeSimulationId) return;
         try {
             const marketData = await withRetry(() => MarketDataSource.getSnapshot(simulationState, { simulationId: this.activeSimulationId, userId: this.ownerUserId }), { name: 'MarketDataSource.getSnapshot' });
             // Build a rich oracle payload (no DB write, just broadcast)
