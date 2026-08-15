@@ -11,6 +11,12 @@ test.describe('Aegis DeFAI Terminal — active-sim page crawl', () => {
     test.use({ baseURL: 'http://localhost:5173' });
 
     test('every route renders without a runtime error while the agent runs', async ({ page, request }) => {
+        // Best-effort login so the suite also runs against auth-enabled
+        // backends (test-mode backends have no auth — the request is ignored).
+        await request.post(`${BACKEND}/api/auth/login`, {
+            data: { username: 'local', password: 'AegisAdmin123' },
+        }).catch(() => {});
+
         const settings = await request.post(`${BACKEND}/api/settings`, {
             data: {
                 dataMode: 'SIM',

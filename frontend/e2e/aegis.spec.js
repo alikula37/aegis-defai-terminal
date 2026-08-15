@@ -9,6 +9,13 @@ test.describe('Aegis DeFAI Terminal', () => {
     test.use({ baseURL: 'http://localhost:5173' });
 
     test('starts a simulation, streams live data, then stops', async ({ page, request }) => {
+        // Sign in when the backend runs in auth mode (test-mode backends have
+        // no auth; the login request then fails and is ignored). The request
+        // fixture shares cookies with the page context.
+        await request.post(`${BACKEND}/api/auth/login`, {
+            data: { username: 'local', password: 'AegisAdmin123' },
+        }).catch(() => {});
+
         // Seed SIM mode + dummy RPC/key so the start modal needs no configuration
         const settings = await request.post(`${BACKEND}/api/settings`, {
             data: {

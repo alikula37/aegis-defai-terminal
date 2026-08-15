@@ -30,6 +30,8 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
     const [configFlags, setConfigFlags] = useState({ hasRpcUrl: false, hasOpenRouterKey: false });
     const [carryOver, setCarryOver] = useState({});
     const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+    const [loadError, setLoadError] = useState(null);
+    const [loadAttempt, setLoadAttempt] = useState(0);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState(null);
     const [suggestedName, setSuggestedName] = useState(null);
@@ -39,6 +41,7 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
     useEffect(() => {
         if (isOpen) {
             setIsLoadingSettings(true);
+            setLoadError(null);
             setError(null);
             setSuggestedName(null);
             Promise.all([
@@ -72,10 +75,15 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                         activeModel: data.activeModel || '',
                     }));
                 })
-                .catch(err => console.error("Failed to fetch settings:", err))
+                .catch(err => {
+                    console.error("Failed to fetch settings:", err);
+                    // Never leave a silently-broken form: surface the failure
+                    // with a retry instead of an empty name + dead fields.
+                    setLoadError("Could not load your settings. Check the backend connection and try again.");
+                })
                 .finally(() => setIsLoadingSettings(false));
         }
-    }, [isOpen]);
+    }, [isOpen, loadAttempt]);
 
     // E10 — a11y: role=dialog + Esc + focus trap. Called unconditionally
     // (rules-of-hooks): the hook no-ops when isOpen is false.
@@ -167,22 +175,44 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
     const liveMissingKey = modeIsLive && !systemConfig.openRouterKey && !configFlags.hasOpenRouterKey;
 
     return (
-        <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="start-modal-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-surface-container border border-outline-variant rounded-xl p-6 w-full max-w-lg shadow-2xl relative max-h-[90vh] overflow-y-auto">
-                <button
-                    onClick={onClose}
-                    aria-label="Close start simulation dialog"
-                    className="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface transition-colors"
-                >
-                    <span className="material-symbols-outlined">close</span>
-                </button>
+        // Bulletproof modal scroll: the overlay itself scrolls (overflow-y-auto)
+        // while the card is centered via min-h-full — never unreachable content,
+        // even when the form is taller than the viewport.
+        <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="start-modal-title" className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/50">
+            <div className="flex min-h-full items-center justify-center p-4">
+                <div className="bg-surface-container border border-outline-variant rounded-xl p-6 w-full max-w-lg shadow-2xl relative">
+                    <button
+                        onClick={onClose}
+                        aria-label="Close start simulation dialog"
+                        className="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface transition-colors"
+                    >
+                        <span className="material-symbols-outlined">close</span>
+                    </button>
 
-                <h2 id="start-modal-title" className="font-[Inter] text-[20px] font-semibold text-on-surface mb-6 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary">play_circle</span>
-                    Start Simulation
-                </h2>
+                    <h2 id="start-modal-title" className="font-[Inter] text-[20px] font-semibold text-on-surface mb-6 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary">play_circle</span>
+                        Start Simulation
+                    </h2>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                    {isLoadingSettings ? (
+                        <div className="py-10 flex flex-col items-center gap-3 text-on-surface-variant">
+                            <span className="material-symbols-outlined text-[24px] animate-spin">progress_activity</span>
+                            <p className="font-[JetBrains_Mono] text-[12px]">Loading your settings…</p>
+                        </div>
+                    ) : loadError ? (
+                        <div className="py-8 flex flex-col items-center gap-4 text-center">
+                            <span className="material-symbols-outlined text-error text-[28px]">cloud_off</span>
+                            <p className="font-[Inter] text-[13px] text-on-surface max-w-xs">{loadError}</p>
+                            <button
+                                type="button"
+                                onClick={() => setLoadAttempt(a => a + 1)}
+                                className="px-4 py-2 rounded-md font-[JetBrains_Mono] text-[12px] bg-primary text-accent-contrast hover:brightness-110"
+                            >
+                                Try again
+                            </button>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="space-y-4">
                     {executionStatus?.mode === 'onchain' && !executionStatus.ready && (
                         <div className="bg-error/10 border border-error/25 rounded-md px-3 py-2.5 flex items-start gap-2">
                             <span className="material-symbols-outlined text-error text-[18px] mt-0.5">warning</span>
@@ -451,7 +481,9 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                         <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
                         {isStarting ? 'Starting...' : isSaving ? 'Saving & Launching...' : 'Launch Agent'}
                     </button>
-                </form>
+                        </form>
+                    )}
+                </div>
             </div>
         </div>
     );

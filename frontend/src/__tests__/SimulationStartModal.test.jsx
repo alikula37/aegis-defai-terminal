@@ -133,4 +133,29 @@ describe('SimulationStartModal', () => {
             expect(screen.getByDisplayValue('sim_9f8e7d6c')).not.toBeNull();
         });
     });
+
+    it('does not render the form until settings + name have loaded', async () => {
+        // Pending promises: the form must stay hidden and non-interactive —
+        // no half-empty name, no flippable data source while the fetch runs.
+        apiFetch.mockImplementation(() => new Promise(() => {}));
+        renderModal();
+        expect(screen.queryByRole('button', { name: /Launch Agent/i })).toBeNull();
+        expect(screen.queryByText('Loading your settings…')).not.toBeNull();
+    });
+
+    it('shows an error state with retry when settings fail to load', async () => {
+        apiFetch.mockImplementation(() => Promise.reject(new Error('network down')));
+        const { container } = renderModal();
+        await waitFor(() => {
+            expect(screen.getByText(/Could not load your settings/i)).toBeTruthy();
+        });
+        expect(container.querySelector('form')).toBeNull();
+        // Retry re-runs the fetches and recovers.
+        apiFetch.mockReset();
+        mockRoutes();
+        fireEvent.click(screen.getByRole('button', { name: /Try again/i }));
+        await waitFor(() => {
+            expect(screen.getByDisplayValue('sim_1a2b3c4d')).not.toBeNull();
+        });
+    });
 });
