@@ -31,10 +31,16 @@ describe('Database Operations', () => {
         expect(ct.startsWith('gcm:')).toBe(true);
         expect(ct.split(':').length).toBe(4); // gcm:iv:tag:ct
         expect(decrypt(ct)).toBe('sk-super-secret');
-        // tamper detection: flipping a ciphertext byte must fail (GCM tag)
+        // tamper detection: flipping a ciphertext byte must fail (GCM tag).
+        // Deterministic flip (middle hex char) — the old first-char flip was
+        // a no-op when the char was already '0', making this flaky.
         const parts = ct.split(':');
-        const tampered = parts[0] + ':' + parts[1] + ':' + parts[2] + ':' + (parts[3].slice(0, -1) === '0' ? '1' + parts[3].slice(1) : '0' + parts[3].slice(1));
-        expect(decrypt(tampered)).not.toBe('sk-super-secret');
+        const mid = Math.floor(parts[3].length / 2);
+        const flipped = parts[3][mid] === '0' ? '1' : '0';
+        const tampered = parts[0] + ':' + parts[1] + ':' + parts[2] + ':' + parts[3].slice(0, mid) + flipped + parts[3].slice(mid + 1);
+        expect(tampered).not.toBe(ct);
+        // B5 fail-closed: an undecryptable GCM row must be null, never the raw blob.
+        expect(decrypt(tampered)).toBeNull();
     });
 
     it('decrypts legacy AES-256-CBC rows (pre-GCM compatibility)', () => {

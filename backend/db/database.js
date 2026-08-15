@@ -499,6 +499,9 @@ export function decrypt(text) {
         decrypted = Buffer.concat([decrypted, decipher.final()]);
         return decrypted.toString();
     } catch (e) {
+        // B5 fail-closed: a tampered/corrupt GCM row must never surface as if
+        // it were a decrypted secret — return null (callers fall back to env).
+        if (typeof text === 'string' && text.startsWith('gcm:')) return null;
         return text;
     }
 }
