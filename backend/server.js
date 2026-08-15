@@ -14,7 +14,7 @@ import { validateWsSubprotocol, expectedWsKey } from './utils/wsAuth.js';
 import { createMetrics } from './monitoring/metrics.js';
 import { initTracing } from './monitoring/tracing.js';
 import { apiKeyMiddleware } from './utils/apiAuth.js';
-import { createRateLimiter } from './utils/rateLimit.js';
+import { createRateLimiter, createFailureLimiter } from './utils/rateLimit.js';
 import {
     isAuthRequired, createAuthMiddleware, createOriginCheck,
     getSessionToken, getSessionUser,
@@ -84,16 +84,28 @@ app.use('/api/', (req, res, next) => {
     return requireAuthMw(req, res, next);
 });
 
+// Behind nginx every request arrives from the proxy's IP; trust the single
+// reverse-proxy hop so rate-limit buckets are keyed by the real client
+// (X-Forwarded-For set by nginx below). Without this all users share one
+// bucket and a single active browser can starve everyone else (429 storms).
+app.set('trust proxy', 1);
+
 // Brute-force ceiling on credential endpoints — always on, both modes.
-const loginLimiter = createRateLimiter({
+// The per-user lockout (failed_attempts/locked_until) is the primary defense;
+// this IP cap is the flood brake. Failure-only: successes never consume the
+// budget and any successful login/register/logout clears the IP bucket.
+const loginLimiter = createFailureLimiter({
     windowMs: aegisConfig.server.rateLimit.loginWindowMs,
     max: aegisConfig.server.rateLimit.loginMax, // per IP: register/login/logout combined
 });
 app.use('/api/auth/', loginLimiter);
 
+// Authenticated sessions are legitimate traffic (charts, logs, status
+// polling) — rate limiting guards anonymous abuse, so skip req.user requests.
 const apiLimiter = createRateLimiter({
     windowMs: aegisConfig.server.rateLimit.apiWindowMs,
     max: Number(process.env.RATE_LIMIT_API_MAX) || aegisConfig.server.rateLimit.apiMax, // per IP
+    skipAuthenticated: authRequired,
 });
 app.use('/api/', apiLimiter);
 
@@ -101,6 +113,7 @@ app.use('/api/', apiLimiter);
 const writeLimiter = createRateLimiter({
     windowMs: aegisConfig.server.rateLimit.writeWindowMs,
     max: Number(process.env.RATE_LIMIT_WRITE_MAX) || aegisConfig.server.rateLimit.writeMax,
+    skipAuthenticated: authRequired,
 });
 app.use('/api/', (req, res, next) => {
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) return writeLimiter(req, res, next);

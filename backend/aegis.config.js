@@ -114,11 +114,11 @@ export default {
         port: 3001,
         rateLimit: {
             apiWindowMs: 15 * 60 * 1000,      // 15 dk pencere (tüm /api)
-            apiMax: 300,                       // env RATE_LIMIT_API_MAX
+            apiMax: 450,                       // env RATE_LIMIT_API_MAX (anon trafik; oturumlular atlanır)
             writeWindowMs: 15 * 60 * 1000,
-            writeMax: 50,                      // env RATE_LIMIT_WRITE_MAX
+            writeMax: 75,                      // env RATE_LIMIT_WRITE_MAX (oturumlular atlanır)
             loginWindowMs: 15 * 60 * 1000,
-            loginMax: 20,                      // /api/auth/* brute-force tavanı
+            loginMax: 50,                      // /api/auth/* brute-force tavanı (başarılı giriş kovayı sıfırlar)
         },
         wsHeartbeatIntervalMs: 30000,          // B2.5-11 ping/pong periyodu
         maxInitialBalance: 1e12,               // startSimulation tavanı
