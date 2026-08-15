@@ -45,3 +45,6 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# graphify knowledge graph (AST-extracted, rebuilt on demand — exclude to keep prompt cache clean)
+graphify-out/
