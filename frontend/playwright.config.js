@@ -4,6 +4,9 @@ export default defineConfig({
     testDir: './e2e',
     timeout: 45000,
     fullyParallel: false,
+    // One global agent + one shared backend DB: specs must not step on each
+    // other's simulation state.
+    workers: 1,
     retries: 0,
     reporter: [['list']],
     use: {

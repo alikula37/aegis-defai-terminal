@@ -38,7 +38,7 @@ export default function TvlHistoryModal({ isOpen, onClose }) {
         apiFetch('/api/portfolio/history?limit=50')
             .then(r => r.json())
             .then(rows => {
-                const pts = rows
+                const pts = (Array.isArray(rows) ? rows : [])
                     .filter(r => r.tvl > 0)
                     .map(row => ({
                         time: fmtTime(row.timestamp),

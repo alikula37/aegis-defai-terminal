@@ -296,7 +296,7 @@ describe('API Integration Tests', () => {
         const prevKey = process.env.WS_API_KEY;
         process.env.NODE_ENV = 'production';
         process.env.WS_API_KEY = 'prod-secret-key';
-        try {
+                try {
             const outcome = await wsExpectFailure(['wrong-key']);
             expect(outcome).not.toBe('opened');
             // correct key must still work
@@ -322,7 +322,37 @@ describe('API Integration Tests', () => {
             const health = await request(app).get('/health');
             expect(health.status).toBe(200);
         } finally {
-            process.env.AEGIS_API_KEY = prevKey;
+            // prevKey may be undefined — assigning it would set the STRING
+            // "undefined" (truthy) and 401 every later request. Delete instead.
+            if (prevKey) process.env.AEGIS_API_KEY = prevKey;
+            else delete process.env.AEGIS_API_KEY;
         }
+    });
+
+    it('data endpoints return arrays when the active sim is owned by another user (no 404 object)', async () => {
+        // Regression: activeSimForUser used to answer a not-owned active
+        // simulation with 404 {error}; array-consuming frontends (logs,
+        // history) crashed with "filter is not a function".
+        // Runs last: it mutates the active simulation's ownership.
+        const start = await request(app)
+            .post('/api/simulation/start')
+            .send({ initialBalance: 10000, frequency: 'Low', simulationName: `ownership ${Date.now()}` });
+        expect(start.status).toBe(200);
+        const simId = db.prepare('SELECT id FROM simulations ORDER BY id DESC LIMIT 1').get().id;
+        // Steal the sim from the local user — simulating a pre-E9 row or
+        // another account's active simulation.
+        db.prepare('UPDATE simulations SET user_id = 999999 WHERE id = ?').run(simId);
+
+        const logsRes = await request(app).get('/api/logs');
+        expect(logsRes.status).toBe(200);
+        expect(Array.isArray(logsRes.body)).toBe(true);
+
+        const histRes = await request(app).get('/api/portfolio/history?limit=10');
+        expect(histRes.status).toBe(200);
+        expect(Array.isArray(histRes.body)).toBe(true);
+
+        // Restore ownership so the stop endpoint can clean up after itself.
+        db.prepare('UPDATE simulations SET user_id = ? WHERE id = ?').run(getLocalUserId(), simId);
+        await request(app).post('/api/simulation/stop');
     });
 });

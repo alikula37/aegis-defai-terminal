@@ -448,13 +448,12 @@ app.get('/api/simulation/status', (req, res) => {
 // Every data endpoint below streams the ACTIVE simulation (single global
 // agent). Only its owner may read it; everyone else sees an empty/404 response
 // (no existence leak). Open mode = everyone is the local user → unchanged.
-async function activeSimForUser(req, res) {
+async function activeSimForUser(req, _res) {
     if (!agent.activeSimulationId) return null; // no active sim → empty data
     const owned = await getSimulationById(agent.activeSimulationId, req.user.id);
-    if (!owned) {
-        res.status(404).json({ error: 'Simulation not found' });
-        return false;
-    }
+    if (!owned) return null; // not owned → empty data, never a 404 object
+    // (data endpoints below expect arrays; a 404 {error} body would break the
+    // array contract and crash array-consuming frontend components)
     return agent.activeSimulationId;
 }
 

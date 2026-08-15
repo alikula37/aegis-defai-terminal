@@ -68,7 +68,7 @@ export default function AgentTerminal() {
         apiFetch('/api/logs?limit=50')
             .then(r => r.json())
             .then(data => {
-                if (data && data.length > 0) {
+                if (Array.isArray(data) && data.length > 0) {
                     const formattedLogs = data
                         .filter(logData => ALLOWED_TYPES.includes(logData.type))
                         .map(normalizeLog);

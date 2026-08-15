@@ -87,7 +87,7 @@ export default function LiveYieldChart() {
         apiFetch(`/api/portfolio/history?limit=1000&timeRange=${timeRange}`)
             .then(r => r.json())
             .then(rows => {
-                const pts = rows
+                const pts = (Array.isArray(rows) ? rows : [])
                     .filter(r => r.net_apy > 0) // Skip zero-value rows
                     .map(rowToPoint)
                     .reverse(); // Reverse to show oldest to newest

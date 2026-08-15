@@ -15,7 +15,7 @@ export default function AIAgentLogs() {
     useEffect(() => {
         apiFetch('/api/logs')
             .then(r => r.json())
-            .then(data => setLogs(data))
+            .then(data => setLogs(Array.isArray(data) ? data : []))
             .catch(() => {
                 setLogs([
                     { id: 1, timestamp: new Date().toISOString(), type: 'system', message: '🤖 Agent system initialized. Waiting for backend connection...' }
