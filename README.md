@@ -48,6 +48,8 @@ Aegis DeFAI Terminal is an autonomous, AI-driven DeFi agent designed to execute 
 - [🇬🇧 How It Works (English)](docs/HOW_IT_WORKS.md)
 - [🇹🇷 Nasıl Çalışır? (Türkçe)](docs/HOW_IT_WORKS_TR.md)
 
+More docs: [Architecture](docs/TARGET_ARCHITECTURE.md) · [Auth & Multi-user](docs/AUTH.md) · [Security Audit](docs/SECURITY_AUDIT_REPORT.md) · [Observability](docs/OBSERVABILITY.md) · [Notifications](docs/NOTIFICATIONS.md) · [UI Style Guide](docs/DESIGN.md) · [Roadmap](docs/PRODUCT_ROADMAP.md) · [Development Backlog](docs/IMPLEMENTATION_BACKLOG.md)
+
 ## Getting Started
 
 ### Prerequisites
@@ -77,8 +79,19 @@ Aegis DeFAI Terminal is an autonomous, AI-driven DeFi agent designed to execute 
 
 ### Docker Setup
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
+Frontend: `http://localhost:8080` · Backend: `http://localhost:3001` (in production mode login is mandatory — the first registered account becomes admin, see [docs/AUTH.md](docs/AUTH.md))
+
+### Running Tests
+
+| Suite | Command | Count |
+|---|---|---|
+| Backend (unit + stress) | `cd backend && npm test` | 410 tests |
+| Frontend (Vitest) | `cd frontend && npm test` | 78 tests |
+| E2E (Playwright) | `cd frontend && npx playwright test` | 3 specs (requires running stack) |
+
+Code quality: backend ESLint 0/0 warnings, frontend oxlint 0 errors, SonarQube local scan — 0 bugs, 0 vulnerabilities, 67.6% coverage (see [docs/PRODUCTION_READINESS_ANALYSIS.md](docs/PRODUCTION_READINESS_ANALYSIS.md)).
 
 ## Configuration Guide (API Keys & RPC)
 
@@ -133,6 +146,9 @@ Notifications: critical agent events can fan out to Telegram/email — see
 - **Frontend:** React, Vite, TailwindCSS.
 - **AI Engine:** OpenRouter (Llama 3.1 70B Instruct).
 - **Layered agent core:** `RiskEngine` → `DecisionEngine` (LLM + guardrails) → `ExecutionLayer` (simulation or on-chain backend). The decision engine is identical for both — only execution changes.
+
+## Development Tooling
+- **Graphify knowledge graph:** `.opencode/skills/graphify` — AST-extracted code graph (`graphify-out/`, 849 nodes) for query-first navigation. Rebuild on code change: `graphify update .` (offline, no API key). Graph data is gitignored by design.
 
 ## Contributing
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and our coding standards.
