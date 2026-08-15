@@ -297,7 +297,7 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                                 name="rpcUrl"
                                 value={systemConfig.rpcUrl}
                                 onChange={handleConfigChange}
-                                required={liveMissingRpc}
+                                aria-required={liveMissingRpc || undefined}
                                 placeholder={configFlags.hasRpcUrl ? 'Leave empty to keep the stored URL' : 'https://sepolia.infura.io/v3/...'}
                                 className={`w-full bg-surface-variant border rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary ${liveMissingRpc ? 'border-error' : 'border-outline-variant'}`}
                             />
@@ -314,7 +314,7 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                                 name="openRouterKey"
                                 value={systemConfig.openRouterKey}
                                 onChange={handleConfigChange}
-                                required={liveMissingKey}
+                                aria-required={liveMissingKey || undefined}
                                 placeholder={configFlags.hasOpenRouterKey ? 'Leave empty to keep the stored key' : 'sk-or-v1-...'}
                                 className={`w-full bg-surface-variant border rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary ${liveMissingKey ? 'border-error' : 'border-outline-variant'}`}
                             />
