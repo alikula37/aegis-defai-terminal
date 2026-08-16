@@ -453,7 +453,7 @@ export async function deleteSimulation(id, userId) {
 let ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 if (!ENCRYPTION_KEY) {
     logger.error('[FATAL ERROR] ENCRYPTION_KEY is missing. Set it in backend/.env to protect stored API keys.');
-    logger.error('Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+    logger.error('Generate one with: node -e "console.log(require(\'crypto\').randomBytes(16).toString(\'hex\'))"');
     process.exit(1);
 }
 
@@ -461,8 +461,8 @@ let encryptionKeyBuffer = Buffer.from(ENCRYPTION_KEY);
 if (encryptionKeyBuffer.length !== 32) {
     if (process.env.NODE_ENV === 'production') {
         // B5 — a padded AES-128 key is a real weakness; refuse to run in prod.
-        logger.error('[FATAL ERROR] ENCRYPTION_KEY must be exactly 32 bytes (64 hex chars) in production.');
-        logger.error('Generate with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+        logger.error('[FATAL ERROR] ENCRYPTION_KEY must be exactly 32 bytes in production.');
+        logger.error('Generate with: node -e "console.log(require(\'crypto\').randomBytes(16).toString(\'hex\'))"');
         process.exit(1);
     }
     logger.warn('[WARNING] ENCRYPTION_KEY is not 32 bytes. Truncating/padding to 32 bytes (dev only).');

@@ -250,7 +250,7 @@ describe('API Integration Tests', () => {
         await updateSettings({ dataMode: 'SIM', dataScenario: 'stable' }, null, TEST_USER());
         const start = await request(app)
             .post('/api/simulation/start')
-            .send({ initialBalance: 10000, simulationName: `Export Sim ${Date.now()}`, frequency: 'Low' });
+            .send({ initialBalance: 10000, simulationName: `Export Sim ${Date.now()}`, frequency: 'Low', dataMode: 'SIM' });
         expect(start.status).toBe(200);
 
         const res = await request(app).get('/api/simulation/export');
@@ -352,7 +352,7 @@ describe('API Integration Tests', () => {
 
         const start = await request(app)
             .post('/api/simulation/start')
-            .send({ initialBalance: 10000, simulationName: `Cycle Sim ${Date.now()}`, frequency: 'High' });
+            .send({ initialBalance: 10000, simulationName: `Cycle Sim ${Date.now()}`, frequency: 'High', dataMode: 'SIM' });
         expect(start.status).toBe(200);
         expect(start.body.success).toBe(true);
 
@@ -376,7 +376,7 @@ describe('API Integration Tests', () => {
 
     it('a stopped simulation is marked STOPPED in the list (not lingering ACTIVE)', async () => {
         // Fresh run so the assertion targets the simulation we control.
-        await request(app).post('/api/simulation/start').send({ simulationName: `stop-state ${Date.now()}` });
+        await request(app).post('/api/simulation/start').send({ simulationName: `stop-state ${Date.now()}`, dataMode: 'SIM' });
         await new Promise(r => setTimeout(r, 800));
         await request(app).post('/api/simulation/stop');
         const list = await request(app).get('/api/simulations');
@@ -448,7 +448,7 @@ describe('API Integration Tests', () => {
         // Runs last: it mutates the active simulation's ownership.
         const start = await request(app)
             .post('/api/simulation/start')
-            .send({ initialBalance: 10000, frequency: 'Low', simulationName: `ownership ${Date.now()}` });
+            .send({ initialBalance: 10000, frequency: 'Low', simulationName: `ownership ${Date.now()}`, dataMode: 'SIM' });
         expect(start.status).toBe(200);
         const simId = db.prepare('SELECT id FROM simulations ORDER BY id DESC LIMIT 1').get().id;
         // Steal the sim from the local user — simulating a pre-E9 row or
