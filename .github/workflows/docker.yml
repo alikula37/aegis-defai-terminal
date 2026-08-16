@@ -131,7 +131,10 @@ jobs:
           sarif_file: trivy-results.sarif
 
   compose-smoke:
-    needs: build-and-push
+    # Serialized after scan: running alongside two Trivy scans + builds on
+    # the same runner starved the backend of CPU and it missed the health
+    # window (2 failures in 3 runs).
+    needs: [build-and-push, scan]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -148,11 +151,11 @@ jobs:
 
       - name: Wait for health
         run: |
-          for i in $(seq 1 60); do
+          for i in $(seq 1 90); do
             if curl -sf http://localhost:3001/health >/dev/null; then break; fi
             sleep 2
           done
-          curl -sf http://localhost:3001/health
+          curl -sf http://localhost:3001/health || { docker compose logs backend; exit 1; }
           curl -sf -o /dev/null http://localhost:8080
 
       - name: Smoke — first registration becomes admin, login, run a simulation
