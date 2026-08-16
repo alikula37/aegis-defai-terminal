@@ -101,7 +101,8 @@ describe('Stress — DB churn', () => {
         const sims = await dbfns.getAllSimulations(LOCAL());
         // 5 kept + 1 new (the prune keeps the 5 most recent of this user)
         expect(sims.length).toBeLessThanOrEqual(6);
-    }, 30000);
+        // Windows runners fsync node:sqlite WAL painfully slow — 60s bound.
+    }, 60000);
 
     it('survives 100 session create/verify/delete cycles', () => {
         const uid = dbfns.createUser(`stress_${Date.now()}`, 'hash', 'user');
