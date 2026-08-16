@@ -59,6 +59,12 @@ function mockRoutes({ settings = storedSettings, name = 'sim_1a2b3c4d' } = {}) {
         if (url === '/api/simulation/suggest-name') {
             return Promise.resolve({ ok: true, json: async () => ({ suggestedName: name }) });
         }
+        if (url === '/api/llm/models') {
+            return Promise.resolve({ ok: true, json: async () => ({ models: [
+                { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', isFree: false },
+                { id: 'google/gemini-2.5-flash-exp:free', name: 'Gemini 2.5 Flash', isFree: true },
+            ] }) });
+        }
         return Promise.resolve({ ok: true, json: async () => ({}) });
     });
 }
@@ -166,8 +172,27 @@ describe('SimulationStartModal', () => {
         });
     });
 
-    it('renders the form instantly from the settings cache (no loading gate)', async () => {
-        // Even with both fetches hanging, the cached SettingsContext data is
+    it('provides an OpenRouter model typeahead (datalist) while keeping free-form ids', async () => {
+        mockRoutes();
+        renderModal();
+        // The model field lives in the collapsible Advanced section.
+        fireEvent.click(screen.getByRole('button', { name: /Advanced/i }));
+        const modelInput = screen.getByPlaceholderText(/e\.g\. google\/gemini/i);
+        expect(modelInput).toHaveAttribute('list', 'aegis-llm-model-options');
+        // Options arrive asynchronously from the catalog endpoint.
+        const datalist = document.getElementById('aegis-llm-model-options');
+        await waitFor(() => {
+            expect(datalist.querySelectorAll('option').length).toBeGreaterThan(0);
+        });
+        const ids = [...datalist.querySelectorAll('option')].map(o => o.value);
+        expect(ids).toContain('anthropic/claude-3.5-sonnet');
+        expect(ids).toContain('google/gemini-2.5-flash-exp:free');
+        // The combobox is still free-form: typing a custom id works.
+        fireEvent.change(modelInput, { target: { name: 'activeModel', value: 'my/custom-model' } });
+        expect(modelInput.value).toBe('my/custom-model');
+    });
+
+    it('renders the form instantly from the settings cache (no loading gate)', async () => {        // Even with both fetches hanging, the cached SettingsContext data is
         // enough for the form to be interactive — the modal never blocks on
         // the network round-trip.
         apiFetch.mockImplementation(() => new Promise(() => {}));

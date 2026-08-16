@@ -5,6 +5,13 @@ import { app, server } from '../server.js';
 import db from '../db/database.js';
 import { updateSettings, getLocalUserId } from '../db/database.js';
 import { HistoricalDataService } from '../services/HistoricalDataService.js';
+import { clearModelCatalogCache } from '../services/LLMService.js';
+
+// The only network calls LLMService makes are to OpenRouter — mock them so
+// the /api/llm/models route is testable offline. Other services use
+// global.fetch (OracleService) and are unaffected by this module mock.
+vi.mock('node-fetch', () => ({ default: vi.fn() }));
+import fetch from 'node-fetch';
 
 // E9 — open-mode identity for direct DB writes in tests.
 const TEST_USER = () => getLocalUserId();
@@ -178,6 +185,29 @@ describe('API Integration Tests', () => {
             .post('/api/simulation/start')
             .send({ simulationName: `Bad Scenario ${Date.now()}`, dataMode: 'SIM', dataScenario: 'tsunami' });
         expect(badScenario.status).toBe(400);
+    });
+
+    it('GET /api/llm/models returns the OpenRouter catalog, free models first', async () => {
+        fetch.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: async () => ({ data: [
+                { id: 'zeta/paid', name: 'Zeta Paid', context_length: 8000, pricing: { prompt: '1', completion: '2' } },
+                { id: 'alpha/free', name: 'Alpha Free', context_length: 4000, pricing: { prompt: '0', completion: '0' } },
+            ] }),
+        });
+        const res = await request(app).get('/api/llm/models');
+        expect(res.status).toBe(200);
+        expect(res.body.models.map(m => m.id)).toEqual(['alpha/free', 'zeta/paid']);
+    });
+
+    it('GET /api/llm/models returns 502 when OpenRouter is unreachable', async () => {
+        clearModelCatalogCache();
+        fetch.mockRejectedValueOnce(new Error('network down'));
+        const res = await request(app).get('/api/llm/models');
+        expect(res.status).toBe(502);
+        expect(res.body.error).toBeTruthy();
     });
 
     it('GET /api/simulation/suggest-name returns a fresh unique sim_<hex> name', async () => {

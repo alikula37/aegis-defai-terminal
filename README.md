@@ -104,7 +104,7 @@ graph TD
 |---|---|
 | 🖥️ Frontend | React 18 · Vite 5 · TailwindCSS 3 · Recharts · WebSocket live updates |
 | ⚙️ Backend | Node.js 22 · Express 4 · **node:sqlite** (built-in, zero deps) · WebSocket · Prometheus |
-| 🧠 AI Engine | OpenRouter API → Llama 3.1 70B Instruct (model-agnostic) |
+| 🧠 AI Engine | OpenRouter API — **pick any model** (Llama, GPT, Claude, Gemini…) from the live catalog; tool-calling + fallback on retriable errors |
 | 🔒 Security | AES-256-GCM key encryption · scrypt (OWASP) · session auth · rate limiting · CSRF |
 | 🧪 Testing | Vitest (unit) · Playwright (E2E) · supertest (API + stress) · SonarQube |
 
@@ -283,7 +283,7 @@ graph TD
 |---|---|
 | 🖥️ Ön Yüz | React 18 · Vite 5 · TailwindCSS 3 · Recharts · WebSocket canlı güncelleme |
 | ⚙️ Arka Yüz | Node.js 22 · Express 4 · **node:sqlite** (yerleşik, sıfır bağımlılık) · WebSocket · Prometheus |
-| 🧠 AI Motoru | OpenRouter API → Llama 3.1 70B Instruct (modelden bağımsız) |
+| 🧠 AI Motoru | OpenRouter API — **istediğiniz modeli seçin** (Llama, GPT, Claude, Gemini…) canlı katalogdan; tool-calling + yeniden denenebilir hatalarda yedek |
 | 🔒 Güvenlik | AES-256-GCM anahtar şifreleme · scrypt (OWASP) · oturum doğrulama · hız sınırlama · CSRF |
 | 🧪 Test | Vitest (birim) · Playwright (E2E) · supertest (API + stres) · SonarQube |
 

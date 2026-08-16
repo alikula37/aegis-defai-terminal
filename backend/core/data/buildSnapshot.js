@@ -73,7 +73,10 @@ export async function buildSnapshot(inputs, simulationState = {}, simulationId =
     const corkHedgeCost = -consts.corkHedgeCost;
     const bridgeCostUsd = consts.bridgeCostUsd;
 
-    const currentPortfolio = await getLatestPortfolio(simulationId);
+    // getLatestPortfolio(null) is now explicitly null (2a81ef5): no baseline
+    // row yet. Treat it as an empty portfolio — 0 TVL, 0 impact — which is
+    // exactly the "fresh DB" case the gas-cost guard below expects.
+    const currentPortfolio = (await getLatestPortfolio(simulationId)) || { tvl: 0, timestamp: null };
 
     // Determine collateral APY based on current state
     const collateralApy = simulationState.currentCollateral === 'PT-sUSDe' ? pendlePtSusdeApy : susdeApy;

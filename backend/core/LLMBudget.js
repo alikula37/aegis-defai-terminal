@@ -8,11 +8,15 @@ export const ROUTING_POLICY = {
     routineModel: 'meta-llama/llama-3.1-70b-instruct',
 };
 
+/**
+ * Model routing. The user's explicit selection always wins — for routine AND
+ * critical decisions (they can pick any OpenRouter model in Settings). Only
+ * when no model is configured do the defaults kick in: routine → routineModel,
+ * critical → criticalModel.
+ */
 export function resolveModel(activeModel, isCritical, { criticalModel = ROUTING_POLICY.criticalModel } = {}) {
-    const model = activeModel || ROUTING_POLICY.routineModel;
-    const isFreeModel = model.endsWith(':free');
-    if (isCritical && !isFreeModel) return criticalModel;
-    return model;
+    if (activeModel) return activeModel;
+    return isCritical ? criticalModel : ROUTING_POLICY.routineModel;
 }
 
 const WEEK_MS = 7 * 24 * 3600000;

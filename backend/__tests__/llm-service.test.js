@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('node-fetch', () => ({ default: vi.fn() }));
 
 import fetch from 'node-fetch';
-import { callLLM, callLLMWithTools, isRetriableLLMError, withModelFallback } from '../services/LLMService.js';
+import { callLLM, callLLMWithTools, isRetriableLLMError, withModelFallback, fetchModelCatalog, clearModelCatalogCache } from '../services/LLMService.js';
 
 function jsonResponse(body, status = 200) {
     return {
@@ -93,5 +93,36 @@ describe('LLMService fallback chain (B2.5-8)', () => {
         const result = await withModelFallback(fn, 'openai/gpt-4o-mini');
         expect(result).toBe('ok');
         expect(attempts).toBe(2);
+    });
+});
+
+describe('fetchModelCatalog (GET /api/llm/models source)', () => {
+    beforeEach(() => {
+        clearModelCatalogCache();
+    });
+
+    it('fetches, normalizes and sorts the OpenRouter list — free models first', async () => {
+        fetch.mockResolvedValueOnce(jsonResponse({ data: [
+            { id: 'zeta/paid', name: 'Zeta Paid', context_length: 8000, pricing: { prompt: '1', completion: '2' } },
+            { id: 'alpha/free', name: 'Alpha Free', context_length: 4000, pricing: { prompt: '0', completion: '0' } },
+            { id: 'beta/x:free', name: 'Beta Free', pricing: null },
+            { id: 'garbage' },
+        ] }));
+        const models = await fetchModelCatalog();
+        expect(models.map(m => m.id)).toEqual(['alpha/free', 'beta/x:free', 'garbage', 'zeta/paid']);
+        expect(models[0].isFree).toBe(true);
+        expect(models[1].isFree).toBe(true); // :free suffix fallback when pricing is missing
+        expect(models[2].isFree).toBe(false);
+        expect(models[0].contextLength).toBe(4000);
+        expect(models.every(m => m.id && m.name)).toBe(true);
+    });
+
+    it('serves the cached list without hitting the network again', async () => {
+        fetch.mockResolvedValueOnce(jsonResponse({ data: [{ id: 'a/b', name: 'A', pricing: null }] }));
+        await fetchModelCatalog();
+        fetch.mockRejectedValue(new Error('network down'));
+        const models = await fetchModelCatalog();
+        expect(models).toHaveLength(1);
+        expect(models[0].id).toBe('a/b');
     });
 });

@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { getApiKey, setApiKey } from '../lib/apiClient';
+import { getApiKey, setApiKey, apiFetch } from '../lib/apiClient';
 import { useI18n } from '../i18n/I18nProvider';
 
+// Built-in fallback list — used only while the live OpenRouter catalog is
+// loading or unreachable (the picker normally shows every model OpenRouter
+// offers).
 const LLM_MODELS = [
     { value: 'google/gemini-2.5-flash-exp:free', label: 'Gemini 2.5 Flash (Free)' },
     { value: 'meta-llama/llama-3-8b-instruct:free', label: 'Llama 3 8B Instruct (Free)' },
@@ -20,6 +23,16 @@ const LLM_MODELS = [
     { value: 'openai/gpt-4o', label: 'GPT-4o' },
 ];
 
+function groupByVendor(models) {
+    const groups = new Map();
+    for (const m of models) {
+        const vendor = (m.id.split('/')[0] || 'other').toLowerCase();
+        if (!groups.has(vendor)) groups.set(vendor, []);
+        groups.get(vendor).push(m);
+    }
+    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+}
+
 export default function Settings() {
     const { settings, setLocalSettings, updateSettings, clearSettings } = useSettings();
     const { executionStatus } = useWebSocket();
@@ -30,7 +43,30 @@ export default function Settings() {
     const [isClearing, setIsClearing] = useState(false);
     const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
     const [apiKeyInput, setApiKeyInput] = useState(getApiKey());
+    const [modelCatalog, setModelCatalog] = useState(null);
+    const [catalogLoading, setCatalogLoading] = useState(true);
+    const [catalogError, setCatalogError] = useState(false);
     const { t } = useI18n();
+
+    const loadModelCatalog = (showSpinner = true) => {
+        if (showSpinner) setCatalogLoading(true);
+        apiFetch('/api/llm/models')
+            .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
+            .then(data => {
+                setModelCatalog(data.models || []);
+                setCatalogError(false);
+            })
+            .catch(err => {
+                console.error('Failed to load model catalog:', err);
+                setCatalogError(true);
+            })
+            .finally(() => setCatalogLoading(false));
+    };
+
+    useEffect(() => {
+        loadModelCatalog();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleChange = (field, value) => {
         setLocalSettings({ ...settings, [field]: value });
@@ -225,14 +261,46 @@ export default function Settings() {
                             </div>
                         </div>
                         <div>
-                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">{t('settings.model')}</label>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant uppercase tracking-wider">{t('settings.model')}</label>
+                                <button
+                                    type="button"
+                                    onClick={() => loadModelCatalog()}
+                                    disabled={catalogLoading}
+                                    className="flex items-center gap-1 font-[JetBrains_Mono] text-[11px] text-primary hover:text-on-surface transition-colors disabled:opacity-50"
+                                    title={t('settings.modelRefresh')}
+                                >
+                                    <span className={`material-symbols-outlined text-[14px] ${catalogLoading ? 'animate-spin' : ''}`}>refresh</span>
+                                    {t('settings.modelRefresh')}
+                                </button>
+                            </div>
                             <select
                                 value={settings.activeModel}
                                 onChange={e => handleChange('activeModel', e.target.value)}
                                 className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-on-surface font-[JetBrains_Mono] text-[13px] outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                             >
-                                {LLM_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                {modelCatalog && modelCatalog.length > 0
+                                    ? groupByVendor(modelCatalog).map(([vendor, models]) => (
+                                        <optgroup key={vendor} label={`${vendor} (${models.length})`}>
+                                            {models.map(m => (
+                                                <option key={m.id} value={m.id}>
+                                                    {m.name}{m.isFree ? ' (Free)' : ''} — {m.id}
+                                                </option>
+                                            ))}
+                                        </optgroup>
+                                    ))
+                                    : LLM_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                {settings.activeModel && (
+                                    <optgroup label="Custom">
+                                        <option value={settings.activeModel}>Custom — {settings.activeModel}</option>
+                                    </optgroup>
+                                )}
                             </select>
+                            <p className="mt-1.5 font-[JetBrains_Mono] text-[11px] text-on-surface-variant">
+                                {catalogError
+                                    ? t('settings.modelError')
+                                    : catalogLoading ? t('settings.modelLoading') : t('settings.modelHint')}
+                            </p>
                         </div>
                         <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 flex items-start gap-2">
                             <span className="material-symbols-outlined text-warning text-[16px] mt-0.5">info</span>

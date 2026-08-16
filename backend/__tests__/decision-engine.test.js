@@ -155,16 +155,20 @@ describe('buildLLMPrompt', () => {
 });
 
 describe('resolveModel (LLM routing)', () => {
-    it('routes critical decisions to the premium model', () => {
-        expect(resolveModel('meta-llama/llama-3.1-70b-instruct', true)).toBe('anthropic/claude-3.5-sonnet');
+    it('honors the user-selected model for critical decisions', () => {
+        expect(resolveModel('meta-llama/llama-3.1-70b-instruct', true)).toBe('meta-llama/llama-3.1-70b-instruct');
     });
 
-    it('keeps free models for critical decisions to avoid credit errors', () => {
-        expect(resolveModel('google/gemini-2.5-flash-exp:free', true)).toBe('google/gemini-2.5-flash-exp:free');
+    it('honors the user-selected model for routine decisions', () => {
+        expect(resolveModel('google/gemini-2.5-flash-exp:free', false)).toBe('google/gemini-2.5-flash-exp:free');
     });
 
-    it('uses the active model for routine decisions', () => {
-        expect(resolveModel('meta-llama/llama-3.1-70b-instruct', false)).toBe('meta-llama/llama-3.1-70b-instruct');
+    it('falls back to the premium model only when nothing is selected AND the decision is critical', () => {
+        expect(resolveModel('', true)).toBe('anthropic/claude-3.5-sonnet');
+    });
+
+    it('falls back to the routine default when nothing is selected', () => {
+        expect(resolveModel('', false)).toBe('meta-llama/llama-3.1-70b-instruct');
     });
 });
 

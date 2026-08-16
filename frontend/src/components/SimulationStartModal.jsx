@@ -49,6 +49,7 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState(null);
     const [suggestedName, setSuggestedName] = useState(null);
+    const [modelCatalog, setModelCatalog] = useState([]);
     const [showKeyGuide, setShowKeyGuide] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
     const nameTouchedRef = useRef(false);
@@ -127,6 +128,15 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                     });
                 })
                 .catch(err => console.error("Failed to suggest name:", err));
+
+            // 4) Live OpenRouter model catalog for the typeahead combobox —
+            //    best-effort: on failure the input still accepts any id.
+            apiFetch('/api/llm/models')
+                .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
+                .then(data => {
+                    if (!cancelled) setModelCatalog(data.models || []);
+                })
+                .catch(err => console.error("Failed to load model catalog:", err));
 
             return () => { cancelled = true; };
         }
@@ -480,11 +490,21 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                                     <input
                                         type="text"
                                         name="activeModel"
+                                        list="aegis-llm-model-options"
                                         value={settings.activeModel}
                                         onChange={handleChange}
                                         placeholder={t('startModal.modelPlaceholder')}
+                                        autoComplete="off"
                                         className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
                                     />
+                                    {/* Typeahead list of every model OpenRouter offers —
+                                        the value stays a free-form id, so custom ids
+                                        typed by hand also work. */}
+                                    <datalist id="aegis-llm-model-options">
+                                        {modelCatalog.map(m => (
+                                            <option key={m.id} value={m.id}>{m.isFree ? `${m.name} (Free)` : m.name}</option>
+                                        ))}
+                                    </datalist>
                                 </div>
                             </div>
                         )}

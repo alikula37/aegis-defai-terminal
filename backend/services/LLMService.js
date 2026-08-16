@@ -28,6 +28,50 @@ export function getApiKey(settings = {}) {
     return apiKey;
 }
 
+// Live OpenRouter model catalog (GET /api/llm/models): fetched once, cached
+// for 30 minutes. The models endpoint is public — no API key required — but we
+// send the key when one exists so the catalog also reflects paid/whitelisted
+// models of the account.
+const CATALOG_CACHE_TTL_MS = 30 * 60 * 1000;
+let catalogCache = { fetchedAt: 0, models: [] };
+
+export function clearModelCatalogCache() {
+    catalogCache = { fetchedAt: 0, models: [] };
+}
+
+export async function fetchModelCatalog(force = false) {
+    if (!force && Date.now() - catalogCache.fetchedAt < CATALOG_CACHE_TTL_MS) {
+        return catalogCache.models;
+    }
+    const key = process.env.OPENROUTER_API_KEY;
+    const headers = { 'Content-Type': 'application/json' };
+    if (key && key !== 'kullanici_buraya_girecek') headers['Authorization'] = `Bearer ${key}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    try {
+        const response = await fetch('https://openrouter.ai/api/v1/models', { headers, signal: controller.signal });
+        if (!response.ok) {
+            throw new Error(`OpenRouter models API error: ${response.statusText}`);
+        }
+        const body = await response.json();
+        // Sort: free models first (cheapest experiments), then alphabetically by id.
+        const models = (body.data || [])
+            .filter(m => m && m.id)
+            .map(m => ({
+                id: m.id,
+                name: m.name || m.id,
+                contextLength: m.context_length || 0,
+                pricing: m.pricing || null,
+                isFree: m.pricing ? Number(m.pricing.prompt) === 0 : /:free$/.test(m.id),
+            }))
+            .sort((a, b) => (a.isFree === b.isFree ? a.id.localeCompare(b.id) : a.isFree ? -1 : 1));
+        catalogCache = { fetchedAt: Date.now(), models };
+        return models;
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
 /** Assemble the system prompt (character persona + decision memory context). */
 export function buildSystemContent(memoryContext = []) {
     let systemContent = 'You are Aegis, an autonomous DeFi portfolio manager AI agent. Respond in JSON format only. Do not include markdown formatting or explanations outside the JSON.';

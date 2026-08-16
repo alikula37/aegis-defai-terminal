@@ -20,6 +20,7 @@ import {
     getSessionToken, getSessionUser,
 } from './utils/auth.js';
 import { createAuthRouter } from './routes/authRoutes.js';
+import { fetchModelCatalog, catalogCache } from './services/LLMService.js';
 
 dotenv.config();
 
@@ -731,6 +732,20 @@ app.get('/api/settings', async (req, res) => {
         res.json(sanitizeSettings(settings));
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+// Live OpenRouter model catalog for the model picker. Cached server-side for
+// 30 min; on upstream failure a stale cache is served, otherwise 502 — the
+// frontend falls back to its built-in list.
+app.get('/api/llm/models', async (req, res) => {
+    try {
+        res.json({ models: await fetchModelCatalog() });
+    } catch (error) {
+        if (catalogCache && catalogCache.models.length > 0) {
+            return res.json({ models: catalogCache.models, stale: true });
+        }
+        res.status(502).json({ error: error.message });
     }
 });
 

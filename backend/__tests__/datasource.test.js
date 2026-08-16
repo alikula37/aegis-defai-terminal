@@ -22,15 +22,20 @@ const state = {
 describe('SimDataSource', () => {
     beforeEach(() => setRngSeed(2026));
 
+    // Portfolio rows are simulation-scoped (2a81ef5): the seed's snapshot
+    // calls must carry the id resetPortfolio created for us.
+    let seedSimId = null;
+
     beforeAll(async () => {
         // Per-worker temp DB is empty — seed a baseline portfolio so the
         // snapshot has a real starting TVL (matches the agent's lifecycle).
         const db = await import('../db/database.js');
-        await db.resetPortfolio(10000, 'Datasource Seed', null, db.getLocalUserId());
+        const seed = await db.resetPortfolio(10000, 'Datasource Seed', null, db.getLocalUserId());
+        seedSimId = seed.simulationId;
     });
 
     it('produces the standard snapshot shape', async () => {
-        const s = await SimDataSource.getSnapshot(state, { scenario: 'stable' });
+        const s = await SimDataSource.getSnapshot(state, { scenario: 'stable', simulationId: seedSimId });
         expect(s.oracleStatus).toBe('SIM (stable)');
         expect(s.portfolio.tvl).toBeGreaterThan(0);
         expect(s.portfolio).toHaveProperty('healthFactor');
@@ -38,22 +43,22 @@ describe('SimDataSource', () => {
     });
 
     it('is deterministic for a fixed seed', async () => {
-        const a = await SimDataSource.getSnapshot(state, { scenario: 'stable' });
+        const a = await SimDataSource.getSnapshot(state, { scenario: 'stable', simulationId: seedSimId });
         setRngSeed(2026);
-        const b = await SimDataSource.getSnapshot(state, { scenario: 'stable' });
+        const b = await SimDataSource.getSnapshot(state, { scenario: 'stable', simulationId: seedSimId });
         expect(a).toEqual(b);
     });
 
     it('bear scenario always has a negative spread', async () => {
         setRngSeed(1);
-        const s = await SimDataSource.getSnapshot(state, { scenario: 'bear' });
+        const s = await SimDataSource.getSnapshot(state, { scenario: 'bear', simulationId: seedSimId });
         expect(s.baseSpread).toBeLessThan(0);
         expect(s.leverage).toBe(1); // agent unwinds on negative spread
     });
 
     it('bull scenario has positive spread and leverage', async () => {
         setRngSeed(2);
-        const s = await SimDataSource.getSnapshot(state, { scenario: 'bull' });
+        const s = await SimDataSource.getSnapshot(state, { scenario: 'bull', simulationId: seedSimId });
         expect(s.baseSpread).toBeGreaterThan(0);
         expect(s.leverage).toBeGreaterThan(1);
     });
