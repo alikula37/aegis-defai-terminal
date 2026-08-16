@@ -119,8 +119,14 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy results to Security tab
+        # Best-effort: requires Code scanning enabled in repo settings
+        # (Settings → Code security → Code scanning). Without it the upload
+        # is refused ("not enabled") — the Trivy gate above already failed
+        # the run on any HIGH/CRITICAL finding, so this step is reporting
+        # only and must not turn the run red on its own.
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: true
         with:
           sarif_file: trivy-results.sarif
 
