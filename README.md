@@ -1,5 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Active-brightgreen?style=for-the-badge&logo=statuspage" alt="Status">
+  <img src="https://github.com/alikula37/aegis-defai-terminal/actions/workflows/ci.yml/badge.svg" alt="CI">
+  <img src="https://github.com/alikula37/aegis-defai-terminal/actions/workflows/docker.yml/badge.svg" alt="Docker">
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Backend%20Tests-418%20passed-brightgreen?style=for-the-badge&logo=vitest" alt="Backend tests">
   <img src="https://img.shields.io/badge/Frontend%20Tests-105%20passed-brightgreen?style=for-the-badge&logo=vitest" alt="Frontend tests">
