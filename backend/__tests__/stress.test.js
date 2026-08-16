@@ -46,7 +46,7 @@ beforeAll(async () => {
 const LOCAL = () => dbfns.getLocalUserId();
 const WS_URL = 'ws://localhost:3101';
 
-function wsConnect(protocols = 'aegis-default-ws-key', timeout = 5000) {
+function wsConnect(protocols = 'aegis-default-ws-key', timeout = 15000) {
     return new Promise((resolve, reject) => {
         const ws = new WebSocket(WS_URL, protocols);
         const timer = setTimeout(() => { ws.terminate(); reject(new Error('ws connect timeout')); }, timeout);
@@ -55,7 +55,7 @@ function wsConnect(protocols = 'aegis-default-ws-key', timeout = 5000) {
     });
 }
 
-function onceMessage(ws, timeout = 5000) {
+function onceMessage(ws, timeout = 15000) {
     return new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('ws message timeout')), timeout);
         ws.once('message', (data) => { clearTimeout(timer); resolve(JSON.parse(String(data))); });

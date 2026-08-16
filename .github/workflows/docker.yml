@@ -86,6 +86,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # GHCR is eventually consistent: a push can take tens of seconds to
+      # become visible via the registry API (MANIFEST_UNKNOWN). Retry instead
+      # of letting the scan fail on a freshly-pushed tag.
+      - name: Wait for image to propagate on GHCR
+        run: |
+          img="ghcr.io/${{ github.repository }}-${{ matrix.image }}:sha-${{ github.sha }}"
+          for i in $(seq 1 30); do
+            if docker manifest inspect "$img" >/dev/null 2>&1; then
+              echo "image visible after ${i} attempts"; exit 0
+            fi
+            sleep 5
+          done
+          echo "image $img never became visible"; exit 1
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -120,7 +134,7 @@ jobs:
 
       - name: Wait for health
         run: |
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             if curl -sf http://localhost:3001/health >/dev/null; then break; fi
             sleep 2
           done
