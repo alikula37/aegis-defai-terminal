@@ -33,7 +33,7 @@ export function getApiKey(settings = {}) {
 // send the key when one exists so the catalog also reflects paid/whitelisted
 // models of the account.
 const CATALOG_CACHE_TTL_MS = 30 * 60 * 1000;
-let catalogCache = { fetchedAt: 0, models: [] };
+export let catalogCache = { fetchedAt: 0, models: [] };
 
 export function clearModelCatalogCache() {
     catalogCache = { fetchedAt: 0, models: [] };
