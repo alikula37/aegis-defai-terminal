@@ -1,0 +1,43 @@
+# CodeQL static analysis. Adding this file manually (instead of the Settings
+# wizard) because the wizard kept failing with "Something went wrong".
+# Once the first analysis uploads, code scanning is enabled for the repo and
+# Trivy's SARIF uploads (docker.yml) land in the same Security tab.
+name: CodeQL
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '30 1 * * 3'
+
+permissions:
+  security-events: write
+  actions: read
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ javascript-typescript ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+
+      # No build step: pure JS/TS sources (backend + frontend) are scanned
+      # directly — build-mode none is the correct mode for this repo.
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
