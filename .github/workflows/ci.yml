@@ -86,10 +86,12 @@ jobs:
         cd frontend
         npm run build
 
-  # Browser E2E (Playwright) on Linux only — the real client→backend journey,
-  # including committed visual-regression baselines.
+  # Browser E2E (Playwright) — runs on Windows because the committed visual
+  # regression baselines are chromium-win32 renders; screenshots are not
+  # pixel-identical across OSes (font rasterization differs), so the baseline
+  # platform must match the runner.
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: build-and-test
     steps:
     - uses: actions/checkout@v5
@@ -109,6 +111,7 @@ jobs:
         npm ci
 
     - name: Prepare Backend Test Env
+      shell: bash
       run: |
         cd backend
         echo "ENCRYPTION_KEY=$(openssl rand -hex 16)" > .env
@@ -122,7 +125,7 @@ jobs:
     - name: Install Playwright Chromium
       run: |
         cd frontend
-        npx playwright install --with-deps chromium
+        npx playwright install chromium
 
     - name: Run Playwright (E2E + visual regression)
       # playwright.config.js boots the backend + frontend dev server itself.
