@@ -214,7 +214,15 @@ export async function getPortfolioHistory(limit = 50, simulationId = null, timeR
         if (timeRange === '1H') hours = 1;
         else if (timeRange === '7D') hours = 24 * 7;
 
-        const pastDate = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+        // portfolio_stats.timestamp uses CURRENT_TIMESTAMP → "YYYY-MM-DD HH:MM:SS"
+        // (UTC, space separator, no timezone suffix). The past window must be
+        // formatted in the SAME shape, otherwise the lexicographic comparison
+        // silently excludes every row: ' ' (0x20) < 'T' (0x54), so an ISO-8601
+        // pastDate ("…T…Z") never matches stored rows.
+        const pastDate = new Date(Date.now() - hours * 60 * 60 * 1000)
+            .toISOString()
+            .replace('T', ' ')
+            .slice(0, 19);
         conditions.push('timestamp >= ?');
         params.push(pastDate);
     }
@@ -226,7 +234,15 @@ export async function getPortfolioHistory(limit = 50, simulationId = null, timeR
     query += ' ORDER BY id DESC LIMIT ?';
     params.push(limit);
 
-    return db.prepare(query).all(...params);
+    const rows = db.prepare(query).all(...params);
+    // Normalize to ISO-8601 UTC so clients parse timestamps consistently
+    // ("YYYY-MM-DD HH:MM:SS" without a timezone is ambiguous in JS).
+    return rows.map((row) => ({
+        ...row,
+        timestamp: typeof row.timestamp === 'string' && row.timestamp.includes(' ')
+            ? `${row.timestamp.replace(' ', 'T')}Z`
+            : row.timestamp,
+    }));
 }
 
 export async function getLatestPortfolio(simulationId = null) {

@@ -80,7 +80,7 @@ const MAX_POINTS = 1000; // Keep up to 1000 data points in memory
 
 export default function LiveYieldChart() {
     const { t } = useI18n();
-    const { portfolioData: liveData } = useWebSocket();
+    const { portfolioData: liveData, isSimulationRunning } = useWebSocket();
     const [data, setData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState(null);
@@ -197,7 +197,9 @@ export default function LiveYieldChart() {
                                 ? t('chart.loadingHistory')
                                 : loadError
                                     ? loadError
-                                    : t('chart.noData')}
+                                    : isSimulationRunning
+                                        ? t('chart.waitingData')
+                                        : t('chart.noData')}
                         </p>
                     </div>
                 ) : (

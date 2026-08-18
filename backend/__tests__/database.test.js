@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import db, {
-    insertLog, getLogs, insertPortfolioStats, getLatestPortfolio, resetPortfolio,
+    insertLog, getLogs, insertPortfolioStats, getLatestPortfolio, getPortfolioHistory, resetPortfolio,
     updateSettings, getSettings, encrypt, decrypt,
     getLocalUserId, createUser, getUserByUsername, getUserById, countUsers,
     createSession, getSessionUser, deleteSession, incrementFailedAttempts, clearFailedAttempts,
@@ -90,6 +90,40 @@ describe('Database Operations', () => {
         // No id => no row: a caller without a simulation must never read the
         // global latest portfolio (would resurrect stale data after deletes).
         expect(await getLatestPortfolio()).toBeNull();
+    });
+
+    it('timeRange filters portfolio history by CURRENT_TIMESTAMP format', async () => {
+        // Regression: portfolio_stats.timestamp is CURRENT_TIMESTAMP
+        // ("YYYY-MM-DD HH:MM:SS"). The old filter compared against an ISO-8601
+        // pastDate ("YYYY-MM-DDTHH:MM:SS.sssZ"), and ' ' < 'T' made every
+        // timeRange except ALL return zero rows.
+        const sim = await resetPortfolio(10000, 'history range test', null, USER());
+        const { simulationId } = sim;
+
+        // Insert a row far in the past (explicit CURRENT_TIMESTAMP-shaped ts)
+        db.prepare(
+            `INSERT INTO portfolio_stats (simulation_id, timestamp, tvl, net_apy, health_factor)
+             VALUES (?, '2020-01-01 00:00:00', 10000, 5.0, 1.5)`
+        ).run(simulationId);
+        insertPortfolioStats(11000, 10.5, 1.4, [], {}, simulationId);
+
+        // 3 rows total: the reset row (created just now) + the past row + the
+        // current insert.
+        const all = await getPortfolioHistory(100, simulationId, 'ALL');
+        expect(all).toHaveLength(3);
+
+        // The reset row is timestamped "now" too, so 1H/24H keep it alongside
+        // the freshly inserted row; only the 2020 row is filtered out.
+        const hour = await getPortfolioHistory(100, simulationId, '1H');
+        expect(hour).toHaveLength(2);
+        expect(hour[0].net_apy).toBe(10.5);
+
+        const day = await getPortfolioHistory(100, simulationId, '24H');
+        expect(day).toHaveLength(2);
+
+        // Stored "YYYY-MM-DD HH:MM:SS" timestamps are normalized to ISO-8601
+        // so clients parse them unambiguously (UTC).
+        expect(all[0].timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
     });
 
     it('should reset portfolio correctly', async () => {

@@ -351,6 +351,7 @@ const en = {
     'chart.live': 'LIVE',
     'chart.waiting': 'WAITING',
     'chart.loadingHistory': 'Loading historical data...',
+    'chart.waitingData': 'Simulation is running — collecting APY history...',
     'chart.noData': 'Start simulation to begin recording APY data',
 
     // ---- allocation chart ----

@@ -350,6 +350,7 @@ const tr = {
     'chart.live': 'CANLI',
     'chart.waiting': 'BEKLENİYOR',
     'chart.loadingHistory': 'Geçmiş veri yükleniyor...',
+    'chart.waitingData': 'Simülasyon çalışıyor — APY geçmişi toplanıyor...',
     'chart.noData': 'APY verisi kaydetmeye başlamak için simülasyon başlatın',
 
     // ---- allocation chart ----
