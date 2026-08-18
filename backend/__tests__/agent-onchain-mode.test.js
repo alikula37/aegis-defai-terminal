@@ -19,10 +19,29 @@ vi.mock('../services/HistoricalDataService.js', () => ({
     HistoricalDataService: { recordSnapshot: vi.fn() },
 }));
 
-vi.mock('../services/LLMService.js', () => ({
-    callLLM: vi.fn(),
-    callLLMWithTools: vi.fn(),
-}));
+// Inline mock — importing the real module here would run dotenv.config() and
+// leak backend/.env (EVM_PROVIDER_URL) into the test process, which flips
+// onchain `providerConfigured` assertions.
+vi.mock('../services/LLMService.js', () => {
+    class LLMUnavailableError extends Error {
+        constructor(message, { reason = 'no-key' } = {}) {
+            super(message);
+            this.name = 'LLMUnavailableError';
+            this.reason = reason;
+        }
+    }
+    return {
+        callLLM: vi.fn(),
+        callLLMWithTools: vi.fn(),
+        LLMUnavailableError,
+        isPaymentRequiredError: (error) => !!error && typeof error.status === 'number' && error.status === 402,
+        hasValidApiKey: (settings = {}) => Boolean(settings.openRouterKey) && settings.openRouterKey !== 'kullanici_buraya_girecek',
+        getApiKey: (settings = {}) => {
+            if (!settings.openRouterKey) throw new LLMUnavailableError('OpenRouter API Key is missing or invalid.', { reason: 'no-key' });
+            return settings.openRouterKey;
+        },
+    };
+});
 
 import { MarketDataSource } from '../core/data/MarketDataSource.js';
 import { callLLM } from '../services/LLMService.js';

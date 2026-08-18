@@ -125,17 +125,17 @@ export default function LiveData() {
 
     return (
         <div className="flex-1 overflow-y-auto p-[2rem] bg-background">
-            {/* Readiness Banner */}
+            {/* Readiness Banner — only in AI-only mode without a key/RPC */}
             {!isLoading && !isReady && (
-                <div className="mb-6 bg-error-container/20 border border-error/50 rounded-xl p-4 flex items-center justify-between">
+                <div className="mb-6 bg-warning-container/20 border border-warning/50 rounded-xl p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-error text-[24px]">warning</span>
+                        <span className="material-symbols-outlined text-warning text-[24px]">warning</span>
                         <div>
-                            <h3 className="font-[Inter] text-[15px] font-semibold text-on-surface">{t('liveData.notConfiguredTitle')}</h3>
-                            <p className="text-[13px] text-on-surface-variant mt-0.5">{t('liveData.notConfiguredMsg')}</p>
+                            <h3 className="font-[Inter] text-[15px] font-semibold text-on-surface">{t('liveData.aiOnlyTitle')}</h3>
+                            <p className="text-[13px] text-on-surface-variant mt-0.5">{t('liveData.aiOnlyMsg')}</p>
                         </div>
                     </div>
-                    <Link to="/settings" className="bg-error text-on-error px-4 py-2 rounded-lg font-[Inter] text-[13px] font-medium hover:brightness-110 transition-all">
+                    <Link to="/settings" className="bg-warning text-on-warning px-4 py-2 rounded-lg font-[Inter] text-[13px] font-medium hover:brightness-110 transition-all">
                         {t('liveData.configure')}
                     </Link>
                 </div>

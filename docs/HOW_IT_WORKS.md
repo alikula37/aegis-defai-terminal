@@ -93,6 +93,20 @@ The risk zones depend on your **risk appetite** (set in the Settings page):
 
 ## 4. The AI brain — your model, its tools
 
+The AI brain is **optional and credit-free by default**. Three **Brain Modes**
+are available in Settings:
+
+| Mode | Behavior |
+|---|---|
+| **Auto** *(default)* | Tries your selected model (free models first). If OpenRouter is unreachable, returns **Payment Required** (no credits) or the key is missing, the agent **automatically falls back to the built-in rule engine** — no crash, no spam. |
+| **Local only** | Never calls OpenRouter — pure rule-based engine. Works with **no API key and zero balance** on live data. |
+| **AI only** | Always consults the LLM; requires a valid key with credits. |
+
+The one-click **"Run free — no credits"** button in Settings switches to Auto
+mode with the best curated free model. Failures are throttled to a single
+friendly notification (up to once per 10 minutes), and every cycle still
+produces a deterministic decision.
+
 When the portfolio enters the **Warning** or **Critical** zone (or a decision
 point is reached), the agent consults an LLM through **OpenRouter**. You choose
 the model from a live catalog in the **Settings** page (any Llama, GPT, Claude,

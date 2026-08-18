@@ -8,6 +8,15 @@ const SettingsContext = createContext();
 
 export const useSettings = () => useContext(SettingsContext);
 
+// The app is usable without any configuration in auto/local brain modes — the
+// built-in rule engine runs on live (or simulated) data with no API key. Only
+// 'llm'-only mode insists on a key + RPC endpoint.
+export const computeIsReady = (settings) => {
+    const brainMode = settings.brainMode || 'auto';
+    if (brainMode === 'llm') return Boolean(settings.rpcUrl && settings.openRouterKey);
+    return true;
+};
+
 export const SettingsProvider = ({ children }) => {
     const { isAuthenticated } = useAuth();
     const toast = useToast();
@@ -17,6 +26,7 @@ export const SettingsProvider = ({ children }) => {
         slippage: '0.5',
         openRouterKey: '',
         activeModel: 'google/gemini-2.5-flash-exp:free',
+        brainMode: 'auto',
         targetHf: 1.25,
         maxGasClaim: 20,
         dataMode: 'LIVE',
@@ -36,7 +46,7 @@ export const SettingsProvider = ({ children }) => {
             .then(data => {
                 setSettings(data);
                 setSavedSettings(data);
-                setIsReady(!!data.rpcUrl && !!data.openRouterKey);
+                setIsReady(computeIsReady(data));
             })
             .catch(err => {
                 console.error("Failed to fetch settings:", err);
@@ -57,7 +67,7 @@ export const SettingsProvider = ({ children }) => {
             if (data.success) {
                 setSettings(data.settings);
                 setSavedSettings(data.settings);
-                setIsReady(!!data.settings.rpcUrl && !!data.settings.openRouterKey);
+                setIsReady(computeIsReady(data.settings));
                 return true;
             }
             return false;
@@ -77,6 +87,7 @@ export const SettingsProvider = ({ children }) => {
                 slippage: '0.5',
                 openRouterKey: '',
                 activeModel: 'google/gemini-2.5-flash-exp:free',
+                brainMode: 'auto',
                 targetHf: 1.25,
                 maxGasClaim: 20,
                 dataMode: 'LIVE',
@@ -85,7 +96,7 @@ export const SettingsProvider = ({ children }) => {
             };
             setSettings(defaultSettings);
             setSavedSettings(defaultSettings);
-            setIsReady(false);
+            setIsReady(computeIsReady(defaultSettings));
             return true;
         } catch (err) {
             console.error("Failed to clear settings:", err);

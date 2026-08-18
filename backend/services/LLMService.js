@@ -20,12 +20,40 @@ try {
 }
 
 
-export function getApiKey(settings = {}) {
-    const apiKey = settings.openRouterKey || process.env.OPENROUTER_API_KEY;
-    if (!apiKey || apiKey === 'kullanici_buraya_girecek') {
-        throw new Error('OpenRouter API Key is missing or invalid.');
+/**
+ * Typed error for "the LLM cannot be used right now" — distinct from an
+ * OpenRouter outage. The agent uses this to show a friendly message instead of
+ * a scary "OpenRouter API Error". `reason` is one of:
+ *   'no-key'     — no valid OpenRouter API key configured
+ *   'local-mode' — the user chose the local rule-based brain (Settings)
+ */
+export class LLMUnavailableError extends Error {
+    constructor(message, { reason = 'no-key' } = {}) {
+        super(message);
+        this.name = 'LLMUnavailableError';
+        this.reason = reason;
     }
-    return apiKey;
+}
+
+/** OpenRouter returns 402 when the account has no credits (free tier). */
+export function isPaymentRequiredError(error) {
+    return !!error && typeof error.status === 'number' && error.status === 402;
+}
+
+/**
+ * A usable API key is one that is set and not the placeholder sentinel.
+ * Settings-level key wins over the environment variable.
+ */
+export function hasValidApiKey(settings = {}) {
+    const apiKey = settings.openRouterKey || process.env.OPENROUTER_API_KEY;
+    return Boolean(apiKey) && apiKey !== 'kullanici_buraya_girecek';
+}
+
+export function getApiKey(settings = {}) {
+    if (!hasValidApiKey(settings)) {
+        throw new LLMUnavailableError('OpenRouter API Key is missing or invalid.', { reason: 'no-key' });
+    }
+    return settings.openRouterKey || process.env.OPENROUTER_API_KEY;
 }
 
 // Live OpenRouter model catalog (GET /api/llm/models): fetched once, cached
@@ -157,6 +185,10 @@ export async function withModelFallback(primaryFn, fallbackModel, enabled = true
 }
 
 export async function callLLM(prompt, isCritical = false, memoryContext = [], settings = {}) {
+    // Local-only brain: never touch the network, even with a valid key.
+    if (settings.brainMode === 'local') {
+        throw new LLMUnavailableError('Local brain mode is active — OpenRouter is disabled.', { reason: 'local-mode' });
+    }
     const apiKey = getApiKey(settings);
 
     // Cost optimization: Llama 3.1 70B for routine, Claude 3.5 Sonnet for critical decisions
@@ -195,6 +227,10 @@ export async function callLLMWithTools({
     settings = {},
     isCritical = false,
 } = {}) {
+    // Local-only brain: never touch the network, even with a valid key.
+    if (settings.brainMode === 'local') {
+        throw new LLMUnavailableError('Local brain mode is active — OpenRouter is disabled.', { reason: 'local-mode' });
+    }
     const apiKey = getApiKey(settings);
     const activeModel = settings.activeModel || 'meta-llama/llama-3.1-70b-instruct';
     const model = resolveModel(activeModel, isCritical);

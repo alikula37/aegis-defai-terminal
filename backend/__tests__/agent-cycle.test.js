@@ -19,13 +19,32 @@ vi.mock('../services/HistoricalDataService.js', () => ({
     HistoricalDataService: { recordSnapshot: vi.fn() },
 }));
 
-vi.mock('../services/LLMService.js', () => ({
-    callLLM: vi.fn(),
-    callLLMWithTools: vi.fn(),
-}));
+// Inline mock — importing the real module here would run dotenv.config() and
+// leak backend/.env (EVM_PROVIDER_URL) into the test process, which flips
+// onchain `providerConfigured` assertions.
+vi.mock('../services/LLMService.js', () => {
+    class LLMUnavailableError extends Error {
+        constructor(message, { reason = 'no-key' } = {}) {
+            super(message);
+            this.name = 'LLMUnavailableError';
+            this.reason = reason;
+        }
+    }
+    return {
+        callLLM: vi.fn(),
+        callLLMWithTools: vi.fn(),
+        LLMUnavailableError,
+        isPaymentRequiredError: (error) => !!error && typeof error.status === 'number' && error.status === 402,
+        hasValidApiKey: (settings = {}) => Boolean(settings.openRouterKey) && settings.openRouterKey !== 'kullanici_buraya_girecek',
+        getApiKey: (settings = {}) => {
+            if (!settings.openRouterKey) throw new LLMUnavailableError('OpenRouter API Key is missing or invalid.', { reason: 'no-key' });
+            return settings.openRouterKey;
+        },
+    };
+});
 
 import { MarketDataSource } from '../core/data/MarketDataSource.js';
-import { callLLM } from '../services/LLMService.js';
+import { callLLM, LLMUnavailableError } from '../services/LLMService.js';
 import { insertPortfolioStats, insertMemory } from '../db/database.js';
 import { AegisAgent } from '../agent.js';
 import aegisConfig from '../aegis.config.js';
@@ -178,5 +197,75 @@ describe('AegisAgent cycle watchdog (B2.5-7)', () => {
         await agent.runCycle();
 
         expect(logs.some(l => /Watchdog/.test(l.message))).toBe(false);
+    });
+
+    // ---- Brain mode (free / no-credit UX) ----
+    const CONDITIONS = {
+        isCritical: false, isWarning: false,
+        targetHf: 1.25, criticalHf: 1.15, warningHf: 1.21,
+        isClaimProfitable: false, gasCostUsd: 1, estimatedClaimProfit: 0,
+    };
+    const CRITICAL = { ...CONDITIONS, isCritical: true };
+
+    it('uses the local rule engine when brainMode is local — no LLM call, no error spam', async () => {
+        callLLM.mockClear();
+        const logs = [];
+        const agent = makeAgent((type, payload) => logs.push({ broadcastType: type, ...payload }));
+        const settings = { brainMode: 'local', activeModel: 'x' };
+
+        const decision = await agent._makeDecision(makeMarketData(), CONDITIONS, settings);
+
+        expect(callLLM).not.toHaveBeenCalled();
+        expect(decision.decision).toBe('hold');
+        expect(logs.some(l => /OpenRouter API Error/.test(l.message || ''))).toBe(false);
+    });
+
+    it('falls back to the rule engine with a friendly info notice when OpenRouter returns 402', async () => {
+        const err = new Error('Payment Required');
+        err.status = 402;
+        callLLM.mockRejectedValue(err);
+        const logs = [];
+        const agent = makeAgent((type, payload) => logs.push({ broadcastType: type, ...payload }));
+        const settings = { activeModel: 'x', openRouterKey: 'sk-test', llmToolsEnabled: false };
+
+        const decision = await agent._makeDecision(makeMarketData(), CRITICAL, settings);
+
+        expect(callLLM).toHaveBeenCalled();
+        expect(decision.decision).toBe('flash_loan_rescue');
+        const notice = logs.find(l => l.broadcastType === 'notification');
+        expect(notice).toBeTruthy();
+        expect(notice.type).toBe('info');
+        expect(/credits/.test(notice.message)).toBe(true);
+        expect(/OpenRouter API Error/.test(notice.message)).toBe(false);
+    });
+
+    it('broadcasts a friendly notice (not an error toast) when no API key is set', async () => {
+        callLLM.mockRejectedValue(new LLMUnavailableError('OpenRouter API Key is missing or invalid.', { reason: 'no-key' }));
+        const logs = [];
+        const agent = makeAgent((type, payload) => logs.push({ broadcastType: type, ...payload }));
+        const settings = { activeModel: 'x', llmToolsEnabled: false };
+
+        await agent._makeDecision(makeMarketData(), CRITICAL, settings);
+
+        const notice = logs.find(l => l.broadcastType === 'notification');
+        expect(notice).toBeTruthy();
+        expect(notice.type).toBe('info');
+        expect(/API key/.test(notice.message)).toBe(true);
+        expect(/OpenRouter API Error/.test(notice.message)).toBe(false);
+    });
+
+    it('throttles repeated LLM failures to one notification per cooldown window', async () => {
+        const err = new Error('Payment Required');
+        err.status = 402;
+        callLLM.mockRejectedValue(err);
+        const logs = [];
+        const agent = makeAgent((type, payload) => logs.push({ broadcastType: type, ...payload }));
+        const settings = { activeModel: 'x', openRouterKey: 'sk-test', llmToolsEnabled: false };
+
+        await agent._makeDecision(makeMarketData(), CRITICAL, settings);
+        await agent._makeDecision(makeMarketData(), CRITICAL, settings);
+
+        const notices = logs.filter(l => l.broadcastType === 'notification');
+        expect(notices).toHaveLength(1);
     });
 });

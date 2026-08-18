@@ -302,6 +302,10 @@ describe('API Integration Tests', () => {
         const res = await request(app).get('/api/llm/models');
         expect(res.status).toBe(200);
         expect(res.body.models.map(m => m.id)).toEqual(['alpha/free', 'zeta/paid']);
+        // curated zero-credit fallback list is always served alongside
+        expect(Array.isArray(res.body.freeModels)).toBe(true);
+        expect(res.body.freeModels.length).toBeGreaterThan(0);
+        expect(res.body.freeModels.every(m => m.isFree === true)).toBe(true);
     });
 
     it('GET /api/llm/models returns 502 when OpenRouter is unreachable', async () => {
@@ -405,6 +409,20 @@ describe('API Integration Tests', () => {
         const fetched = await request(app).get('/api/settings');
         expect(fetched.body.automationRules).toHaveLength(1);
         expect(fetched.body.automationRules[0].id).toBe('api-1');
+    });
+
+    it('POST /api/settings accepts a valid brainMode and rejects invalid ones', async () => {
+        const ok = await request(app).post('/api/settings').send({ brainMode: 'local' });
+        expect(ok.status).toBe(200);
+        expect(ok.body.success).toBe(true);
+        expect(ok.body.settings.brainMode).toBe('local');
+
+        const okAuto = await request(app).post('/api/settings').send({ brainMode: 'auto' });
+        expect(okAuto.status).toBe(200);
+
+        const bad = await request(app).post('/api/settings').send({ brainMode: 'garbage' });
+        expect(bad.status).toBe(400);
+        expect(bad.body.error).toBeTruthy();
     });
 
     it('never exposes stored secrets via /api/settings (B5 masking)', async () => {

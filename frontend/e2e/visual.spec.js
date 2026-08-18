@@ -34,7 +34,9 @@ test.describe('Visual regression', () => {
     test('settings page renders consistently', async ({ page }) => {
         await page.goto('/settings');
         await expect(page.getByText(/Settings|Ayarlar/i).first()).toBeVisible({ timeout: 15000 });
-        await expect(page).toHaveScreenshot('settings.png', { maxDiffPixelRatio: 0.02 });
+        // Full-page: the Brain Mode card sits below the 720px fold, and a
+        // viewport-only shot would never catch a regression in it.
+        await expect(page).toHaveScreenshot('settings.png', { maxDiffPixelRatio: 0.02, fullPage: true });
     });
 
     test('yield strategies page renders consistently', async ({ page }) => {

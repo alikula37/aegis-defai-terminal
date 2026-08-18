@@ -430,7 +430,8 @@ app.post('/api/simulation/start', async (req, res) => {
         res.json({ success: true, message: 'Simulation started', initialBalance, simulationName });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: error.errors });
+            // zod v4 exposes issues (errors was removed)
+            return res.status(400).json({ error: error.issues ?? error.errors });
         }
         res.status(500).json({ error: error.message });
     }
@@ -829,13 +830,25 @@ app.get('/api/settings', async (req, res) => {
 
 // Live OpenRouter model catalog for the model picker. Cached server-side for
 // 30 min; on upstream failure a stale cache is served, otherwise 502 — the
+// Curated, reliably-free OpenRouter models. The live catalog is preferred, but
+// this list guarantees the frontend always has a zero-credit option even when
+// the catalog fetch fails or the account has no balance.
+const FREE_MODEL_FALLBACKS = [
+    { id: 'google/gemini-2.5-flash-exp:free', name: 'Gemini 2.5 Flash (Free)', isFree: true, pricing: null, contextLength: 0 },
+    { id: 'meta-llama/llama-3-8b-instruct:free', name: 'Llama 3 8B Instruct (Free)', isFree: true, pricing: null, contextLength: 0 },
+    { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B Instruct (Free)', isFree: true, pricing: null, contextLength: 0 },
+    { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B IT (Free)', isFree: true, pricing: null, contextLength: 0 },
+    { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'Nemotron 3 Ultra 550B (Free)', isFree: true, pricing: null, contextLength: 0 },
+];
+
 // frontend falls back to its built-in list.
 app.get('/api/llm/models', async (req, res) => {
     try {
-        res.json({ models: await fetchModelCatalog() });
+        const models = await fetchModelCatalog();
+        res.json({ models, freeModels: FREE_MODEL_FALLBACKS });
     } catch (error) {
         if (catalogCache && catalogCache.models.length > 0) {
-            return res.json({ models: catalogCache.models, stale: true });
+            return res.json({ models: catalogCache.models, freeModels: FREE_MODEL_FALLBACKS, stale: true });
         }
         res.status(502).json({ error: error.message });
     }
@@ -846,6 +859,10 @@ const settingsSchema = z.object({
     slippage: z.union([z.string(), z.number()]).optional(),
     openRouterKey: z.string().optional(),
     activeModel: z.string().optional(),
+    // Brain mode: 'auto' tries the selected (free) model and falls back to the
+    // local rule engine on failure; 'local' never calls OpenRouter (no key
+    // needed); 'llm' insists on the AI brain.
+    brainMode: z.enum(['auto', 'llm', 'local']).optional(),
 }).passthrough()
     // B6 — numeric bounds on money-adjacent settings (reject NaN/Infinity/absurd)
     .superRefine((val, ctx) => {
@@ -881,7 +898,8 @@ app.post('/api/settings', async (req, res) => {
         res.json({ success: true, settings: sanitizeSettings(newSettings) });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: error.errors });
+            // zod v4 exposes issues (errors was removed)
+            return res.status(400).json({ error: error.issues ?? error.errors });
         }
         res.status(500).json({ error: error.message });
     }

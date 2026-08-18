@@ -178,9 +178,18 @@ The data-science layer is tested against **known-value** fixtures (exact Sharpe/
 
 ## 🔑 Configuration (API Keys & RPC)
 
-To run the agent you need two things: an **OpenRouter API Key** (AI brain) and an **EVM RPC URL** (blockchain data).
+**Good news: no API key or credits are required to run the agent.** The built-in rule engine handles every decision on live (or simulated) data. The OpenRouter key only unlocks the **AI brain** — optional for most setups.
 
-1. **OpenRouter** → [openrouter.ai](https://openrouter.ai/) → sign up → **Keys** → Create Key *(add a few $ of credit for continuous running)*
+| Brain Mode | API Key needed? | What happens |
+|---|---|---|
+| **Auto** *(default)* | No | Tries your selected model (free models first); if it needs credits, automatically falls back to the rule engine |
+| **Local only** | No | Never calls OpenRouter — pure rule-based engine, works with zero balance |
+| **AI only** | Yes | Always uses the AI brain; requires a key with credits |
+
+One-click **"Run free — no credits"** in Settings switches to Auto mode with the best curated free model. Free OpenRouter models (`:free` suffix) work while your account has no balance; if OpenRouter returns *Payment Required*, the agent silently continues on the rule engine and notifies you once.
+
+To add the optional AI brain:
+1. **OpenRouter** → [openrouter.ai](https://openrouter.ai/) → sign up → **Keys** → Create Key *(add a few $ of credit for continuous AI reasoning)*
 2. **RPC URL** → [Alchemy](https://www.alchemy.com/) / [Infura](https://www.infura.io/) → create an app → **Ethereum / Sepolia** → copy the HTTPS URL
 
 Where to enter them — two options:
@@ -356,9 +365,18 @@ Kalite kapıları: CI **kapsam tabanını** (backend ≥%70, frontend ≥%65 sat
 
 ## 🔑 Yapılandırma (API Anahtarları & RPC)
 
-Ajanı çalıştırmak için iki şeye ihtiyacınız var: bir **OpenRouter API Anahtarı** (AI beyni) ve bir **EVM RPC URL** (zincir verisi).
+**İyi haber: ajanı çalıştırmak için API anahtarı veya kredi gerekmez.** Yerleşik kural motoru tüm kararları canlı (veya simüle) veride alır. OpenRouter anahtarı yalnızca **AI beynini** açar — çoğu kurulum için isteğe bağlıdır.
 
-1. **OpenRouter** → [openrouter.ai](https://openrouter.ai/) → kayıt ol → **Keys** → Create Key *(sürekli çalışma için birkaç $ kredi ekleyin)*
+| Beyin Modu | API Anahtarı gerekir mi? | Ne olur |
+|---|---|---|
+| **Otomatik** *(varsayılan)* | Hayır | Seçtiğiniz modeli dener (önce ücretsiz modeller); kredi isterse otomatik olarak kural motoruna geçer |
+| **Yalnızca Yerel** | Hayır | OpenRouter hiç çağrılmaz — saf kural tabanlı motor, sıfır bakiyeyle çalışır |
+| **Yalnızca AI** | Evet | Her zaman AI beynini kullanır; kredili bir anahtar gerektirir |
+
+Ayarlardaki tek tık **"Ücretsiz çalıştır — kredi gerekmez"** düğmesi, en iyi ücretsiz modelle Otomatik moda geçer. Ücretsiz OpenRouter modelleri (`:free` soneki), hesabınızda bakiye yokken çalışır; OpenRouter *Payment Required* dönerse ajan sessizce kural motorunda devam eder ve sizi bir kez bilgilendirir.
+
+İsteğe bağlı AI beynini eklemek için:
+1. **OpenRouter** → [openrouter.ai](https://openrouter.ai/) → kayıt ol → **Keys** → Create Key *(sürekli AI muhakemesi için birkaç $ kredi ekleyin)*
 2. **RPC URL** → [Alchemy](https://www.alchemy.com/) / [Infura](https://www.infura.io/) → uygulama oluşturun → **Ethereum / Sepolia** → HTTPS adresini kopyalayın
 
 Nereye gireceksiniz — iki seçenek:

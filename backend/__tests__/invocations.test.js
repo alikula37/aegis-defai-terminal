@@ -49,10 +49,28 @@ vi.mock('../db/database.js', () => ({
     getSettings: vi.fn(async () => ({ activeModel: 'test', targetHf: 1.25, maxGasClaim: 20, llmToolsEnabled: false })),
 }));
 
-vi.mock('../services/LLMService.js', () => ({
-    callLLM: vi.fn(async () => { if (llmMode.throws) throw new Error('OpenRouter outage'); return { decision: 'hold' }; }),
-    callLLMWithTools: vi.fn(),
-}));
+// Inline mock — importing the real module here would run dotenv.config() and
+// leak backend/.env (EVM_PROVIDER_URL) into the test process.
+vi.mock('../services/LLMService.js', () => {
+    class LLMUnavailableError extends Error {
+        constructor(message, { reason = 'no-key' } = {}) {
+            super(message);
+            this.name = 'LLMUnavailableError';
+            this.reason = reason;
+        }
+    }
+    return {
+        callLLM: vi.fn(async () => { if (llmMode.throws) throw new Error('OpenRouter outage'); return { decision: 'hold' }; }),
+        callLLMWithTools: vi.fn(),
+        LLMUnavailableError,
+        isPaymentRequiredError: (error) => !!error && typeof error.status === 'number' && error.status === 402,
+        hasValidApiKey: (settings = {}) => Boolean(settings.openRouterKey) && settings.openRouterKey !== 'kullanici_buraya_girecek',
+        getApiKey: (settings = {}) => {
+            if (!settings.openRouterKey) throw new LLMUnavailableError('OpenRouter API Key is missing or invalid.', { reason: 'no-key' });
+            return settings.openRouterKey;
+        },
+    };
+});
 
 vi.mock('../services/HistoricalDataService.js', () => ({
     HistoricalDataService: { recordSnapshot: vi.fn(), buildBacktestDataset: vi.fn() },

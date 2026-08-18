@@ -9,11 +9,29 @@
 
 process.env.PORT = '3101';
 
-vi.mock('../services/LLMService.js', () => ({
-    callLLM: vi.fn(async () => { throw new Error('mocked llm down (stress)'); }),
-    callLLMWithTools: vi.fn(async () => ({ content: null, toolCalls: [] })),
-    isRetriableLLMError: vi.fn(() => false),
-}));
+// Inline mock — importing the real module here would run dotenv.config() and
+// leak backend/.env into the test process.
+vi.mock('../services/LLMService.js', () => {
+    class LLMUnavailableError extends Error {
+        constructor(message, { reason = 'no-key' } = {}) {
+            super(message);
+            this.name = 'LLMUnavailableError';
+            this.reason = reason;
+        }
+    }
+    return {
+        callLLM: vi.fn(async () => { throw new Error('mocked llm down (stress)'); }),
+        callLLMWithTools: vi.fn(async () => ({ content: null, toolCalls: [] })),
+        isRetriableLLMError: vi.fn(() => false),
+        LLMUnavailableError,
+        isPaymentRequiredError: (error) => !!error && typeof error.status === 'number' && error.status === 402,
+        hasValidApiKey: (settings = {}) => Boolean(settings.openRouterKey) && settings.openRouterKey !== 'kullanici_buraya_girecek',
+        getApiKey: (settings = {}) => {
+            if (!settings.openRouterKey) throw new LLMUnavailableError('OpenRouter API Key is missing or invalid.', { reason: 'no-key' });
+            return settings.openRouterKey;
+        },
+    };
+});
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';

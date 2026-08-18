@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('node-fetch', () => ({ default: vi.fn() }));
 
 import fetch from 'node-fetch';
-import { callLLM, callLLMWithTools, isRetriableLLMError, withModelFallback, fetchModelCatalog, clearModelCatalogCache } from '../services/LLMService.js';
+import { callLLM, callLLMWithTools, isRetriableLLMError, withModelFallback, fetchModelCatalog, clearModelCatalogCache, isPaymentRequiredError, hasValidApiKey, LLMUnavailableError } from '../services/LLMService.js';
 
 function jsonResponse(body, status = 200) {
     return {
@@ -124,5 +124,66 @@ describe('fetchModelCatalog (GET /api/llm/models source)', () => {
         const models = await fetchModelCatalog();
         expect(models).toHaveLength(1);
         expect(models[0].id).toBe('a/b');
+    });
+});
+
+describe('free / no-credit flow (brain mode)', () => {
+    beforeEach(() => {
+        fetch.mockReset();
+    });
+
+    it('classifies payment-required (402) errors', () => {
+        expect(isPaymentRequiredError({ status: 402 })).toBe(true);
+        expect(isPaymentRequiredError({ status: 429 })).toBe(false);
+        expect(isPaymentRequiredError({ status: 401 })).toBe(false);
+        expect(isPaymentRequiredError(new Error('boom'))).toBe(false);
+        expect(isPaymentRequiredError(null)).toBe(false);
+    });
+
+    it('hasValidApiKey rejects missing and placeholder keys', () => {
+        const prev = process.env.OPENROUTER_API_KEY;
+        process.env.OPENROUTER_API_KEY = '';
+        expect(hasValidApiKey({})).toBe(false);
+        expect(hasValidApiKey({ openRouterKey: 'kullanici_buraya_girecek' })).toBe(false);
+        expect(hasValidApiKey({ openRouterKey: 'sk-or-v1-test' })).toBe(true);
+        process.env.OPENROUTER_API_KEY = 'sk-or-v1-env';
+        expect(hasValidApiKey({})).toBe(true); // env fallback
+        process.env.OPENROUTER_API_KEY = prev;
+    });
+
+    it('callLLM short-circuits in local brain mode without touching the network', async () => {
+        const err = await callLLM('p', false, [], { brainMode: 'local', openRouterKey: 'sk-test' })
+            .then(() => null, e => e);
+        expect(err).toBeInstanceOf(LLMUnavailableError);
+        expect(err.reason).toBe('local-mode');
+        expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('callLLMWithTools short-circuits in local brain mode without touching the network', async () => {
+        const err = await callLLMWithTools({ userPrompt: 'p', settings: { brainMode: 'local', openRouterKey: 'sk-test' } })
+            .then(() => null, e => e);
+        expect(err).toBeInstanceOf(LLMUnavailableError);
+        expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('callLLM without a valid key throws LLMUnavailableError (no-key) without hitting the network', async () => {
+        const prev = process.env.OPENROUTER_API_KEY;
+        process.env.OPENROUTER_API_KEY = '';
+        try {
+            const err = await callLLM('p', false, [], { openRouterKey: 'kullanici_buraya_girecek' })
+                .then(() => null, e => e);
+            expect(err).toBeInstanceOf(LLMUnavailableError);
+            expect(err.reason).toBe('no-key');
+            expect(fetch).not.toHaveBeenCalled();
+        } finally {
+            process.env.OPENROUTER_API_KEY = prev;
+        }
+    });
+
+    it('callLLM still reaches OpenRouter in auto mode with a valid key', async () => {
+        fetch.mockResolvedValue(jsonResponse(SUCCESS));
+        const decision = await callLLM('p', false, [], { openRouterKey: 'sk-test', activeModel: 'm' });
+        expect(decision.decision).toBe('hold');
+        expect(fetch).toHaveBeenCalledTimes(1);
     });
 });

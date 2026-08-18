@@ -51,6 +51,7 @@ function Consumer() {
             <span data-testid="rules">{settings.automationRules?.length ?? 0}</span>
             <span data-testid="loading">{String(isLoading)}</span>
             <span data-testid="ready">{String(isReady)}</span>
+            <span data-testid="brain">{settings.brainMode || 'auto'}</span>
             <button onClick={() => updateSettings({ ...settings, dataMode: 'LIVE' })}>save</button>
             <button onClick={() => clearSettings()}>clear</button>
         </div>
@@ -112,6 +113,24 @@ describe('SettingsContext', () => {
         });
 
         await waitFor(() => expect(screen.getByTestId('mode').textContent).toBe('LIVE'));
+        // Auto mode is always usable — clearing keeps the app ready without a key.
+        expect(screen.getByTestId('ready').textContent).toBe('true');
+        expect(screen.getByTestId('brain').textContent).toBe('auto');
+    });
+
+    it('is ready without any key in auto/local brain modes', async () => {
+        apiFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ ...serverSettings, openRouterKey: '', rpcUrl: '', brainMode: 'auto' }) });
+        renderWithProvider();
+
+        await waitFor(() => expect(screen.getByTestId('mode').textContent).toBe('SIM'));
+        expect(screen.getByTestId('ready').textContent).toBe('true');
+    });
+
+    it('is NOT ready in AI-only mode without a key', async () => {
+        apiFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ ...serverSettings, openRouterKey: '', rpcUrl: '', brainMode: 'llm' }) });
+        renderWithProvider();
+
+        await waitFor(() => expect(screen.getByTestId('brain').textContent).toBe('llm'));
         expect(screen.getByTestId('ready').textContent).toBe('false');
     });
 });

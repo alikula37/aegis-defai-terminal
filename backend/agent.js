@@ -1,5 +1,5 @@
 import logger from './utils/logger.js';
-import { callLLM } from './services/LLMService.js';
+import { callLLM, LLMUnavailableError, isPaymentRequiredError } from './services/LLMService.js';
 import { insertLog, insertPortfolioStats, getLatestPortfolio, insertMemory, getRecentMemories, resetPortfolio, getSettings, getLogs } from './db/database.js';
 import { MarketDataSource } from './core/data/MarketDataSource.js';
 import { HistoricalDataService } from './services/HistoricalDataService.js';
@@ -357,8 +357,29 @@ export class AegisAgent {
         }
     }
 
+    // Notification throttling — cooldowns live on `this.cooldowns` (exposed to
+    // tests for assertions). Prevents the same LLM failure from spamming the
+    // dashboard every 15-second cycle.
+    _shouldNotify(key, ms = 5 * 60 * 1000) {
+        const now = Date.now();
+        if (this.cooldowns[key] && now - this.cooldowns[key] < ms) return false;
+        this.cooldowns[key] = now;
+        return true;
+    }
+
     async _makeDecision(marketData, conditions, settings) {
+        const brainMode = settings.brainMode || 'auto';
+
         if (shouldCallLLM(marketData, conditions) && this.llmBudget.canCall()) {
+            // Local-only brain: never touch the network, rule engine only.
+            // Missing API key is handled below via LLMUnavailableError, so the
+            // call path stays intact for mocked/short-lived integrations.
+            if (brainMode === 'local') {
+                const msg = 'Running on the local rule-based brain (AI disabled in Settings).';
+                if (this._shouldNotify('llmUnavailable', 10 * 60 * 1000)) this.logAndBroadcast('scan', msg);
+                return deterministicFallback(marketData, conditions, simulationState);
+            }
+
             const recentMemories = await getRecentMemories(5, this.activeSimulationId);
             // Faz 3 (B3-6) — token guard: shrink memory context if the prompt
             // would exceed the model budget; data is never truncated.
@@ -391,14 +412,34 @@ export class AegisAgent {
                 this._recordLLMMetric(settings.activeModel, 'plain');
                 return response;
             } catch (error) {
-                const message = `OpenRouter API Error: ${error.message}`;
-                this.broadcast('notification', {
-                    type: 'error',
-                    message,
-                    timestamp: new Date().toISOString()
-                });
-                // C7 — LLM outage is a critical operational event
-                this.notifier.notify('error', message).catch(() => {});
+                // Local-only mode / missing key is NOT an OpenRouter outage —
+                // announce it once, friendlily, and use the rule engine.
+                if (error instanceof LLMUnavailableError) {
+                    const msg = error.reason === 'local-mode'
+                        ? 'Running on the local rule-based brain (AI disabled in Settings).'
+                        : 'No OpenRouter API key set — using the built-in rule engine. Add a key in Settings to enable the AI brain.';
+                    if (this._shouldNotify('llmUnavailable', 10 * 60 * 1000)) {
+                        this.broadcast('notification', { type: 'info', message: msg, timestamp: new Date().toISOString() });
+                    }
+                    this.logAndBroadcast('scan', msg);
+                    return deterministicFallback(marketData, conditions, simulationState);
+                }
+
+                // Real OpenRouter failure (402 no credits, 429, 5xx, …).
+                const paymentRequired = isPaymentRequiredError(error);
+                const friendly = paymentRequired
+                    ? 'Free AI model needs credits on this OpenRouter account — switched to the built-in rule engine. Add credits in Settings to re-enable the AI brain.'
+                    : `OpenRouter API Error: ${error.message}`;
+                if (this._shouldNotify('llmError', paymentRequired ? 10 * 60 * 1000 : 5 * 60 * 1000)) {
+                    this.broadcast('notification', {
+                        type: paymentRequired ? 'info' : 'error',
+                        message: friendly,
+                        timestamp: new Date().toISOString()
+                    });
+                    // C7 — LLM outage is a critical operational event
+                    this.notifier.notify('error', friendly).catch(() => {});
+                }
+                this.logAndBroadcast('scan', friendly);
                 return deterministicFallback(marketData, conditions, simulationState);
             }
         }

@@ -38,6 +38,7 @@ db.exec(`
         target_hf REAL,
         max_gas_claim INTEGER,
         automation_rules TEXT,
+        brain_mode TEXT DEFAULT 'auto',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(simulation_id) REFERENCES simulations(id) ON DELETE CASCADE
     );
@@ -53,6 +54,7 @@ try { db.exec('ALTER TABLE settings ADD COLUMN data_mode TEXT;'); } catch (e) { 
 try { db.exec('ALTER TABLE settings ADD COLUMN data_scenario TEXT;'); } catch (e) { }
 try { db.exec('ALTER TABLE settings ADD COLUMN automation_rules TEXT;'); } catch (e) { }
 try { db.exec('ALTER TABLE settings ADD COLUMN llm_tools_enabled INTEGER;'); } catch (e) { }
+try { db.exec('ALTER TABLE settings ADD COLUMN brain_mode TEXT DEFAULT \'auto\';'); } catch (e) { }
 // E9 — multi-user: owner column on user-facing resources.
 try { db.exec('ALTER TABLE settings ADD COLUMN user_id INTEGER;'); } catch (e) { }
 // simulations is created AFTER this block (see the big exec below), so the
@@ -563,7 +565,8 @@ export async function getSettings(userId) {
             dataMode: row.data_mode || 'LIVE',
             dataScenario: row.data_scenario || 'stable',
             automationRules: parseAutomationRules(row.automation_rules),
-            llmToolsEnabled: row.llm_tools_enabled != null ? row.llm_tools_enabled === 1 : true
+            llmToolsEnabled: row.llm_tools_enabled != null ? row.llm_tools_enabled === 1 : true,
+            brainMode: row.brain_mode || 'auto'
         };
     } else {
         return {
@@ -576,7 +579,8 @@ export async function getSettings(userId) {
             dataMode: 'LIVE',
             dataScenario: 'stable',
             automationRules: [],
-            llmToolsEnabled: true
+            llmToolsEnabled: true,
+            brainMode: 'auto'
         };
     }
 }
@@ -584,8 +588,8 @@ export async function getSettings(userId) {
 export async function updateSettings(settings, simulationId, userId) {
     requireUserId(userId, 'updateSettings');
     const stmt = db.prepare(`
-      INSERT INTO settings(simulation_id, user_id, rpc_url, slippage, openrouter_key, active_model, target_hf, max_gas_claim, data_mode, data_scenario, automation_rules, llm_tools_enabled)
-VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO settings(simulation_id, user_id, rpc_url, slippage, openrouter_key, active_model, target_hf, max_gas_claim, data_mode, data_scenario, automation_rules, llm_tools_enabled, brain_mode)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     stmt.run(
         simulationId,
@@ -601,7 +605,8 @@ VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         Array.isArray(settings.automationRules)
             ? JSON.stringify(settings.automationRules)
             : null,
-        settings.llmToolsEnabled != null ? (settings.llmToolsEnabled ? 1 : 0) : null
+        settings.llmToolsEnabled != null ? (settings.llmToolsEnabled ? 1 : 0) : null,
+        settings.brainMode ?? 'auto'
     );
 }
 

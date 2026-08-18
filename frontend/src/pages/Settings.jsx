@@ -23,6 +23,16 @@ const LLM_MODELS = [
     { value: 'openai/gpt-4o', label: 'GPT-4o' },
 ];
 
+// Curated, reliably-free models — guaranteed zero-credit options regardless of
+// the live catalog (also used by the "Run free" one-click button).
+const FREE_MODEL_FALLBACKS = [
+    { value: 'google/gemini-2.5-flash-exp:free', label: 'Gemini 2.5 Flash (Free)' },
+    { value: 'meta-llama/llama-3-8b-instruct:free', label: 'Llama 3 8B Instruct (Free)' },
+    { value: 'mistralai/mistral-7b-instruct:free', label: 'Mistral 7B Instruct (Free)' },
+    { value: 'google/gemma-4-31b-it:free', label: 'Gemma 4 31B IT (Free)' },
+    { value: 'nvidia/nemotron-3-ultra-550b-a55b:free', label: 'Nemotron 3 Ultra 550B (Free)' },
+];
+
 function groupByVendor(models) {
     const groups = new Map();
     for (const m of models) {
@@ -44,6 +54,7 @@ export default function Settings() {
     const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
     const [apiKeyInput, setApiKeyInput] = useState(getApiKey());
     const [modelCatalog, setModelCatalog] = useState(null);
+    const [freeModels, setFreeModels] = useState(FREE_MODEL_FALLBACKS);
     const [catalogLoading, setCatalogLoading] = useState(true);
     const [catalogError, setCatalogError] = useState(false);
     const { t } = useI18n();
@@ -54,6 +65,9 @@ export default function Settings() {
             .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
             .then(data => {
                 setModelCatalog(data.models || []);
+                if (Array.isArray(data.freeModels) && data.freeModels.length > 0) {
+                    setFreeModels(data.freeModels.map(m => ({ value: m.id, label: m.name || m.id })));
+                }
                 setCatalogError(false);
             })
             .catch(err => {
@@ -85,6 +99,15 @@ export default function Settings() {
             toast.error(t('toast.settingsSaveFailed'));
         }
         setIsSaving(false);
+    };
+
+    // One-click free path: Auto mode + best curated free model. No API key and
+    // no credits needed — the built-in rule engine runs the show on live data.
+    const handleRunFree = () => {
+        const freeModel = (freeModels[0] && freeModels[0].value) || FREE_MODEL_FALLBACKS[0].value || settings.activeModel;
+        setLocalSettings({ ...settings, brainMode: 'auto', activeModel: freeModel });
+        setSaved(false);
+        toast.success(t('settings.freeModeActivated'));
     };
 
     const handleClear = async () => {
@@ -234,6 +257,55 @@ export default function Settings() {
                     )}
                 </div>
 
+                {/* Brain Mode */}
+                <div className="bg-surface-container border border-outline-variant rounded-xl p-6 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-tertiary"></div>
+                    <h3 className="font-[Inter] text-[18px] font-semibold text-on-surface mb-1 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-tertiary text-[20px]">psychology</span>
+                        {t('settings.brainModeTitle')}
+                    </h3>
+                    <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mb-4">{t('settings.brainModeHint')}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {[
+                            { value: 'auto', label: t('settings.brainAuto'), desc: t('settings.brainAutoDesc'), icon: 'auto_awesome' },
+                            { value: 'local', label: t('settings.brainLocal'), desc: t('settings.brainLocalDesc'), icon: 'memory' },
+                            { value: 'llm', label: t('settings.brainLlm'), desc: t('settings.brainLlmDesc'), icon: 'psychology' },
+                        ].map(mode => (
+                            <button
+                                key={mode.value}
+                                type="button"
+                                onClick={() => handleChange('brainMode', mode.value)}
+                                className={`text-left rounded-xl border p-4 transition-all ${(settings.brainMode || 'auto') === mode.value
+                                    ? 'bg-tertiary/10 border-tertiary/50 ring-1 ring-tertiary/30'
+                                    : 'bg-surface-container-lowest border-outline-variant hover:border-tertiary/40'}`}
+                            >
+                                <div className="flex items-center gap-2 mb-1.5">
+                                    <span className={`material-symbols-outlined text-[18px] ${(settings.brainMode || 'auto') === mode.value ? 'text-tertiary' : 'text-on-surface-variant'}`}>{mode.icon}</span>
+                                    <span className="font-[Inter] text-[14px] font-semibold text-on-surface">{mode.label}</span>
+                                </div>
+                                <p className="font-[JetBrains_Mono] text-[11px] leading-[16px] text-on-surface-variant">{mode.desc}</p>
+                            </button>
+                        ))}
+                    </div>
+                    <div className="mt-4 bg-surface-container-lowest border border-success/25 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-start gap-2 min-w-0">
+                            <span className="material-symbols-outlined text-success text-[18px] mt-0.5">bolt</span>
+                            <div className="min-w-0">
+                                <p className="font-[Inter] text-[13px] font-medium text-on-surface">{t('settings.runFreeHint')}</p>
+                                <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mt-0.5">{t('settings.noKeyInfoMsg')}</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleRunFree}
+                            className="bg-success text-on-success px-4 py-2 rounded-lg font-[Inter] text-[13px] font-semibold hover:brightness-110 transition-all whitespace-nowrap flex items-center gap-2"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">bolt</span>
+                            {t('settings.runFree')}
+                        </button>
+                    </div>
+                </div>
+
                 {/* LLM Configuration */}
                 <div className="bg-surface-container border border-outline-variant rounded-xl p-6 relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-1 h-full bg-tertiary"></div>
@@ -279,6 +351,13 @@ export default function Settings() {
                                 onChange={e => handleChange('activeModel', e.target.value)}
                                 className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-on-surface font-[JetBrains_Mono] text-[13px] outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                             >
+                                {freeModels.length > 0 && (
+                                    <optgroup label={t('settings.freeModelsGroup')}>
+                                        {freeModels.map(m => (
+                                            <option key={m.value} value={m.value}>{m.label} — {m.value}</option>
+                                        ))}
+                                    </optgroup>
+                                )}
                                 {modelCatalog && modelCatalog.length > 0
                                     ? groupByVendor(modelCatalog).map(([vendor, models]) => (
                                         <optgroup key={vendor} label={`${vendor} (${models.length})`}>

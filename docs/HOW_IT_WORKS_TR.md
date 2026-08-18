@@ -93,6 +93,20 @@ Risk bölgeleri, **risk iştahınıza** göre belirlenir (Ayarlar sayfasında se
 
 ## 4. Yapay zeka beyni — sizin modeliniz, araçları
 
+AI beyni **varsayılan olarak isteğe bağlı ve krediden bağımsızdır**. Ayarlarda
+üç **Beyin Modu** vardır:
+
+| Mod | Davranış |
+|---|---|
+| **Otomatik** *(varsayılan)* | Seçtiğiniz modeli dener (önce ücretsiz modeller). OpenRouter ulaşılamazsa, *Payment Required* (kredi yok) dönerse veya anahtar eksikse ajan **otomatik olarak yerleşik kural motoruna düşer** — çökme veya spam yok. |
+| **Yalnızca Yerel** | OpenRouter hiç çağrılmaz — saf kural tabanlı motor. **API anahtarı ve sıfır bakiyeyle** canlı veride çalışır. |
+| **Yalnızca AI** | Her zaman LLM'e danışır; kredili geçerli bir anahtar gerektirir. |
+
+Ayarlardaki tek tık **"Ücretsiz çalıştır — kredi gerekmez"** düğmesi, en iyi
+ücretsiz modelle Otomatik moda geçer. Hatalar tek bir dostça bildirime
+sıkıştırılır (10 dakikada en fazla bir kez) ve her döngü yine de deterministik
+bir karar üretir.
+
 Portföy **Uyarı** veya **Kritik** bölgeye girdiğinde (veya bir karar noktası
 oluştuğunda) ajan **OpenRouter** üzerinden bir LLM'e danışır. Modeli **Ayarlar**
 sayfasındaki canlı katalogdan siz seçersiniz (Llama, GPT, Claude, Gemini…
