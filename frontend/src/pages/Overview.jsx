@@ -29,14 +29,14 @@ export default function Overview() {
                             className="flex-1 py-3 rounded-md font-[JetBrains_Mono] text-[14px] font-medium transition-colors flex items-center justify-center gap-2 bg-primary text-on-primary hover:bg-primary-fixed hover:text-on-primary-fixed"
                         >
                             <span className="material-symbols-outlined text-[18px]">play_circle</span>
-                            Start New
+                            {t('nav.startNew')}
                         </button>
                         <button
                             onClick={() => setIsResumeModalOpen(true)}
                             className="flex-1 py-3 rounded-md font-[JetBrains_Mono] text-[14px] font-medium transition-colors flex items-center justify-center gap-2 border border-primary text-primary hover:bg-primary/10"
                         >
                             <span className="material-symbols-outlined text-[18px]">restore</span>
-                            Resume
+                            {t('nav.resume')}
                         </button>
                     </div>
                 </div>

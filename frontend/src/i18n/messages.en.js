@@ -287,6 +287,12 @@ const en = {
     'logs.offline': 'Offline',
     'logs.entries': '{count} entries',
     'logs.allTypes': 'All Types',
+    'logs.typeScan': 'Scan',
+    'logs.typeFlashLoan': 'Flash Loan',
+    'logs.typeRebalance': 'Rebalance',
+    'logs.typeClaim': 'Claim',
+    'logs.typeAlert': 'Alert',
+    'logs.typeSystem': 'System',
     'logs.agentName': 'aegis-defai-agent',
     'logs.loadFailed': 'Could not load the agent logs — check the backend connection.',
 
@@ -336,6 +342,7 @@ const en = {
     'tvl.estProfit': 'Est. Profit:',
     'tvl.projected1y': 'Projected 1-Year Yield',
     'tvl.basedOnNetApy': 'Based on current Net APY ({apy}%)',
+    'tvl.projectionTitle': 'TVL Growth Projection',
 
     // ---- yield chart ----
     'chart.title': 'Realized APY Trend',
@@ -524,6 +531,54 @@ const en = {
 
     // ---- sidebar ----
     'sidebar.deleteLastSimTitle': 'Delete the last simulation and all its data',
+
+    // ---- glossary (educational concept popovers) ----
+    'glossary.hf.title': 'Health Factor (HF)',
+    'glossary.hf.desc': 'Your collateral ÷ borrowed ratio. Above target = safe margin; dropping toward 1 means liquidation risk grows. The agent auto-rebalances or rescues below the warning threshold.',
+    'glossary.apy.title': 'Annual Percentage Yield (APY)',
+    'glossary.apy.desc': 'Projected return on invested capital over one year, assuming the current rate stays constant. Simulation APY compounds continuously.',
+    'glossary.tvl.title': 'Total Value Locked (TVL)',
+    'glossary.tvl.desc': 'The total capital working in the strategy. Higher TVL earns more yield, but also a larger loss if the spread turns negative.',
+    'glossary.spread.title': 'Yield Spread',
+    'glossary.spread.desc': 'Fixed yield (Pendle PT-sUSDe) minus your borrow cost. Positive spread = you earn the difference; negative = the agent unwinds leverage.',
+    'glossary.deltaNeutral.title': 'Delta-Neutral',
+    'glossary.deltaNeutral.desc': 'A strategy whose profit does not depend on the token price rising or falling — only on the yield spread. Hedge the price, harvest the spread.',
+    'glossary.leverage.title': 'Leverage',
+    'glossary.leverage.desc': 'Borrowing against your collateral to farm a bigger position. Magnifies both gains and losses; the risk engine caps it and watches liquidation price.',
+    'glossary.ltv.title': 'Loan-to-Value (LTV)',
+    'glossary.ltv.desc': 'Borrowed amount as a fraction of collateral. Morpho 91.5% LLTV means you can borrow up to 91.5% — leaving a thin safety buffer below liquidation.',
+    'glossary.points.title': 'Points (Airdrop Yield)',
+    'glossary.points.desc': 'Estimated bonus yield from protocol airdrop points (Morpho, Ethena, Boros, Cork). Only ~50% of face value is assumed realized — uncalibrated estimate.',
+    'glossary.gas.title': 'Gas Price',
+    'glossary.gas.desc': 'Network fee in gwei. High gas makes claims and rescues expensive, so the agent defers reward claims until gas drops.',
+    'glossary.backtest.title': 'Backtest',
+    'glossary.backtest.desc': 'Replaying historical market data through the strategy to measure how it would have performed — total return, Sharpe ratio, max drawdown and liquidation probability.',
+    'glossary.sharpe.title': 'Sharpe Ratio',
+    'glossary.sharpe.desc': 'Return earned per unit of risk (volatility). Higher = better risk-adjusted performance. Above 1 is considered good.',
+    'glossary.var.title': 'Value at Risk (VaR)',
+    'glossary.var.desc': 'The worst expected loss over a horizon at a confidence level. 95% VaR = losses should not exceed this on 95% of days.',
+    'glossary.forecast.title': 'Yield Forecast',
+    'glossary.forecast.desc': 'A statistical estimate of where APY is heading, fitted to recent history (exponential smoothing + trend). Forecast bands show uncertainty — not a promise.',
+
+    // ---- risk alerts (translated in RiskAlerts.jsx) ----
+    'riskAlert.awaitingTitle': 'Awaiting market data',
+    'riskAlert.awaitingDesc': 'Connect to the backend to stream live oracle updates.',
+    'riskAlert.simTitle': 'SIM data source active ({status})',
+    'riskAlert.simDesc': 'Scenario-driven market data — deterministic, no live network calls.',
+    'riskAlert.hfTitle': 'Health Factor {hf} below target {targetHf}',
+    'riskAlert.hfDesc': 'Agent will rebalance or rescue to restore a safe margin.',
+    'riskAlert.spreadNegTitle': 'Negative yield spread ({spread}%)',
+    'riskAlert.spreadNegDesc': 'Borrow cost exceeds supply yield — agent is unwinding leverage.',
+    'riskAlert.spreadPosTitle': 'Positive yield spread ({spread}%)',
+    'riskAlert.spreadPosDesc': 'Yield capture window is open. Agent monitoring for entry.',
+    'riskAlert.gasTitle': 'Gas price high ({gas} gwei)',
+    'riskAlert.gasDesc': 'Above claim threshold ({maxGas} gwei). Reward claims deferred.',
+
+    // ---- projection chart ----
+    'tvl.assumptions': 'Projection assumes the current APY stays constant and compounds daily. No fees, volatility or depeg shocks are modelled — educational estimate only.',
+
+    // ---- transaction analytics ----
+    'txn.bubbleHint': 'Bubble size = transaction size (capital moved). Green = net positive, red = net negative.',
 };
 
 export default en;

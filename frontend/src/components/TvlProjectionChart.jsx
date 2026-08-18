@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useI18n } from '../i18n/I18nProvider';
+import { chartColors } from '../lib/chartColors';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
@@ -64,7 +65,7 @@ export default function TvlProjectionChart() {
                 <div>
                     <h3 className="font-[Inter] text-[16px] font-semibold text-on-surface flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary">trending_up</span>
-                        TVL Growth Projection
+                        {t('tvl.projectionTitle')}
                     </h3>
                     <p className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mt-1">
                         {t('tvl.basedOnNetApy', { apy: Number(liveData.netApy).toFixed(2) })}
@@ -83,11 +84,11 @@ export default function TvlProjectionChart() {
                     <AreaChart data={projectionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorTvl" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#17c3b2" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="#17c3b2" stopOpacity={0} />
+                                <stop offset="5%" stopColor={chartColors.primary} stopOpacity={0.3} />
+                                <stop offset="95%" stopColor={chartColors.primary} stopOpacity={0} />
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.border} vertical={false} />
                         <XAxis dataKey="time" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
                         <YAxis
                             stroke="#ffffff40"
@@ -101,14 +102,20 @@ export default function TvlProjectionChart() {
                         <Area
                             type="monotone"
                             dataKey="tvl"
-                            stroke="#17c3b2"
+                            stroke={chartColors.primary}
                             strokeWidth={2}
                             fillOpacity={1}
                             fill="url(#colorTvl)"
+                            isAnimationActive={false}
                         />
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
+
+            <p className="mt-3 text-[11px] leading-relaxed text-on-surface-variant font-[JetBrains_Mono]">
+                <span className="material-symbols-outlined text-[13px] align-text-bottom mr-1">info</span>
+                {t('tvl.assumptions')}
+            </p>
         </div>
     );
 }

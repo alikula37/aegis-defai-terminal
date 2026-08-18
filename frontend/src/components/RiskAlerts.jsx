@@ -28,8 +28,8 @@ export default function RiskAlerts() {
                     <div key={i} className={`${alert.bgClass} border rounded p-4 flex gap-3 items-start`}>
                         <span className={`material-symbols-outlined ${alert.iconColor} text-[18px] mt-0.5`}>{alert.icon}</span>
                         <div>
-                            <p className={`text-[14px] leading-[20px] ${alert.titleColor} font-medium`}>{alert.title}</p>
-                            <p className={`font-[JetBrains_Mono] text-[12px] leading-[18px] ${alert.descColor} mt-1`}>{alert.description}</p>
+                            <p className={`text-[14px] leading-[20px] ${alert.titleColor} font-medium`}>{t(alert.titleKey, alert.titleVars)}</p>
+                            <p className={`font-[JetBrains_Mono] text-[12px] leading-[18px] ${alert.descColor} mt-1`}>{t(alert.descKey, alert.descVars)}</p>
                         </div>
                     </div>
                 ))}

@@ -6,6 +6,15 @@ import { useI18n } from '../i18n/I18nProvider';
 
 const LOG_TYPES = ['All', 'scan', 'flash_loan', 'rebalance', 'claim', 'alert', 'system'];
 
+const LOG_TYPE_KEYS = {
+    scan: 'logs.typeScan',
+    flash_loan: 'logs.typeFlashLoan',
+    rebalance: 'logs.typeRebalance',
+    claim: 'logs.typeClaim',
+    alert: 'logs.typeAlert',
+    system: 'logs.typeSystem',
+};
+
 export default function AIAgentLogs() {
     const { t } = useI18n();
     const { agentLogs: wsLogs, isConnected: connected } = useWebSocket();
@@ -93,7 +102,7 @@ export default function AIAgentLogs() {
                         onChange={e => setFilterType(e.target.value)}
                         className="bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5 text-on-surface text-[13px] font-[JetBrains_Mono] outline-none focus:border-primary transition-colors"
                     >
-                        {LOG_TYPES.map(type => <option key={type} value={type}>{type === 'All' ? t('logs.allTypes') : type.replace('_', ' ').toUpperCase()}</option>)}
+                        {LOG_TYPES.map(type => <option key={type} value={type}>{type === 'All' ? t('logs.allTypes') : t(LOG_TYPE_KEYS[type] ?? type)}</option>)}
                     </select>
                     <span className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant">{t('logs.entries', { count: filtered.length })}</span>
                 </div>

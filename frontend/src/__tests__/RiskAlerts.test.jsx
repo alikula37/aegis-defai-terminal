@@ -4,7 +4,18 @@ import RiskAlerts from '../components/RiskAlerts';
 import { deriveRiskAlerts } from '../components/riskAlertsLogic';
 vi.mock('../i18n/I18nProvider', async () => {
     const en = (await import('../i18n/messages.en.js')).default;
-    const api = { t: (k) => en[k] ?? k, lang: 'en', setLang: () => {} };
+    // Mirrors the real t(): key lookup + {var} interpolation.
+    const api = {
+        t: (k, vars) => {
+            const msg = en[k] ?? k;
+            if (!vars) return msg;
+            return String(msg).replace(/\{(\w+)\}/g, (m, name) =>
+                vars[name] !== undefined ? String(vars[name]) : m,
+            );
+        },
+        lang: 'en',
+        setLang: () => {},
+    };
     return { useI18n: () => api };
 });
 
@@ -23,31 +34,33 @@ describe('deriveRiskAlerts', () => {
         const alerts = deriveRiskAlerts(null, mockSettings);
         expect(alerts).toHaveLength(1);
         expect(alerts[0].type).toBe('neutral');
-        expect(alerts[0].title).toMatch(/Awaiting market data/i);
+        expect(alerts[0].titleKey).toBe('riskAlert.awaitingTitle');
     });
 
     it('flags SIM mode as a neutral informational alert', () => {
         const alerts = deriveRiskAlerts({ oracleStatus: 'SIM (depeg)', baseSpread: 1 }, mockSettings);
-        expect(alerts.some(a => a.type === 'neutral' && /SIM data source/i.test(a.title))).toBe(true);
+        expect(alerts.some(a => a.type === 'neutral' && a.titleKey === 'riskAlert.simTitle')).toBe(true);
     });
 
     it('flags low health factor as danger', () => {
         const alerts = deriveRiskAlerts({ oracleStatus: 'LIVE', healthFactor: 1.1, baseSpread: 2, gasPrice: 5 }, mockSettings);
         const danger = alerts.find(a => a.type === 'danger');
         expect(danger).toBeTruthy();
-        expect(danger.title).toMatch(/Health Factor 1.10 below target 1.25/);
+        expect(danger.titleKey).toBe('riskAlert.hfTitle');
+        expect(danger.titleVars).toEqual({ hf: '1.10', targetHf: '1.25' });
     });
 
     it('flags negative spread as danger', () => {
         const alerts = deriveRiskAlerts({ oracleStatus: 'LIVE', healthFactor: 1.8, baseSpread: -2.5, gasPrice: 5 }, mockSettings);
         const danger = alerts.find(a => a.type === 'danger');
         expect(danger).toBeTruthy();
-        expect(danger.title).toMatch(/Negative yield spread \(-2.50%\)/);
+        expect(danger.titleKey).toBe('riskAlert.spreadNegTitle');
+        expect(danger.titleVars).toEqual({ spread: '-2.50' });
     });
 
     it('shows success when spread is positive and health is fine', () => {
         const alerts = deriveRiskAlerts({ oracleStatus: 'LIVE', healthFactor: 1.8, baseSpread: 2.2, gasPrice: 5 }, mockSettings);
-        expect(alerts.some(a => a.type === 'success' && /Positive yield spread/i.test(a.title))).toBe(true);
+        expect(alerts.some(a => a.type === 'success' && a.titleKey === 'riskAlert.spreadPosTitle')).toBe(true);
         expect(alerts.some(a => a.type === 'danger')).toBe(false);
     });
 
@@ -55,7 +68,8 @@ describe('deriveRiskAlerts', () => {
         const alerts = deriveRiskAlerts({ oracleStatus: 'LIVE', healthFactor: 1.8, baseSpread: 2, gasPrice: 40 }, mockSettings);
         const warning = alerts.find(a => a.type === 'warning');
         expect(warning).toBeTruthy();
-        expect(warning.title).toMatch(/Gas price high \(40.00 gwei\)/);
+        expect(warning.titleKey).toBe('riskAlert.gasTitle');
+        expect(warning.titleVars).toEqual({ gas: '40.00' });
     });
 });
 

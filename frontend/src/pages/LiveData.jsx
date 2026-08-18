@@ -161,77 +161,77 @@ export default function LiveData() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
 
                 {/* 1. Price Oracle (DeFiLlama) */}
-                <DataCard title="Price Oracle" icon="currency_exchange" badge="DeFiLlama" badgeColor="text-tertiary">
+                <DataCard title={t('liveData.priceOracle')} icon="currency_exchange" badge="DeFiLlama" badgeColor="text-tertiary">
                     <DataBadge
-                        label="Ethereum (ETH)"
+                        label={t('liveData.eth')}
                         value={portfolioData?.ethPrice ? `$${Number(portfolioData.ethPrice).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—'}
                         color="text-on-surface"
                         icon="currency_bitcoin"
-                        sub="Real-time spot price"
+                        sub={t('liveData.ethSub')}
                     />
                     <DataBadge
-                        label="USD Coin (USDC)"
+                        label={t('liveData.usdc')}
                         value={portfolioData?.usdcPrice ? `$${Number(portfolioData.usdcPrice).toFixed(4)}` : '—'}
                         color="text-success"
                         icon="paid"
-                        sub="Stablecoin peg"
+                        sub={t('liveData.usdcSub')}
                     />
                     <DataBadge
-                        label="sUSDe Price"
+                        label={t('liveData.susdePrice')}
                         value={portfolioData?.susdePrice ? `$${Number(portfolioData.susdePrice).toFixed(4)}` : '—'}
                         color={portfolioData?.susdePrice ? 'text-success' : 'text-on-surface-variant'}
                         icon="token"
-                        sub="Ethena synthetic dollar"
+                        sub={t('liveData.susdeSub')}
                     />
                 </DataCard>
 
                 {/* 2. Yield Oracle (DeFiLlama Yields) */}
-                <DataCard title="Yield Oracle" icon="trending_up" badge="DeFiLlama Yields" badgeColor="text-success">
+                <DataCard title={t('liveData.yieldOracle')} icon="trending_up" badge="DeFiLlama Yields" badgeColor="text-success">
                     <DataBadge
-                        label="sUSDe Base APY"
+                        label={t('liveData.susdeBaseApy')}
                         value={portfolioData?.susdeApy ? `${Number(portfolioData.susdeApy).toFixed(2)}%` : '—'}
                         color="text-primary"
                         icon="percent"
-                        sub="Ethena staking yield"
+                        sub={t('liveData.susdeBaseApySub')}
                     />
                     <DataBadge
-                        label="Pendle PT-sUSDe (Fixed)"
+                        label={t('liveData.pendleFixed')}
                         value={portfolioData?.pendlePtSusdeApy ? `${Number(portfolioData.pendlePtSusdeApy).toFixed(2)}%` : '—'}
                         color="text-tertiary"
                         icon="lock_clock"
-                        sub="Fixed rate premium"
+                        sub={t('liveData.pendleFixedSub')}
                     />
                     <DataBadge
-                        label="Morpho USDC Borrow"
+                        label={t('liveData.morphoBorrow')}
                         value={portfolioData?.morphoBorrowApy ? `${Number(portfolioData.morphoBorrowApy).toFixed(2)}%` : '—'}
                         color="text-warning"
                         icon="account_balance"
-                        sub="Borrow cost on Morpho Blue"
+                        sub={t('liveData.morphoBorrowSub')}
                     />
                 </DataCard>
 
                 {/* 3. Strategy Metrics */}
-                <DataCard title="Strategy Metrics" icon="analytics" badge="Computed" badgeColor="text-warning">
+                <DataCard title={t('liveData.strategyMetrics')} icon="analytics" badge={t('liveData.computed')} badgeColor="text-warning">
                     <DataBadge
-                        label="Yield Spread"
+                        label={t('liveData.yieldSpread')}
                         value={portfolioData?.baseSpread !== undefined ? `${Number(portfolioData.baseSpread).toFixed(2)}%` : '—'}
                         color={portfolioData?.baseSpread >= 0 ? 'text-success' : 'text-error'}
                         icon="swap_vert"
-                        sub="PT-sUSDe APY − Borrow Cost"
+                        sub={t('liveData.yieldSpreadSub')}
                     />
                     <DataBadge
-                        label="Leverage Applied"
+                        label={t('liveData.leverageApplied')}
                         value={portfolioData?.leverage ? `${portfolioData.leverage}x` : '—'}
                         color="text-primary"
                         icon="stacked_line_chart"
-                        sub="Morpho 91.5% LLTV loop"
+                        sub={t('liveData.leverageAppliedSub')}
                     />
                     <DataBadge
                         label={t('dash.netApy')}
                         value={portfolioData?.netApy ? `${Number(portfolioData.netApy).toFixed(2)}%` : '—'}
                         color="text-success"
                         icon="auto_graph"
-                        sub="After borrowing costs"
+                        sub={t('liveData.afterBorrow')}
                     />
                 </DataCard>
 
@@ -299,7 +299,7 @@ export default function LiveData() {
                                 value={safeApy != null ? `${safeApy.toFixed(2)}%` : '—'}
                                 color="text-primary"
                                 icon="arrow_right"
-                                sub={`${s.protocol || '—'} · ${s.risk || '—'} risk · ${alloc != null ? alloc + '% alloc.' : '—'}`}
+                                sub={`${s.protocol || '—'} · ${s.risk || '—'} risk · ${alloc != null ? t('liveData.alloc', { alloc }) : '—'}`}
                             />
                         );
                     })}
@@ -318,7 +318,7 @@ export default function LiveData() {
                         <h3 className="font-[Inter] text-[15px] font-semibold text-on-surface">{t('liveData.logStream')}</h3>
                     </div>
                     <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">
-                        {logs?.length || 0} events captured
+                        {t('liveData.eventsCaptured', { count: logs?.length || 0 })}
                     </span>
                 </div>
                 <div

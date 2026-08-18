@@ -286,6 +286,12 @@ const tr = {
     'logs.offline': 'Çevrimdışı',
     'logs.entries': '{count} kayıt',
     'logs.allTypes': 'Tüm Türler',
+    'logs.typeScan': 'Tarama',
+    'logs.typeFlashLoan': 'Flash Kredi',
+    'logs.typeRebalance': 'Yeniden Dengeleme',
+    'logs.typeClaim': 'Claim',
+    'logs.typeAlert': 'Uyarı',
+    'logs.typeSystem': 'Sistem',
     'logs.agentName': 'aegis-defai-agent',
     'logs.loadFailed': 'Ajan kayıtları yüklenemedi — backend bağlantısını kontrol edin.',
 
@@ -335,6 +341,7 @@ const tr = {
     'tvl.estProfit': 'Tahmini Kâr:',
     'tvl.projected1y': 'Öngörülen 1 Yıllık Getiri',
     'tvl.basedOnNetApy': 'Güncel Net APY esas alınır (%{apy})',
+    'tvl.projectionTitle': 'TVL Büyüme Projeksiyonu',
 
     // ---- yield chart ----
     'chart.title': 'Gerçekleşen APY Trendi',
@@ -523,6 +530,54 @@ const tr = {
 
     // ---- sidebar ----
     'sidebar.deleteLastSimTitle': 'Son simülasyonu ve tüm verilerini sil',
+
+    // ---- glossary (eğitim amaçlı kavram popover'ları) ----
+    'glossary.hf.title': 'Health Factor (HF)',
+    'glossary.hf.desc': 'Teminatınızın borcunuza oranı. Hedefin üstü = güvenli marj; 1’e yaklaşmak tasfiye riskinin büyüdüğünü gösterir. Ajan uyarı eşiğinin altında otomatik yeniden dengeleme veya kurtarma yapar.',
+    'glossary.apy.title': 'Yıllık Getiri Oranı (APY)',
+    'glossary.apy.desc': 'Mevcut oran sabit kaldığı varsayımıyla, yatırılan sermayenin bir yıllık projekte edilen getirisi. Simülasyonda APY sürekli bileşik hesaplanır.',
+    'glossary.tvl.title': 'Kilitli Toplam Değer (TVL)',
+    'glossary.tvl.desc': 'Stratejide çalışan toplam sermaye. Yüksek TVL daha çok getiri üretir, ancak spread negatife dönerse daha büyük kayıp demektir.',
+    'glossary.spread.title': 'Getiri Farkı (Spread)',
+    'glossary.spread.desc': 'Sabit getiri (Pendle PT-sUSDe) eksi borçlanma maliyetiniz. Pozitif spread = farkı kazanırsınız; negatif = ajan kaldıracı çözer.',
+    'glossary.deltaNeutral.title': 'Delta-Nötr',
+    'glossary.deltaNeutral.desc': 'Kârı token fiyatının yükselmesine veya düşmesine bağlı olmayan strateji — yalnızca getiri farkına bağlıdır. Fiyatı hedge eder, spreadi toplarsınız.',
+    'glossary.leverage.title': 'Kaldıraç',
+    'glossary.leverage.desc': 'Daha büyük pozisyon için teminatınıza karşılık borçlanmak. Kârı da kaybı da büyütür; risk motoru bunu sınırlar ve tasfiye fiyatını izler.',
+    'glossary.ltv.title': 'Kredi-Teminat Oranı (LTV)',
+    'glossary.ltv.desc': 'Teminatın borç olarak kullanılan kısmı. Morpho %91,5 LLTV, teminatın %91,5’ine kadar borçlanabileceğiniz anlamına gelir — tasfiyenin altında ince bir güvenlik payı bırakır.',
+    'glossary.points.title': 'Puanlar (Airdrop Getirisi)',
+    'glossary.points.desc': 'Protokol airdrop puanlarından (Morpho, Ethena, Boros, Cork) tahmini bonus getiri. Gerçekleşme varsayımı yalnızca ~%50 — kalibre edilmemiş tahmin.',
+    'glossary.gas.title': 'Gas Fiyatı',
+    'glossary.gas.desc': 'Ağ ücreti (gwei cinsinden). Yüksek gas, claim ve kurtarmaları pahalılaştırır; bu yüzden ajan gas düşene kadar ödül claimlerini erteler.',
+    'glossary.backtest.title': 'Backtest',
+    'glossary.backtest.desc': 'Tarihsel piyasa verisinin strateji üzerinden yeniden oynatılması — toplam getiri, Sharpe oranı, maksimum çekiş ve tasfiye olasılığı ölçülür.',
+    'glossary.sharpe.title': 'Sharpe Oranı',
+    'glossary.sharpe.desc': 'Birim risk (oynaklık) başına elde edilen getiri. Yüksek = daha iyi risk-ayarlı performans. 1 üzeri iyi kabul edilir.',
+    'glossary.var.title': 'Riskteki Değer (VaR)',
+    'glossary.var.desc': 'Belirli bir güven düzeyinde, belirli bir ufukta beklenen en kötü kayıp. %95 VaR = kaybın günlerin %95’inde bunu aşmaması beklenir.',
+    'glossary.forecast.title': 'Getiri Tahmini',
+    'glossary.forecast.desc': 'APY’nin nereye gittiğinin istatistiksel tahmini — son geçmişe uydurulur (üssel yumuşatma + trend). Tahmin bantları belirsizliği gösterir, garanti değildir.',
+
+    // ---- risk alert'leri (RiskAlerts.jsx içinde çevrilir) ----
+    'riskAlert.awaitingTitle': 'Piyasa verisi bekleniyor',
+    'riskAlert.awaitingDesc': 'Canlı oracle güncellemeleri için backend’e bağlanın.',
+    'riskAlert.simTitle': 'SIM veri kaynağı aktif ({status})',
+    'riskAlert.simDesc': 'Senaryo tabanlı piyasa verisi — deterministik, canlı ağ çağrısı yok.',
+    'riskAlert.hfTitle': 'Health Factor {hf}, hedef {targetHf} altında',
+    'riskAlert.hfDesc': 'Ajan güvenli marjı geri kazandırmak için yeniden dengeleyecek veya kurtaracak.',
+    'riskAlert.spreadNegTitle': 'Negatif getiri farkı ({spread}%)',
+    'riskAlert.spreadNegDesc': 'Borçlanma maliyeti arz getirisini aşıyor — ajan kaldıracı çözüyor.',
+    'riskAlert.spreadPosTitle': 'Pozitif getiri farkı ({spread}%)',
+    'riskAlert.spreadPosDesc': 'Getiri penceresi açık. Ajan giriş için izliyor.',
+    'riskAlert.gasTitle': 'Gas fiyatı yüksek ({gas} gwei)',
+    'riskAlert.gasDesc': 'Claim eşiğinin ({maxGas} gwei) üzerinde. Ödül claimleri ertelendi.',
+
+    // ---- projeksiyon grafiği ----
+    'tvl.assumptions': 'Projeksiyon, mevcut APY’nin sabit kaldığını ve günlük bileşik çalıştığını varsayar. Ücret, oynaklık veya depeg şokları modellenmez — yalnızca eğitim amaçlı tahmin.',
+
+    // ---- işlem analitiği ----
+    'txn.bubbleHint': 'Baloncuk boyutu = işlem büyüklüğü (hareket eden sermaye). Yeşil = net pozitif, kırmızı = net negatif.',
 };
 
 export default tr;

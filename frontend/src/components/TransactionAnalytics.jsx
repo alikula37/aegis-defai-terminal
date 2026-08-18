@@ -203,6 +203,10 @@ export default function TransactionAnalytics() {
                             </ScatterChart>
                         </ResponsiveContainer>
                     </div>
+                    <p className="mt-3 text-[11px] leading-relaxed text-on-surface-variant font-[JetBrains_Mono]">
+                        <span className="material-symbols-outlined text-[13px] align-text-bottom mr-1">info</span>
+                        {t('txn.bubbleHint')}
+                    </p>
                 </div>
             </div>
         </div>

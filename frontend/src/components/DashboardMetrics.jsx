@@ -2,7 +2,15 @@ import { apiFetch } from '../lib/apiClient';
 import { useState, useEffect } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import TvlHistoryModal from './TvlHistoryModal';
+import GlossaryTooltip from './GlossaryTooltip';
+import { useModalA11y } from '../hooks/useModalA11y';
 import { useI18n } from '../i18n/I18nProvider';
+
+const METRIC_GLOSSARY = {
+    tvl: 'glossary.tvl',
+    netApy: 'glossary.apy',
+    healthFactor: 'glossary.hf',
+};
 
 // Formatting for a live metric value; keeps the render callback flat (S3776).
 function formatMetric(metric, rawValue, targetHf, t) {
@@ -77,6 +85,7 @@ export default function DashboardMetrics() {
     const [isApyModalOpen, setIsApyModalOpen] = useState(false);
     const [isTvlModalOpen, setIsTvlModalOpen] = useState(false);
     const [targetHf, setTargetHf] = useState('1.25');
+    const apyModalRef = useModalA11y({ isOpen: isApyModalOpen, onClose: () => setIsApyModalOpen(false) });
 
     const METRIC_LABEL_KEYS = {
         'Total Value Locked': 'yield.tvl',
@@ -128,15 +137,27 @@ export default function DashboardMetrics() {
                     return (
                         <div
                             key={m.label}
+                            role={isApyCard || isTvlCard ? 'button' : undefined}
+                            tabIndex={isApyCard || isTvlCard ? 0 : undefined}
                             onClick={() => {
                                 if (isApyCard) setIsApyModalOpen(true);
                                 if (isTvlCard) setIsTvlModalOpen(true);
                             }}
-                            className={`bg-surface-container border border-outline rounded-lg p-5 relative overflow-hidden group ${isApyCard || isTvlCard ? 'cursor-pointer hover:border-primary/50' : ''}`}
+                            onKeyDown={(e) => {
+                                if ((isApyCard || isTvlCard) && (e.key === 'Enter' || e.key === ' ')) {
+                                    e.preventDefault();
+                                    if (isApyCard) setIsApyModalOpen(true);
+                                    if (isTvlCard) setIsTvlModalOpen(true);
+                                }
+                            }}
+                            className={`bg-surface-container border border-outline rounded-lg p-5 relative overflow-hidden group ${isApyCard || isTvlCard ? 'cursor-pointer hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/40' : ''}`}
                         >
                             <div className={`absolute inset-0 ${m.hoverBg} transition-colors duration-300 pointer-events-none`}></div>
                             <div className="flex justify-between items-start mb-4">
-                                <h3 className="font-[JetBrains_Mono] text-[13px] leading-[16px] font-medium text-on-surface-variant uppercase tracking-wider">{t(METRIC_LABEL_KEYS[m.label] ?? m.label)}</h3>
+                                <h3 className="font-[JetBrains_Mono] text-[13px] leading-[16px] font-medium text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
+                                    {t(METRIC_LABEL_KEYS[m.label] ?? m.label)}
+                                    {METRIC_GLOSSARY[m.key] && <GlossaryTooltip term={METRIC_GLOSSARY[m.key]} />}
+                                </h3>
                                 <span className={`material-symbols-outlined ${iconColor}`}>{m.icon}</span>
                             </div>
 
@@ -163,7 +184,7 @@ export default function DashboardMetrics() {
 
                 {/* APY Breakdown Modal */}
                 {isApyModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div ref={apyModalRef.modalRef} role="dialog" aria-modal="true" aria-labelledby="apy-modal-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                         <div className="bg-surface-container border border-outline-variant rounded-xl p-6 w-full max-w-md shadow-2xl relative">
                             <button
                                 onClick={() => setIsApyModalOpen(false)}
@@ -172,7 +193,7 @@ export default function DashboardMetrics() {
                                 <span className="material-symbols-outlined">close</span>
                             </button>
 
-                            <h2 className="font-[Inter] text-[20px] font-[510] text-paper mb-6 flex items-center gap-2">
+                            <h2 id="apy-modal-title" className="font-[Inter] text-[20px] font-[510] text-paper mb-6 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary">analytics</span>
                                 {t('dash.apyBreakdownTitle')}
                             </h2>

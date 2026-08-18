@@ -1,11 +1,13 @@
 // Pure risk-alert derivation from a portfolio snapshot + settings.
 // Kept separate from the component so Fast Refresh stays clean.
+// Returns i18n *keys* + interpolation vars — the component translates.
+// The logic stays deterministic and unit-testable without a t() function.
 
 const EMPTY_ALERT = {
     type: 'neutral',
     icon: 'monitor_heart',
-    title: 'Awaiting market data',
-    description: 'Connect to the backend to stream live oracle updates.',
+    titleKey: 'riskAlert.awaitingTitle',
+    descKey: 'riskAlert.awaitingDesc',
     bgClass: 'bg-surface-variant border-outline-variant',
     iconColor: 'text-on-surface-variant',
     titleColor: 'text-on-surface',
@@ -16,8 +18,9 @@ function simModeAlert(status) {
     return {
         type: 'neutral',
         icon: 'science',
-        title: `SIM data source active (${status})`,
-        description: 'Scenario-driven market data — deterministic, no live network calls.',
+        titleKey: 'riskAlert.simTitle',
+        titleVars: { status },
+        descKey: 'riskAlert.simDesc',
         bgClass: 'bg-iris-violet/10 border-iris-violet/30',
         iconColor: 'text-secondary',
         titleColor: 'text-secondary',
@@ -29,8 +32,9 @@ function healthFactorAlert(hf, targetHf) {
     return {
         type: 'danger',
         icon: 'shield_moon',
-        title: `Health Factor ${hf.toFixed(2)} below target ${targetHf.toFixed(2)}`,
-        description: 'Agent will rebalance or rescue to restore a safe margin.',
+        titleKey: 'riskAlert.hfTitle',
+        titleVars: { hf: hf.toFixed(2), targetHf: targetHf.toFixed(2) },
+        descKey: 'riskAlert.hfDesc',
         bgClass: 'bg-error/10 border-error/30',
         iconColor: 'text-error',
         titleColor: 'text-error',
@@ -43,8 +47,9 @@ function spreadAlert(spread) {
         return {
             type: 'danger',
             icon: 'trending_down',
-            title: `Negative yield spread (${spread.toFixed(2)}%)`,
-            description: 'Borrow cost exceeds supply yield — agent is unwinding leverage.',
+            titleKey: 'riskAlert.spreadNegTitle',
+            titleVars: { spread: spread.toFixed(2) },
+            descKey: 'riskAlert.spreadNegDesc',
             bgClass: 'bg-warning/10 border-warning/30',
             iconColor: 'text-warning',
             titleColor: 'text-warning',
@@ -54,8 +59,9 @@ function spreadAlert(spread) {
     return {
         type: 'success',
         icon: 'verified_user',
-        title: `Positive yield spread (${spread.toFixed(2)}%)`,
-        description: 'Yield capture window is open. Agent monitoring for entry.',
+        titleKey: 'riskAlert.spreadPosTitle',
+        titleVars: { spread: spread.toFixed(2) },
+        descKey: 'riskAlert.spreadPosDesc',
         bgClass: 'bg-success/10 border-success/30',
         iconColor: 'text-success',
         titleColor: 'text-success',
@@ -67,8 +73,10 @@ function gasAlert(gasPrice, maxGasClaim) {
     return {
         type: 'warning',
         icon: 'local_gas_station',
-        title: `Gas price high (${gasPrice.toFixed(2)} gwei)`,
-        description: `Above claim threshold (${maxGasClaim} gwei). Reward claims deferred.`,
+        titleKey: 'riskAlert.gasTitle',
+        titleVars: { gas: gasPrice.toFixed(2) },
+        descKey: 'riskAlert.gasDesc',
+        descVars: { maxGas: maxGasClaim },
         bgClass: 'bg-warning/10 border-warning/30',
         iconColor: 'text-warning',
         titleColor: 'text-warning',
