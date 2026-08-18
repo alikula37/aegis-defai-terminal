@@ -578,6 +578,22 @@ const tr = {
 
     // ---- işlem analitiği ----
     'txn.bubbleHint': 'Baloncuk boyutu = işlem büyüklüğü (hareket eden sermaye). Yeşil = net pozitif, kırmızı = net negatif.',
+
+    // ---- tahmin grafiği ----
+    'forecast.title': 'Getiri Tahmini 0026 Risk',
+    'forecast.subtitle': 'Gözlenen geçmiş üzerinde Holt trendi + %90 güven bandı. Eğitim amaçlı tahmin, garanti değil.',
+    'forecast.actual': 'Gerçek',
+    'forecast.point': 'Tahmin',
+    'forecast.band': 'Bant',
+    'forecast.samples': '{n} örnek',
+    'forecast.loadFailed': 'Tahmin yüklenemedi — backend bağlantısını kontrol edin.',
+    'forecast.waitingData': 'Tahmin oluşturmak için bir simülasyon çalıştırın.',
+    'forecast.sharpeRatio': 'Sharpe',
+    'forecast.sortinoRatio': 'Sortino',
+    'forecast.annualizedVolatilityPct': 'Oynaklık',
+    'forecast.historicalVaRPct': 'VaR %95',
+    'forecast.maxDrawdownPct': 'Maks. Çekiş',
+    'forecast.winRate': 'Kazanma Oranı',
 };
 
 export default tr;

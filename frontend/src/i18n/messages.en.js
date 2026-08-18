@@ -579,6 +579,22 @@ const en = {
 
     // ---- transaction analytics ----
     'txn.bubbleHint': 'Bubble size = transaction size (capital moved). Green = net positive, red = net negative.',
+
+    // ---- forecast chart ----
+    'forecast.title': 'Yield Forecast 0026 Risk',
+    'forecast.subtitle': 'Holt trend on observed history + 90% confidence band. Educational estimate, not a promise.',
+    'forecast.actual': 'Actual',
+    'forecast.point': 'Forecast',
+    'forecast.band': 'Band',
+    'forecast.samples': '{n} samples',
+    'forecast.loadFailed': 'Could not load forecast — check the backend connection.',
+    'forecast.waitingData': 'Run a simulation to build a forecast.',
+    'forecast.sharpeRatio': 'Sharpe',
+    'forecast.sortinoRatio': 'Sortino',
+    'forecast.annualizedVolatilityPct': 'Volatility',
+    'forecast.historicalVaRPct': 'VaR 95%',
+    'forecast.maxDrawdownPct': 'Max DD',
+    'forecast.winRate': 'Win Rate',
 };
 
 export default en;

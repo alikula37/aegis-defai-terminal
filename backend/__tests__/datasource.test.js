@@ -7,7 +7,7 @@ vi.mock('../db/database.js', async (importOriginal) => {
 });
 
 import { setRngSeed } from '../utils/rng.js';
-import { SimDataSource } from '../core/data/SimDataSource.js';
+import { SimDataSource, resetSimulationPath } from '../core/data/SimDataSource.js';
 import { MarketDataSource } from '../core/data/MarketDataSource.js';
 import { getSettings } from '../db/database.js';
 
@@ -35,6 +35,7 @@ describe('SimDataSource', () => {
     });
 
     it('produces the standard snapshot shape', async () => {
+        resetSimulationPath(seedSimId);
         const s = await SimDataSource.getSnapshot(state, { scenario: 'stable', simulationId: seedSimId });
         expect(s.oracleStatus).toBe('SIM (stable)');
         expect(s.portfolio.tvl).toBeGreaterThan(0);
@@ -42,15 +43,42 @@ describe('SimDataSource', () => {
         expect(s.crossChain).toHaveProperty('bestCrossChainBorrowApy');
     });
 
-    it('is deterministic for a fixed seed', async () => {
+    it('is deterministic for a fixed seed + reset path', async () => {
+        resetSimulationPath(seedSimId);
         const a = await SimDataSource.getSnapshot(state, { scenario: 'stable', simulationId: seedSimId });
-        setRngSeed(2026);
+        resetSimulationPath(seedSimId);
         const b = await SimDataSource.getSnapshot(state, { scenario: 'stable', simulationId: seedSimId });
         expect(a).toEqual(b);
     });
 
+    it('successive cycles evolve the path (stochastic, not static ranges)', async () => {
+        resetSimulationPath(seedSimId);
+        const first = await SimDataSource.getSnapshot(state, { scenario: 'stable', simulationId: seedSimId });
+        const second = await SimDataSource.getSnapshot(state, { scenario: 'stable', simulationId: seedSimId });
+        // Not identical to the previous cycle — the process advances.
+        expect(second.susdeApy).not.toBe(first.susdeApy);
+        expect(Number.isFinite(second.ethPrice)).toBe(true);
+        // sUSDe peg stays near 1.00 in the stable scenario.
+        expect(second.susdePrice).toBeGreaterThan(0.96);
+        expect(second.susdePrice).toBeLessThan(1.04);
+    });
+
+    it('depeg scenario grinds sUSDe price downward over many cycles', async () => {
+        resetSimulationPath(seedSimId);
+        const first = await SimDataSource.getSnapshot(state, { scenario: 'depeg', simulationId: seedSimId });
+        let price = first.susdePrice;
+        for (let i = 0; i < 40; i++) {
+            const s = await SimDataSource.getSnapshot(state, { scenario: 'depeg', simulationId: seedSimId });
+            price = s.susdePrice;
+        }
+        // Persistent negative drift pulls the peg below its starting level.
+        expect(price).toBeLessThan(first.susdePrice);
+        expect(price).toBeLessThan(1.0);
+    });
+
     it('bear scenario always has a negative spread', async () => {
         setRngSeed(1);
+        resetSimulationPath(seedSimId);
         const s = await SimDataSource.getSnapshot(state, { scenario: 'bear', simulationId: seedSimId });
         expect(s.baseSpread).toBeLessThan(0);
         expect(s.leverage).toBe(1); // agent unwinds on negative spread
@@ -58,6 +86,7 @@ describe('SimDataSource', () => {
 
     it('bull scenario has positive spread and leverage', async () => {
         setRngSeed(2);
+        resetSimulationPath(seedSimId);
         const s = await SimDataSource.getSnapshot(state, { scenario: 'bull', simulationId: seedSimId });
         expect(s.baseSpread).toBeGreaterThan(0);
         expect(s.leverage).toBeGreaterThan(1);

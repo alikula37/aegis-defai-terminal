@@ -92,6 +92,36 @@ describe('Backtester', () => {
         expect(Number.isFinite(bt.sharpe)).toBe(true);
     });
 
+    it('exposes the full risk report (Sortino, VaR, CVaR, vol, win rate)', async () => {
+        const bt = await Backtester.runBacktest({ leverage: 4, gasImpactApy: 0.5, dataset: makeDataset() });
+        expect(bt.error).toBeUndefined();
+        for (const key of ['sortino', 'annualizedVolatilityPct', 'vaR95Pct', 'cVaR95Pct', 'winRate']) {
+            expect(Number.isFinite(bt[key])).toBe(true);
+        }
+        expect(bt.riskMetrics).toBeDefined();
+        expect(bt.riskMetrics.sharpeRatio).toBeCloseTo(bt.sharpe, 9);
+        // Bootstrap CI and out-of-sample evaluation present.
+        expect(bt.bootstrap).toBeDefined();
+        expect(Number.isFinite(bt.bootstrap.lo95)).toBe(true);
+        expect(bt.bootstrap.hi95).toBeGreaterThanOrEqual(bt.bootstrap.lo95);
+        expect(bt.outOfSample).toBeDefined();
+        expect(bt.outOfSample.trainDays + bt.outOfSample.testDays).toBe(90);
+        expect(Number.isFinite(bt.outOfSample.testCagr)).toBe(true);
+    });
+
+    it('is deterministic for a fixed seed (bootstrap CI)', async () => {
+        const a = await Backtester.runBacktest({ leverage: 4, dataset: makeDataset(90, 5, 4), seed: 7 });
+        const b = await Backtester.runBacktest({ leverage: 4, dataset: makeDataset(90, 5, 4), seed: 7 });
+        expect(a.bootstrap).toEqual(b.bootstrap);
+        expect(a.outOfSample).toEqual(b.outOfSample);
+    });
+
+    it('risk-free rate reduces the Sharpe ratio', async () => {
+        const base = await Backtester.runBacktest({ leverage: 4, dataset: makeDataset(90, 5, 4), riskFreeRatePct: 0 });
+        const withRf = await Backtester.runBacktest({ leverage: 4, dataset: makeDataset(90, 5, 4), riskFreeRatePct: 4 });
+        expect(withRf.sharpe).toBeLessThan(base.sharpe);
+    });
+
     it.each([
         { days: 0, ok: false },
         { days: 3, ok: false },

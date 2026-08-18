@@ -1,5 +1,10 @@
 import { HistoricalDataService } from '../services/HistoricalDataService.js';
 import { createSeededRandom } from '../utils/rng.js';
+import {
+    computeRiskMetrics,
+    sharpeRatio,
+    sortinoRatio,
+} from '../core/quant/RiskMetrics.js';
 
 const LIQUIDATION_THRESHOLD = 0.94; // sUSDe liquidation threshold on Morpho
 
@@ -12,14 +17,10 @@ function liquidationPrice(leverage) {
     return (leverage - 1) / (leverage * LIQUIDATION_THRESHOLD);
 }
 
-function computeSharpe(dailyReturnsPct) {
-    if (dailyReturnsPct.length < 2) return 0;
-    const mean = dailyReturnsPct.reduce((a, b) => a + b, 0) / dailyReturnsPct.length;
-    const variance = dailyReturnsPct.reduce((a, b) => a + (b - mean) ** 2, 0) / (dailyReturnsPct.length - 1);
-    const std = Math.sqrt(variance);
-    if (std === 0) return 0;
-    // annualized Sharpe from daily returns, risk-free ~0
-    return (mean * 365) / (std * Math.sqrt(365));
+function computeSharpe(dailyReturnsPct, riskFreeRatePct = 0) {
+    // dailyReturnsPct here is the *daily APY* (%). Passed to RiskMetrics as
+    // actual daily returns (apy/365) so the annualization math stays exact.
+    return sharpeRatio(dailyReturnsPct.map(r => r / 365), { riskFreeRatePct, periodsPerYear: 365 });
 }
 
 function computeMaxDrawdown(equityCurve) {
@@ -54,13 +55,75 @@ function aggregateMonthly(days, dailyReturnsPct) {
     });
 }
 
+/** Compound a daily-APY series into (final equity, equity curve). */
+function compoundSeries(dailyNetApy) {
+    let equity = 1;
+    const curve = [];
+    for (const apy of dailyNetApy) {
+        equity *= (1 + apy / 100 / 365);
+        curve.push(equity);
+    }
+    return { equity, curve };
+}
+
+/**
+ * Bootstrap confidence interval for CAGR: resample the daily returns with
+ * replacement and recompute the compounded growth many times (seeded → reproducible).
+ */
+function bootstrapCagr(dailyNetApy, iterations = 500, seed = 42) {
+    if (dailyNetApy.length === 0) return { meanCagr: 0, lo95: 0, hi95: 0 };
+    const rand = createSeededRandom(seed);
+    const n = dailyNetApy.length;
+    const cagrs = [];
+    for (let i = 0; i < iterations; i++) {
+        let eq = 1;
+        for (let j = 0; j < n; j++) {
+            const apy = dailyNetApy[Math.floor(rand() * n)];
+            eq *= (1 + apy / 100 / 365);
+        }
+        const years = n / 365;
+        cagrs.push(years > 0 ? (Math.pow(eq, 1 / years) - 1) * 100 : 0);
+    }
+    cagrs.sort((a, b) => a - b);
+    const idx = (q) => cagrs[Math.min(cagrs.length - 1, Math.floor(q * cagrs.length))];
+    return {
+        meanCagr: cagrs.reduce((a, b) => a + b, 0) / cagrs.length,
+        lo95: idx(0.025),
+        hi95: idx(0.975),
+        iterations,
+    };
+}
+
+/** Out-of-sample split: train on the first 80%, evaluate on the last 20%. */
+function outOfSampleSplit(days, dailyNetApy) {
+    if (days.length < 10) return null;
+    const split = Math.floor(days.length * 0.8);
+    const train = dailyNetApy.slice(0, split);
+    const test = dailyNetApy.slice(split);
+    const { equity: trainEq } = compoundSeries(train);
+    const { equity: testEq } = compoundSeries(test);
+    const cagr = (eq, n) => {
+        const years = n / 365;
+        return years > 0 ? (Math.pow(eq, 1 / years) - 1) * 100 : 0;
+    };
+    return {
+        trainDays: train.length,
+        testDays: test.length,
+        trainCagr: cagr(trainEq, train.length),
+        testCagr: cagr(testEq, test.length),
+        totalReturnPct: (testEq - 1) * 100,
+        startDate: days[split].date,
+        endDate: days[days.length - 1].date,
+    };
+}
+
 export class Backtester {
     /**
      * Backtest the delta-neutral loop strategy on real historical APY data.
-     * @param {object} opts { rangeDays, leverage, gasImpactApy, dataset }
+     * @param {object} opts { rangeDays, leverage, gasImpactApy, riskFreeRatePct, dataset, seed }
      *   dataset: optional array of { date, susdeApy, borrowApy, fundingApy } (used by tests / callers)
      */
-    static async runBacktest({ rangeDays = 90, leverage = 4, gasImpactApy = 0.5, dataset = null } = {}) {
+    static async runBacktest({ rangeDays = 90, leverage = 4, gasImpactApy = 0.5, riskFreeRatePct = 0, dataset = null, seed = 42 } = {}) {
         const data = dataset || await HistoricalDataService.buildBacktestDataset(rangeDays);
         const filled = data.filter(d => d.susdeApy != null && d.borrowApy != null);
         if (filled.length < 7) {
@@ -68,29 +131,43 @@ export class Backtester {
         }
 
         const dailyNetApy = filled.map(d => loopNetApy(d.susdeApy, d.borrowApy, leverage) - gasImpactApy);
-        let equity = 1;
-        const equityCurve = [];
-        for (const apy of dailyNetApy) {
-            equity *= (1 + apy / 100 / 365);
-            equityCurve.push(equity);
-        }
+        const { equity, curve } = compoundSeries(dailyNetApy);
 
         const totalReturn = (equity - 1) * 100;
         const years = filled.length / 365;
         const cagr = years > 0 ? (Math.pow(equity, 1 / years) - 1) * 100 : 0;
-        const sharpe = computeSharpe(dailyNetApy);
-        const maxDrawdown = computeMaxDrawdown(equityCurve);
+        const sharpe = computeSharpe(dailyNetApy, riskFreeRatePct);
+        const maxDrawdown = computeMaxDrawdown(curve);
+
+        // Full risk report (Sortino, VaR, CVaR, vol, win rate) on actual daily
+        // returns (apy/365) so the annualization is exact.
+        const riskMetrics = computeRiskMetrics({
+            dailyReturnsPct: dailyNetApy.map(r => r / 365),
+            equityCurve: curve,
+            riskFreeRatePct,
+            periodsPerYear: 365,
+            confidence: 0.95,
+        });
 
         return {
             strategy: 'Pendle PT-sUSDe Delta-Neutral Loop',
             rangeDays,
             leverage,
             gasImpactApy,
+            riskFreeRatePct,
             days: filled.length,
             totalReturn,
             cagr,
             sharpe,
             maxDrawdown,
+            sortino: riskMetrics.sortinoRatio,
+            annualizedVolatilityPct: riskMetrics.annualizedVolatilityPct,
+            vaR95Pct: riskMetrics.historicalVaRPct,
+            cVaR95Pct: riskMetrics.conditionalVaRPct,
+            winRate: riskMetrics.winRate,
+            riskMetrics,
+            bootstrap: bootstrapCagr(dailyNetApy, 500, seed),
+            outOfSample: outOfSampleSplit(filled, dailyNetApy),
             liquidationPriceAtLeverage: liquidationPrice(leverage),
             startDate: filled[0].date,
             endDate: filled[filled.length - 1].date,
@@ -101,7 +178,7 @@ export class Backtester {
                 loopNetApy: dailyNetApy[dailyNetApy.length - 1],
             },
             monthly: aggregateMonthly(filled, dailyNetApy),
-            equityCurve: equityCurve.map((v, i) => ({ date: filled[i].date, equity: v })),
+            equityCurve: curve.map((v, i) => ({ date: filled[i].date, equity: v })),
         };
     }
 

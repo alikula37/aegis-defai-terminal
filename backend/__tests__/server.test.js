@@ -108,6 +108,34 @@ describe('API Integration Tests', () => {
         expect(Array.isArray(res.body)).toBe(true);
     });
 
+    it('GET /api/portfolio/metrics returns a complete risk report', async () => {
+        const res = await request(app).get('/api/portfolio/metrics');
+        expect(res.status).toBe(200);
+        // No active simulation → periods 0, still a valid 200 with finite keys.
+        expect(res.body.periods).toBeGreaterThanOrEqual(0);
+        for (const key of ['sharpeRatio', 'sortinoRatio', 'annualizedVolatilityPct', 'historicalVaRPct', 'conditionalVaRPct', 'winRate']) {
+            expect(Number.isFinite(res.body[key])).toBe(true);
+        }
+    });
+
+    it('GET /api/forecast/:metric validates the metric and returns forecast shape', async () => {
+        const bad = await request(app).get('/api/forecast/bogus');
+        expect(bad.status).toBe(400);
+
+        const res = await request(app).get('/api/forecast/netApy?horizon=5');
+        expect(res.status).toBe(200);
+        expect(res.body.metric).toBe('netApy');
+        expect(Array.isArray(res.body.future)).toBe(true);
+        expect(Array.isArray(res.body.fitted)).toBe(true);
+        expect(res.body.future.length).toBeLessThanOrEqual(5);
+        for (const f of res.body.future) {
+            expect(Number.isFinite(f.value)).toBe(true);
+            expect(Number.isFinite(f.upper)).toBe(true);
+            expect(Number.isFinite(f.lower)).toBe(true);
+            expect(f.upper).toBeGreaterThanOrEqual(f.lower);
+        }
+    });
+
     it('GET /api/logs should return array', async () => {
         const res = await request(app).get('/api/logs');
         expect(res.status).toBe(200);

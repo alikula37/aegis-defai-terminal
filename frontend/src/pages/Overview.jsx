@@ -4,6 +4,7 @@ import LiveYieldChart from '../components/LiveYieldChart';
 import RiskAlerts from '../components/RiskAlerts';
 import AgentTerminal from '../components/AgentTerminal';
 import TvlProjectionChart from '../components/TvlProjectionChart';
+import ForecastChart from '../components/ForecastChart';
 import { useI18n } from '../i18n/I18nProvider';
 
 export default function Overview() {
@@ -62,6 +63,11 @@ export default function Overview() {
             {/* TVL Projection Chart */}
             <div className="grid grid-cols-1 gap-[1rem]">
                 <TvlProjectionChart />
+            </div>
+
+            {/* Forecast + Risk Metrics */}
+            <div className="grid grid-cols-1 gap-[1rem]">
+                <ForecastChart />
             </div>
 
             {/* Bottom: Agent Terminal */}

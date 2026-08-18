@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 import { getLogs, getLatestPortfolio, getInitialPortfolio, getPortfolioHistory, getSettings, updateSettings, deleteSettings, getRecentMemories, closeDatabase, checkSimulationNameExists, generateUniqueSimulationName, suggestSimulationName, getLatestSimulation, setSimulationStatus, getAllSimulations, deleteSimulation, getSimulationById, getLocalUserId } from './db/database.js';
 import { AegisAgent } from './agent.js';
 import { Backtester } from './backtest/Backtester.js';
+import { computeRiskMetrics } from './core/quant/RiskMetrics.js';
+import { forecast as runForecast } from './core/quant/ForecastService.js';
 import aegisConfig from './aegis.config.js';
 import helmet from 'helmet';
 import { z } from 'zod';
@@ -583,6 +585,74 @@ app.get('/api/portfolio/history', async (req, res) => {
         const timeRange = req.query.timeRange || 'ALL';
         const history = await getPortfolioHistory(limit, simId, timeRange);
         res.json(history);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ---- Portfolio risk analytics (Faz 2) ----
+// Live risk report computed from the simulation's observed history: Sharpe,
+// Sortino, VaR/CVaR, volatility, drawdown, win rate — the same quant layer
+// that powers the backtester, now on the running simulation.
+app.get('/api/portfolio/metrics', async (req, res) => {
+    const simId = await activeSimForUser(req, res);
+    if (simId === false) return;
+    if (simId === null) {
+        return res.json(computeRiskMetrics({ dailyReturnsPct: [], equityCurve: null }));
+    }
+    try {
+        const limit = Math.min(Math.max(parseInt(req.query.limit) || 2000, 10), 10000);
+        const rows = await getPortfolioHistory(limit, simId, req.query.timeRange || 'ALL');
+        const byTime = rows.slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const netApySeries = byTime.filter(r => r.net_apy != null && Number.isFinite(Number(r.net_apy))).map(r => Number(r.net_apy));
+        const tvlSeries = byTime.filter(r => r.tvl > 0).map(r => Number(r.tvl));
+
+        // Daily return convention (apy/365), same as the backtester.
+        const dailyReturnsPct = netApySeries.map(v => v / 365);
+
+        const report = computeRiskMetrics({
+            dailyReturnsPct,
+            equityCurve: tvlSeries.length > 1 ? tvlSeries : null,
+            riskFreeRatePct: parseFloat(req.query.riskFreeRatePct) || 0,
+            periodsPerYear: 365,
+            confidence: 0.95,
+        });
+        res.json({
+            ...report,
+            lastNetApy: netApySeries.length ? netApySeries[netApySeries.length - 1] : null,
+            lastTvl: tvlSeries.length ? tvlSeries[tvlSeries.length - 1] : null,
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ---- Yield forecast (Faz 2) ----
+// Holt's linear trend + EWMA-volatility band on the simulation's observed
+// history — an educational "where is this heading?" chart, not a promise.
+app.get('/api/forecast/:metric', async (req, res) => {
+    const metric = req.params.metric;
+    if (!['netApy', 'tvl'].includes(metric)) {
+        return res.status(400).json({ error: `Unsupported metric '${metric}' — use netApy or tvl.` });
+    }
+    const simId = await activeSimForUser(req, res);
+    if (simId === false) return;
+    if (simId === null) return res.json({ fitted: [], future: [], metrics: { mse: 0, rmse: 0, mae: 0 }, metric });
+    try {
+        const limit = Math.min(Math.max(parseInt(req.query.limit) || 2000, 10), 10000);
+        const rows = await getPortfolioHistory(limit, simId, req.query.timeRange || 'ALL');
+        const byTime = rows.slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const values = byTime
+            .filter(r => metric === 'netApy' ? r.net_apy != null : r.tvl > 0)
+            .map(r => metric === 'netApy' ? Number(r.net_apy) : Number(r.tvl));
+        const horizon = Math.min(Math.max(parseInt(req.query.horizon) || 12, 1), 90);
+        const result = runForecast({
+            values,
+            horizon,
+            alpha: parseFloat(req.query.alpha) || 0.4,
+            beta: parseFloat(req.query.beta) || 0.2,
+        });
+        res.json({ ...result, metric });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
