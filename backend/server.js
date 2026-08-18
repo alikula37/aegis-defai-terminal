@@ -82,6 +82,23 @@ app.use(cors({
 
 app.use(helmet());
 
+// Behind nginx every request arrives from the proxy's IP; trust the single
+// reverse-proxy hop so rate-limit buckets are keyed by the real client
+// (X-Forwarded-For set by nginx below). Without this all users share one
+// bucket and a single active browser can starve everyone else (429 storms).
+// Set before any IP-keyed limiter is mounted.
+app.set('trust proxy', 1);
+
+// Coarse flood brake — cheap per-IP ceiling mounted BEFORE the origin/auth
+// middleware so even pre-auth handling is bounded. The fine-grained limiters
+// below (api/write/login) keep their skipAuthenticated semantics, which need
+// auth to have run first and mounted req.user.
+const floodLimiter = createRateLimiter({
+    windowMs: aegisConfig.server.rateLimit.apiWindowMs,
+    max: Number(process.env.RATE_LIMIT_FLOOD_MAX) || 900, // per IP, generous ceiling
+});
+app.use('/api/', floodLimiter);
+
 // E9 — auth: open mode (AUTH_REQUIRED=false, dev default) attaches the seeded
 // 'local' user; required mode (production default) validates the session cookie.
 // /api/auth/* is exempt: login/register must work before a session exists.
@@ -91,12 +108,6 @@ app.use('/api/', (req, res, next) => {
     if (req.path.startsWith('/auth/')) return next();
     return requireAuthMw(req, res, next);
 });
-
-// Behind nginx every request arrives from the proxy's IP; trust the single
-// reverse-proxy hop so rate-limit buckets are keyed by the real client
-// (X-Forwarded-For set by nginx below). Without this all users share one
-// bucket and a single active browser can starve everyone else (429 storms).
-app.set('trust proxy', 1);
 
 // Brute-force ceiling on credential endpoints — always on, both modes.
 // The per-user lockout (failed_attempts/locked_until) is the primary defense;

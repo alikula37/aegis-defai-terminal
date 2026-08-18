@@ -9,6 +9,11 @@ export const NOTIFIABLE_TYPES = new Set(['alert', 'error', 'critical', 'danger']
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
+// SMTP relays on private networks often serve self-signed certificates.
+// Certificate validation stays ON by default; relax only when the operator
+// opts in (SMTP_ALLOW_INVALID_CERTS=true) for a trusted private relay.
+const smtpAllowInvalidCerts = process.env.SMTP_ALLOW_INVALID_CERTS === 'true';
+
 /**
  * Telegram bot transport. Requires NOTIFY_TELEGRAM_TOKEN + NOTIFY_TELEGRAM_CHAT_ID.
  * Uses global fetch (Node 18+); unit tests inject a fake fetchImpl.
@@ -153,7 +158,7 @@ export function smtpSendMail({ host, port = 465, secure = true, user, pass, from
         };
 
         const connectImplicitTls = () => new Promise((res, rej) => {
-            const sock = tls.connect({ host, port, servername: host, rejectUnauthorized: false }, res);
+            const sock = tls.connect({ host, port, servername: host, rejectUnauthorized: !smtpAllowInvalidCerts }, res);
             sock.once('error', rej);
             attach(sock);
             current = sock;
@@ -167,7 +172,7 @@ export function smtpSendMail({ host, port = 465, secure = true, user, pass, from
         });
 
         const connectStartTls = () => new Promise((res, rej) => {
-            const sock = tls.connect({ socket: current, servername: host, rejectUnauthorized: false }, res);
+            const sock = tls.connect({ socket: current, servername: host, rejectUnauthorized: !smtpAllowInvalidCerts }, res);
             sock.once('error', rej);
             attach(sock);
             current = sock;

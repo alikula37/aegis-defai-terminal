@@ -19,6 +19,9 @@ on:
           - sepolia     # Read-only Sepolia checks
           - full        # fork + sepolia + funded signer transactions
 
+permissions:
+  contents: read
+
 jobs:
   integration:
     runs-on: ubuntu-latest
