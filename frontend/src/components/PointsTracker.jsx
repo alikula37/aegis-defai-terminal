@@ -1,6 +1,20 @@
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useI18n } from '../i18n/I18nProvider';
 
+// Tailwind v4 only emits literal class names — keep a fixed lookup so the
+// dynamic color classes are always generated. Must be declared before
+// PointItem uses it (TDZ).
+const POINT_COLORS = {
+    violet: 'text-violet-400',
+    blue: 'text-blue-400',
+    cyan: 'text-cyan-400',
+    green: 'text-success',
+    amber: 'text-amber-400',
+    yellow: 'text-amber-400',
+    red: 'text-rose-400',
+    rose: 'text-rose-400',
+};
+
 const PointItem = ({ icon, label, apy, color, description, negative = false }) => (
     <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all">
         <div className={`text-xl mt-0.5`}>{icon}</div>
@@ -17,15 +31,6 @@ const PointItem = ({ icon, label, apy, color, description, negative = false }) =
         </div>
     </div>
 );
-
-const POINT_COLORS = {
-    violet: 'text-violet-400',
-    blue: 'text-blue-400',
-    cyan: 'text-cyan-400',
-    green: 'text-success',
-    amber: 'text-warning',
-    rose: 'text-rose-400',
-};
 
 export default function PointsTracker() {
     const { t } = useI18n();

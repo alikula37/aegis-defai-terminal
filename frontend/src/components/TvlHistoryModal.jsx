@@ -93,7 +93,7 @@ export default function TvlHistoryModal({ isOpen, onClose }) {
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <defs>
-                                    <linearGradient id="colorTvl" x1="0" y1="0" x2="0" y2="1">
+                                    <linearGradient id="gradTvlHistory" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#17c3b2" stopOpacity={0.3} />
                                         <stop offset="95%" stopColor="#17c3b2" stopOpacity={0} />
                                     </linearGradient>
@@ -122,7 +122,7 @@ export default function TvlHistoryModal({ isOpen, onClose }) {
                                     stroke="#17c3b2"
                                     strokeWidth={2}
                                     fillOpacity={1}
-                                    fill="url(#colorTvl)"
+                                    fill="url(#gradTvlHistory)"
                                     isAnimationActive={false}
                                 />
                             </AreaChart>

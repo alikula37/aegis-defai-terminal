@@ -27,7 +27,7 @@ function rowToPoint(row) {
 }
 
 // ---- Custom Premium Tooltip ----
-const CustomTooltip = ({ active, payload, label }) => {
+const CustomTooltip = ({ active, payload, label, tvlLabel }) => {
     if (!active || !payload || !payload.length) return null;
     const d = payload[0]?.payload || {};
     return (
@@ -48,7 +48,7 @@ const CustomTooltip = ({ active, payload, label }) => {
             ))}
             {d.tvl > 0 && (
                 <p className="font-[JetBrains_Mono] text-[10px] text-on-surface-variant mt-2 pt-2 border-t border-white/10">
-                    TVL: ${Number(d.tvl).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                    {tvlLabel}: ${Number(d.tvl).toLocaleString('en-US', { maximumFractionDigits: 0 })}
                 </p>
             )}
         </div>
@@ -240,7 +240,7 @@ export default function LiveYieldChart() {
                                 tickMargin={8}
                                 width={42}
                             />
-                            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#17c3b2', strokeWidth: 1, strokeDasharray: '4 4', opacity: 0.4 }} />
+                            <Tooltip content={<CustomTooltip tvlLabel={t('chart.tvlLabel')} />} cursor={{ stroke: '#17c3b2', strokeWidth: 1, strokeDasharray: '4 4', opacity: 0.4 }} />
 
                             {/* Zero reference line */}
                             <ReferenceLine y={0} stroke="#383b3f" strokeDasharray="4 4" opacity={0.4} />
@@ -249,7 +249,7 @@ export default function LiveYieldChart() {
                             <Area
                                 type="monotone"
                                 dataKey="netApy"
-                                name="Net APY"
+                                name={t('chart.netApyLeveraged')}
                                 stroke="#17c3b2"
                                 strokeWidth={2.5}
                                 fill="url(#gradNet)"
@@ -262,7 +262,7 @@ export default function LiveYieldChart() {
                             <Line
                                 type="monotone"
                                 dataKey="pendleApy"
-                                name="Pendle PT"
+                                name={t('chart.pendleFixed')}
                                 stroke="#27a644"
                                 strokeWidth={1.5}
                                 strokeDasharray="6 3"
@@ -274,7 +274,7 @@ export default function LiveYieldChart() {
                             <Line
                                 type="monotone"
                                 dataKey="morphoBorrow"
-                                name="Morpho Borrow"
+                                name={t('chart.morphoBorrow')}
                                 stroke="#eb5757"
                                 strokeWidth={1.5}
                                 strokeDasharray="3 3"

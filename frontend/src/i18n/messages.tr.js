@@ -292,6 +292,7 @@ const tr = {
     // ---- risk alerts ----
     'risk.title': 'Risk Uyarıları',
     'risk.nominal': 'Tüm sistemler normal',
+    'risk.nominalDesc': 'Hiçbir risk eşiği aşılmadı. Health Factor ve spread güvenli sınırlarda.',
 
     // ---- cross chain ----
     'crossChain.title': 'Zincirler Arası Borç Arbitrajı',

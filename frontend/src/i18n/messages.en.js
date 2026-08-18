@@ -293,6 +293,7 @@ const en = {
     // ---- risk alerts ----
     'risk.title': 'Risk Alerts',
     'risk.nominal': 'All systems nominal',
+    'risk.nominalDesc': 'No risk threshold has been crossed. Health factor and spread are within safe bounds.',
 
     // ---- cross chain ----
     'crossChain.title': 'Cross-Chain Borrow Arbitrage',

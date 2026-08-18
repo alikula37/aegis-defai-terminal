@@ -2,6 +2,7 @@ import { useWebSocket } from '../contexts/WebSocketContext';
 import { useI18n } from '../i18n/I18nProvider';
 
 const RateBar = ({ label, apy, maxApy = 10, color = 'bg-blue-500', badge = null }) => {
+    const { t } = useI18n();
     const value = Number(apy);
     const safeApy = Number.isFinite(value) ? value : 0;
     const pct = Math.min(100, (safeApy / (Number(maxApy) || 10)) * 100);
@@ -11,8 +12,8 @@ const RateBar = ({ label, apy, maxApy = 10, color = 'bg-blue-500', badge = null 
                 <span className="text-xs text-white/60">{label}</span>
                 <div className="flex items-center gap-2">
                     {badge && (
-                        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${badge === 'BEST' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-orange-500/20 text-orange-400 border border-orange-500/30'}`}>{badge === 'BEST' ? t('crossChain.best') : badge}
-                            {badge}
+                        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${badge === 'BEST' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-orange-500/20 text-orange-400 border border-orange-500/30'}`}>
+                            {badge === 'BEST' ? t('crossChain.best') : badge}
                         </span>
                     )}
                     <span className="text-xs font-mono font-bold text-white">{safeApy.toFixed(2)}%</span>

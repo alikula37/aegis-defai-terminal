@@ -15,6 +15,15 @@ export default function RiskAlerts() {
                 <span className="material-symbols-outlined text-warning text-[20px]">warning</span> {t('risk.title')}
             </h3>
             <div className="flex flex-col gap-3">
+                {alerts.length === 0 && (
+                    <div className="border border-outline-variant rounded p-4 flex gap-3 items-start bg-success/5">
+                        <span className="material-symbols-outlined text-success text-[18px] mt-0.5">verified</span>
+                        <div>
+                            <p className="text-[14px] leading-[20px] text-success font-medium">{t('risk.nominal')}</p>
+                            <p className={`font-[JetBrains_Mono] text-[12px] leading-[18px] text-on-surface-variant mt-1`}>{t('risk.nominalDesc')}</p>
+                        </div>
+                    </div>
+                )}
                 {alerts.map((alert, i) => (
                     <div key={i} className={`${alert.bgClass} border rounded p-4 flex gap-3 items-start`}>
                         <span className={`material-symbols-outlined ${alert.iconColor} text-[18px] mt-0.5`}>{alert.icon}</span>
