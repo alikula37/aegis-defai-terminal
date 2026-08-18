@@ -3,8 +3,11 @@
   <img src="https://github.com/alikula37/aegis-defai-terminal/actions/workflows/ci.yml/badge.svg" alt="CI">
   <img src="https://github.com/alikula37/aegis-defai-terminal/actions/workflows/docker.yml/badge.svg" alt="Docker">
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License">
-  <img src="https://img.shields.io/badge/Backend%20Tests-418%20passed-brightgreen?style=for-the-badge&logo=vitest" alt="Backend tests">
-  <img src="https://img.shields.io/badge/Frontend%20Tests-105%20passed-brightgreen?style=for-the-badge&logo=vitest" alt="Frontend tests">
+  <img src="https://img.shields.io/badge/Backend%20Tests-466%20passed-brightgreen?style=for-the-badge&logo=vitest" alt="Backend tests">
+  <img src="https://img.shields.io/badge/Frontend%20Tests-113%20passed-brightgreen?style=for-the-badge&logo=vitest" alt="Frontend tests">
+  <img src="https://img.shields.io/badge/Coverage%20(backend)-81%25-success?style=for-the-badge&logo=vitest" alt="Backend coverage">
+  <img src="https://img.shields.io/badge/Coverage%20(frontend)-70%25-success?style=for-the-badge&logo=vitest" alt="Frontend coverage">
+  <img src="https://img.shields.io/badge/E2E%20%26%20Visual-7%20tests%20passed-success?style=for-the-badge&logo=playwright" alt="E2E + visual regression">
   <img src="https://img.shields.io/badge/SonarQube-0%20bugs%20%E2%80%A2%200%20vulnerabilities-success?style=for-the-badge&logo=sonarqube" alt="SonarQube">
   <img src="https://img.shields.io/badge/PRs-Welcome-ff69b4?style=for-the-badge&logo=github" alt="PRs welcome">
 </p>
@@ -148,12 +151,31 @@ npm run dev
 
 | Suite | Command | Status |
 |---|---|---|
-| Backend (unit + stress) | `cd backend && npm test` | **418 passed** |
-| Frontend (Vitest) | `cd frontend && npm test` | **105 passed** |
-| E2E (Playwright) | `cd frontend && npx playwright test` | 3 specs |
+| Backend (unit + integration + stress) | `cd backend && npm test` | **466 passed** |
+| Backend coverage | `cd backend && npm run coverage` | **81% lines** (gate: ≥70%) |
+| Frontend (Vitest + snapshots) | `cd frontend && npm test` | **113 passed** |
+| Frontend coverage | `cd frontend && npm run coverage` | **70% lines** (gate: ≥65%) |
+| E2E (Playwright) | `cd frontend && npx playwright test` | 7 specs (incl. visual regression) |
+| Contract (API schemas) | `cd backend && npm test` | zod-validated in `server.test.js` |
 | Linting | backend: `npm run lint` · frontend: `npx oxlint .` | **0 errors** |
 
-Quality gate: SonarQube local scan — **0 bugs, 0 vulnerabilities**, 67.6% coverage → [docs/PRODUCTION_READINESS_ANALYSIS.md](docs/PRODUCTION_READINESS_ANALYSIS.md).
+Quality gates: SonarQube local scan — **0 bugs, 0 vulnerabilities**; CI enforces a **coverage floor** (backend ≥70%, frontend ≥65% lines) and runs the full E2E + visual-regression suite → [docs/PRODUCTION_READINESS_ANALYSIS.md](docs/PRODUCTION_READINESS_ANALYSIS.md).
+
+## 🧪 Testing Strategy
+
+A layered pyramid — categories overlap, but each adds a distinct guarantee:
+
+| Layer | What it guards | Where |
+|---|---|---|
+| **Unit — logic + invocations** | Pure logic *and* that the orchestrator calls the right function with the right args (`vi.spyOn`/`vi.fn`) | `backend/__tests__/invocations.test.js`, `decision-engine`, `risk-metrics`, `forecast`, `riskAlertsLogic` |
+| **Integration (DB + HTTP)** | Real SQLite round-trips + supertest against the live express app + real WebSocket client | `database.test.js`, `server.test.js`, `__tests__/integration/*` (Sepolia/mainnet-fork) |
+| **Contract** | API response shapes validated against zod schemas; served OpenAPI 3.1 spec probed path-by-path | `backend/schemas/apiSchemas.js`, `GET /api/openapi.json` |
+| **E2E** | Client → backend → DB journey: login, start sim, stream live data, render charts, stop | `frontend/e2e/aegis.spec.js` |
+| **Render-tree snapshot** | Component hierarchy stability across refactors | `frontend/src/__tests__/snapshots.test.jsx` (7 committed) |
+| **Visual regression** | Pixel-level layout/theme regressions on key screens | `frontend/e2e/visual.spec.js` + committed baselines |
+| **Automation** | Playwright scenarios (crawl + happy path + visual) in CI | `.github/workflows/ci.yml` → `e2e` job |
+
+The data-science layer is tested against **known-value** fixtures (exact Sharpe/Sortino/VaR math, deterministic seeded Monte Carlo, forecast band growth) so the quant code is verifiable, not just executable.
 
 ## 🔑 Configuration (API Keys & RPC)
 
@@ -327,12 +349,15 @@ npm run dev
 
 | Test | Komut | Durum |
 |---|---|---|
-| Arka yüz (birim + stres) | `cd backend && npm test` | **418 geçti** |
-| Ön yüz (Vitest) | `cd frontend && npm test` | **105 geçti** |
-| E2E (Playwright) | `cd frontend && npx playwright test` | 3 spec |
+| Arka yüz (birim + entegrasyon + stres) | `cd backend && npm test` | **466 geçti** |
+| Arka yüz kapsam | `cd backend && npm run coverage` | **%81 satır** (kapı: ≥%70) |
+| Ön yüz (Vitest + snapshot) | `cd frontend && npm test` | **113 geçti** |
+| Ön yüz kapsam | `cd frontend && npm run coverage` | **%70 satır** (kapı: ≥%65) |
+| E2E (Playwright) | `cd frontend && npx playwright test` | 7 spec (görsel regresyon dahil) |
+| Contract (API şemaları) | `cd backend && npm test` | `server.test.js` içinde zod doğrulaması |
 | Lint | backend: `npm run lint` · frontend: `npx oxlint .` | **0 hata** |
 
-Kalite kapısı: SonarQube yerel tarama — **0 hata, 0 güvenlik açığı**, %67,6 kapsama → [docs/PRODUCTION_READINESS_ANALYSIS.md](docs/PRODUCTION_READINESS_ANALYSIS.md).
+Kalite kapıları: SonarQube yerel tarama — **0 hata, 0 güvenlik açığı**; CI **kapsam tabanını** (backend ≥%70, frontend ≥%65 satır) ve tam E2E + görsel regresyon paketini çalıştırır → [docs/PRODUCTION_READINESS_ANALYSIS.md](docs/PRODUCTION_READINESS_ANALYSIS.md).
 
 ## 🔑 Yapılandırma (API Anahtarları & RPC)
 

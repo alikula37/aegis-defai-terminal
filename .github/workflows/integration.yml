@@ -1,0 +1,59 @@
+name: Integration (on-chain)
+
+# Manual on-chain integration suite: real Sepolia reads, Anvil mainnet fork,
+# and (with a funded signer) live transactions. These need secrets, so they are
+# NEVER part of the default CI matrix — run them explicitly from the Actions UI.
+#
+#   Settings → Actions → New workflow → this workflow → Run workflow
+#
+# Required repo secrets: EVM_PROVIDER_URL, EVM_PRIVATE_KEY, AEGIS_TEST_SEPOLIA
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Which integration suite to run'
+        type: choice
+        default: 'fork'
+        options:
+          - fork        # Anvil mainnet fork (no real funds, needs no private key)
+          - sepolia     # Read-only Sepolia checks
+          - full        # fork + sepolia + funded signer transactions
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    env:
+      EVM_PROVIDER_URL: ${{ secrets.EVM_PROVIDER_URL }}
+      EVM_PRIVATE_KEY: ${{ secrets.EVM_PRIVATE_KEY }}
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Use Node.js 22
+      uses: actions/setup-node@v5
+      with:
+        node-version: 22.x
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+
+    - name: Install Backend Dependencies
+      run: |
+        cd backend
+        npm ci
+
+    - name: Prepare Backend Test Env
+      run: |
+        cd backend
+        echo "ENCRYPTION_KEY=$(openssl rand -hex 16)" > .env
+        echo "OPENROUTER_API_KEY=" >> .env
+
+    - name: Run mainnet-fork integration (no funds needed)
+      if: ${{ github.event.inputs.suite != 'sepolia' }}
+      run: |
+        cd backend
+        npm run test:fork
+
+    - name: Run Sepolia integration (read-only unless EVM_PRIVATE_KEY set)
+      if: ${{ github.event.inputs.suite != 'fork' }}
+      run: |
+        cd backend
+        npm run test:integration

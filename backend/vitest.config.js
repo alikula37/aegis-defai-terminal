@@ -9,8 +9,9 @@ export default defineConfig({
         // are run explicitly via `npm run test:integration` (see package.json).
         exclude: ['node_modules/**', 'dist/**', '__tests__/integration/**'],
         coverage: {
-            // lcov feeds SonarQube/SonarCloud; text-summary for the terminal.
-            reporter: ['lcov', 'text-summary'],
+            // lcov feeds SonarQube/SonarCloud; text-summary for the terminal;
+            // json-summary feeds the CI coverage gate (scripts/coverage-gate.mjs).
+            reporter: ['lcov', 'text-summary', 'json-summary'],
             reportsDirectory: 'coverage',
         },
     },

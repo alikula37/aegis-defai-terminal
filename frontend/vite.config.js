@@ -21,8 +21,9 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.{js,jsx}'],
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
     coverage: {
-      // lcov feeds SonarQube/SonarCloud; text-summary for the terminal.
-      reporter: ['lcov', 'text-summary'],
+      // lcov feeds SonarQube/SonarCloud; text-summary for the terminal;
+      // json-summary feeds the CI coverage gate (scripts/coverage-gate.mjs).
+      reporter: ['lcov', 'text-summary', 'json-summary'],
       reportsDirectory: 'coverage',
     },
   }

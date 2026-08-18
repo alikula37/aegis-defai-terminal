@@ -43,10 +43,18 @@ jobs:
         echo "OPENROUTER_API_KEY=" >> .env
         echo "EVM_PROVIDER_URL=" >> .env
 
-    - name: Run Backend Tests
+    - name: Run Backend Tests + Coverage
       run: |
         cd backend
-        npm test
+        npm run coverage
+
+    - name: Backend Coverage Gate
+      # Local quality gate (no external service): fail if the backend drops
+      # below the floor. Thresholds sit comfortably under the measured values
+      # (lines 81%, statements 79%).
+      shell: bash
+      run: |
+        node scripts/coverage-gate.mjs backend/coverage/coverage-summary.json 70 70 50 65
 
     - name: Run Backend Lint
       run: |
@@ -58,10 +66,15 @@ jobs:
         cd frontend
         npm ci
 
-    - name: Run Frontend Tests
+    - name: Run Frontend Tests + Coverage
       run: |
         cd frontend
-        npm test
+        npm run coverage
+
+    - name: Frontend Coverage Gate
+      shell: bash
+      run: |
+        node scripts/coverage-gate.mjs frontend/coverage/coverage-summary.json 65 65 60 65
 
     - name: Run Frontend Lint
       run: |
@@ -72,3 +85,47 @@ jobs:
       run: |
         cd frontend
         npm run build
+
+  # Browser E2E (Playwright) on Linux only — the real client→backend journey,
+  # including committed visual-regression baselines.
+  e2e:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Use Node.js 22
+      uses: actions/setup-node@v5
+      with:
+        node-version: 22.x
+        cache: 'npm'
+        cache-dependency-path: |
+          backend/package-lock.json
+          frontend/package-lock.json
+
+    - name: Install Backend Dependencies
+      run: |
+        cd backend
+        npm ci
+
+    - name: Prepare Backend Test Env
+      run: |
+        cd backend
+        echo "ENCRYPTION_KEY=$(openssl rand -hex 16)" > .env
+        echo "OPENROUTER_API_KEY=" >> .env
+
+    - name: Install Frontend Dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Install Playwright Chromium
+      run: |
+        cd frontend
+        npx playwright install --with-deps chromium
+
+    - name: Run Playwright (E2E + visual regression)
+      # playwright.config.js boots the backend + frontend dev server itself.
+      run: |
+        cd frontend
+        npx playwright test
