@@ -2,10 +2,11 @@
 // LLM cost control (Faz 2.8 + B3-7): per-cycle call cap, weekly spend cap and
 // model routing policy. Critical decisions use a premium model while routine
 // decisions stay on the cheap/default model.
+import aegisConfig from '../aegis.config.js';
 
 export const ROUTING_POLICY = {
     criticalModel: 'anthropic/claude-3.5-sonnet',
-    routineModel: 'meta-llama/llama-3.1-70b-instruct',
+    routineModel: aegisConfig.llm.defaultModel,
 };
 
 /**

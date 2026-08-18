@@ -173,24 +173,27 @@ describe('SimulationStartModal', () => {
         });
     });
 
-    it('provides an OpenRouter model typeahead (datalist) while keeping free-form ids', async () => {
+    it('shares the same model picker as Settings (free pinned + catalog + custom)', async () => {
         mockRoutes();
         renderModal();
         // The model field lives in the collapsible Advanced section.
         fireEvent.click(screen.getByRole('button', { name: /Advanced/i }));
-        const modelInput = screen.getByPlaceholderText(/e\.g\. google\/gemini/i);
-        expect(modelInput).toHaveAttribute('list', 'aegis-llm-model-options');
+        // Same ModelPicker component as Settings: a select, not a text box.
+        const modelSelect = screen.getByRole('combobox', { name: /Active LLM model/i });
+        expect(modelSelect).toBeTruthy();
         // Options arrive asynchronously from the catalog endpoint.
-        const datalist = document.getElementById('aegis-llm-model-options');
         await waitFor(() => {
-            expect(datalist.querySelectorAll('option').length).toBeGreaterThan(0);
+            expect(modelSelect.querySelectorAll('option').length).toBeGreaterThan(0);
         });
-        const ids = [...datalist.querySelectorAll('option')].map(o => o.value);
+        // Free models are pinned first (matching Settings).
+        const groups = [...modelSelect.querySelectorAll('optgroup')];
+        expect(groups[0].label).toBe('🔥 Free models');
+        const ids = [...modelSelect.querySelectorAll('option')].map(o => o.value);
         expect(ids).toContain('anthropic/claude-3.5-sonnet');
         expect(ids).toContain('google/gemini-2.5-flash-exp:free');
-        // The combobox is still free-form: typing a custom id works.
-        fireEvent.change(modelInput, { target: { name: 'activeModel', value: 'my/custom-model' } });
-        expect(modelInput.value).toBe('my/custom-model');
+        // Changing it updates the settings that get persisted on launch.
+        fireEvent.change(modelSelect, { target: { value: 'google/gemini-2.5-flash-exp:free' } });
+        expect(modelSelect.value).toBe('google/gemini-2.5-flash-exp:free');
     });
 
     it('renders the form instantly from the settings cache (no loading gate)', async () => {        // Even with both fetches hanging, the cached SettingsContext data is

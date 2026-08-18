@@ -114,9 +114,11 @@ produces a deterministic decision.
 
 When the portfolio enters the **Warning** or **Critical** zone (or a decision
 point is reached), the agent consults an LLM through **OpenRouter**. You choose
-the model from a live catalog in the **Settings** page (any Llama, GPT, Claude,
-Gemini, etc. — a primary model plus an automatic fallback model for network
-errors).
+the model from the **same picker** on the **Settings** page and the
+new-simulation start screen (free models are pinned on top, then the live
+OpenRouter catalog grouped by vendor, then your custom ids). The default is a
+**free** model (`google/gemini-2.5-flash-exp:free`), and whatever you select in
+either place is what the agent uses — the two screens never drift.
 
 The prompt contains the full current state (HF, LTV, allocations, APYs, spread,
 TVL) plus what its read-only tools report (`get_market_snapshot`,

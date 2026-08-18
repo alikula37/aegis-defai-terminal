@@ -167,8 +167,8 @@ describe('resolveModel (LLM routing)', () => {
         expect(resolveModel('', true)).toBe('anthropic/claude-3.5-sonnet');
     });
 
-    it('falls back to the routine default when nothing is selected', () => {
-        expect(resolveModel('', false)).toBe('meta-llama/llama-3.1-70b-instruct');
+    it('falls back to the routine default (free model) when nothing is selected', () => {
+        expect(resolveModel('', false)).toBe('google/gemini-2.5-flash-exp:free');
     });
 });
 

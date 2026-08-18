@@ -114,8 +114,11 @@ bir karar üretir.
 
 Portföy **Uyarı** veya **Kritik** bölgeye girdiğinde (veya bir karar noktası
 oluştuğunda) ajan **OpenRouter** üzerinden bir LLM'e danışır. Modeli **Ayarlar**
-sayfasındaki canlı katalogdan siz seçersiniz (Llama, GPT, Claude, Gemini…
-herhangi biri — birincil model + ağ hatası durumunda otomatik yedek model).
+sayfasındaki ve yeni simülasyon başlatma ekranındaki **aynı seçiciden**
+seçersiniz (ücretsiz modeller en üstte sabittir, ardından satıcıya göre
+gruplanmış canlı OpenRouter kataloğu ve özel kimlikleriniz gelir). Varsayılan
+**ücretsiz** bir modeldir (`google/gemini-2.5-flash-exp:free`); iki ekrandan
+hangisinde seçerseniz seçin ajan onu kullanır — ekranlar asla sapmaz.
 
 Prompt, mevcut durumun tamamını (HF, LTV, dağılımlar, APY'ler, spread, TVL) ve
 salt-okunur araçlarının raporlarını (`get_market_snapshot`,

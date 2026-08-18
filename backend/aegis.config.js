@@ -17,7 +17,10 @@ export default {
         }
     },
     llm: {
-        defaultModel: 'meta-llama/llama-3.1-70b-instruct',
+        // Free-by-default: the first curated free model, matching the frontend
+        // default and FREE_MODEL_FALLBACKS. Paying customers override it via
+        // Settings / the start modal (the selection is stored per user).
+        defaultModel: 'google/gemini-2.5-flash-exp:free',
         fallbackModel: 'openai/gpt-4o-mini',
         maxTokens: 1500,
         temperature: 0.2,

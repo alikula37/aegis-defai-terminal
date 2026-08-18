@@ -5,6 +5,17 @@ import { useSettings } from '../contexts/SettingsContext';
 import { useI18n } from '../i18n/I18nProvider';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { targetHfForAppetite } from '../lib/riskPresets';
+import ModelPicker from './ModelPicker';
+
+// Curated free models — shown pinned on top of the picker so the zero-credit
+// path is one click away (mirrors the Settings page).
+const FREE_MODEL_FALLBACKS = [
+    { value: 'google/gemini-2.5-flash-exp:free', label: 'Gemini 2.5 Flash (Free)' },
+    { value: 'meta-llama/llama-3-8b-instruct:free', label: 'Llama 3 8B Instruct (Free)' },
+    { value: 'mistralai/mistral-7b-instruct:free', label: 'Mistral 7B Instruct (Free)' },
+    { value: 'google/gemma-4-31b-it:free', label: 'Gemma 4 31B IT (Free)' },
+    { value: 'nvidia/nemotron-3-ultra-550b-a55b:free', label: 'Nemotron 3 Ultra 550B (Free)' },
+];
 
 const SCENARIOS = [
     { value: 'stable', label: 'Stable — baseline spread' },
@@ -53,6 +64,7 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
     const [error, setError] = useState(null);
     const [suggestedName, setSuggestedName] = useState(null);
     const [modelCatalog, setModelCatalog] = useState([]);
+    const [freeModels, setFreeModels] = useState(FREE_MODEL_FALLBACKS);
     const [showKeyGuide, setShowKeyGuide] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
     const nameTouchedRef = useRef(false);
@@ -141,7 +153,12 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
             apiFetch('/api/llm/models')
                 .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
                 .then(data => {
-                    if (!cancelled) setModelCatalog(data.models || []);
+                    if (!cancelled) {
+                        setModelCatalog(data.models || []);
+                        if (Array.isArray(data.freeModels) && data.freeModels.length > 0) {
+                            setFreeModels(data.freeModels.map(m => ({ value: m.id, label: m.name || m.id })));
+                        }
+                    }
                 })
                 .catch(err => console.error("Failed to load model catalog:", err));
 
@@ -539,25 +556,15 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('startModal.modelLabel')}</label>
-                                    <input
-                                        type="text"
-                                        name="activeModel"
-                                        list="aegis-llm-model-options"
+                                    <ModelPicker
                                         value={settings.activeModel}
                                         onChange={handleChange}
-                                        placeholder={t('startModal.modelPlaceholder')}
-                                        autoComplete="off"
-                                        className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
+                                        name="activeModel"
+                                        modelCatalog={modelCatalog}
+                                        freeModels={freeModels}
+                                        labelKey="startModal.modelLabel"
+                                        hintKey="startModal.modelHint"
                                     />
-                                    {/* Typeahead list of every model OpenRouter offers —
-                                        the value stays a free-form id, so custom ids
-                                        typed by hand also work. */}
-                                    <datalist id="aegis-llm-model-options">
-                                        {modelCatalog.map(m => (
-                                            <option key={m.id} value={m.id}>{m.isFree ? `${m.name} (Free)` : m.name}</option>
-                                        ))}
-                                    </datalist>
                                 </div>
                             </div>
                         )}

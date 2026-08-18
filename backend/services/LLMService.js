@@ -191,9 +191,11 @@ export async function callLLM(prompt, isCritical = false, memoryContext = [], se
     }
     const apiKey = getApiKey(settings);
 
-    // Cost optimization: Llama 3.1 70B for routine, Claude 3.5 Sonnet for critical decisions
-    // If user selected a free model in settings, use it for everything to avoid credit errors
-    const activeModel = settings.activeModel || 'meta-llama/llama-3.1-70b-instruct';
+    // Cost optimization: routine decisions use the default (free) model,
+    // critical decisions route to a premium model. If the user selected a
+    // model in Settings / the start modal, it wins for everything (avoids
+    // credit errors on free accounts).
+    const activeModel = settings.activeModel || aegisConfig.llm.defaultModel;
     const model = resolveModel(activeModel, isCritical);
 
     const data = await withModelFallback(({ fallbackModel } = {}) => fetchChatCompletion(apiKey, {
@@ -232,7 +234,7 @@ export async function callLLMWithTools({
         throw new LLMUnavailableError('Local brain mode is active — OpenRouter is disabled.', { reason: 'local-mode' });
     }
     const apiKey = getApiKey(settings);
-    const activeModel = settings.activeModel || 'meta-llama/llama-3.1-70b-instruct';
+    const activeModel = settings.activeModel || aegisConfig.llm.defaultModel;
     const model = resolveModel(activeModel, isCritical);
 
     const data = await withModelFallback(({ fallbackModel } = {}) => {

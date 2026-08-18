@@ -164,6 +164,13 @@ describe('API Integration Tests', () => {
         assertContract(apiSchemas.settings, res.body);
     });
 
+    it('defaults the active model to a curated FREE model (no stored row)', async () => {
+        await request(app).delete('/api/settings');
+        const res = await request(app).get('/api/settings');
+        expect(res.status).toBe(200);
+        expect(res.body.activeModel).toBe('google/gemini-2.5-flash-exp:free');
+    });
+
     it('contract: /api/simulation/status matches status schema', async () => {
         const res = await request(app).get('/api/simulation/status');
         expect(res.status).toBe(200);
