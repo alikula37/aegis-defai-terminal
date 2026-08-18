@@ -79,7 +79,12 @@ every cycle:
 HF = (Collateral Value × Liquidation Threshold) / Debt Value
 ```
 
-The risk zones depend on your **risk appetite** (set in the Settings page):
+The risk zones depend on your **risk appetite** — set on the **new-simulation
+start screen** or the **Settings page**; the two are always in sync. Picking an
+appetite snaps the Target HF to its preset, and editing the Target HF directly
+re-derives the appetite label (Conservative 1.40 · Balanced 1.25 · Aggressive
+1.20). The agent applies the persisted value on every cycle, so the Overview
+dashboard, Settings and the simulation's actual risk zones can never drift:
 
 | Appetite | Target HF | Warning zone | Critical |
 |---|---|---|---|

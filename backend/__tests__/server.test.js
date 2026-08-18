@@ -451,6 +451,19 @@ describe('API Integration Tests', () => {
         expect(bad.body.error).toBeTruthy();
     });
 
+    it('persists riskAppetite and frequency and rejects invalid values', async () => {
+        const ok = await request(app).post('/api/settings').send({ riskAppetite: 'Aggressive', frequency: 'High' });
+        expect(ok.status).toBe(200);
+        expect(ok.body.settings.riskAppetite).toBe('Aggressive');
+        expect(ok.body.settings.frequency).toBe('High');
+
+        const badA = await request(app).post('/api/settings').send({ riskAppetite: 'Wild' });
+        expect(badA.status).toBe(400);
+
+        const badF = await request(app).post('/api/settings').send({ frequency: 'Insane' });
+        expect(badF.status).toBe(400);
+    });
+
     it('never exposes stored secrets via /api/settings (B5 masking)', async () => {
         const secret = 'sk-masking-check';
         const post = await request(app).post('/api/settings').send({

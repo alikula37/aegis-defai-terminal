@@ -865,6 +865,12 @@ const settingsSchema = z.object({
     // local rule engine on failure; 'local' never calls OpenRouter (no key
     // needed); 'llm' insists on the AI brain.
     brainMode: z.enum(['auto', 'llm', 'local']).optional(),
+    // Risk appetite is the high-level control that maps to targetHf
+    // (Conservative→1.40, Balanced→1.25, Aggressive→1.20). Changing one side
+    // propagates to the other across the start modal and Settings.
+    riskAppetite: z.enum(['Conservative', 'Balanced', 'Aggressive']).optional(),
+    // Cycle frequency: High=15s, Medium=30s, Low=60s.
+    frequency: z.enum(['High', 'Medium', 'Low']).optional(),
 }).passthrough()
     // B6 — numeric bounds on money-adjacent settings (reject NaN/Infinity/absurd)
     .superRefine((val, ctx) => {

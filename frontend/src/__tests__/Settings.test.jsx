@@ -38,6 +38,8 @@ const mockSettings = {
     openRouterKey: '',
     activeModel: 'google/gemini-2.5-flash-exp:free',
     brainMode: 'auto',
+    riskAppetite: 'Balanced',
+    frequency: 'Medium',
     targetHf: 1.25,
     maxGasClaim: 20,
     dataMode: 'SIM',
@@ -96,5 +98,29 @@ describe('Settings — brain mode (free / no-credit UX)', () => {
         const optgroupLabels = [...select.querySelectorAll('optgroup')].map(o => o.label);
         expect(optgroupLabels[0]).toBe('🔥 Free models');
         expect(optgroupLabels.length).toBeGreaterThan(1); // free group + vendors/custom
+    });
+
+    it('changing Risk Appetite snaps Target HF to its preset (coupled)', () => {
+        const { container } = render(<Settings />);
+        // The appetite select currently shows 'Balanced'.
+        const appetite = [...container.querySelectorAll('select')].find(s => s.value === 'Balanced');
+        expect(appetite).toBeTruthy();
+
+        fireEvent.change(appetite, { target: { value: 'Aggressive' } });
+        expect(setLocalSettings).toHaveBeenCalledWith(expect.objectContaining({ riskAppetite: 'Aggressive', targetHf: 1.20 }));
+
+        // Manual targetHf edits re-derive the appetite label back.
+        const hfInput = [...container.querySelectorAll('input')].find(i => i.value === '1.25');
+        fireEvent.change(hfInput, { target: { value: '1.40' } });
+        expect(setLocalSettings).toHaveBeenCalledWith(expect.objectContaining({ targetHf: 1.4, riskAppetite: 'Conservative' }));
+    });
+
+    it('renders the Cycle Frequency selector', () => {
+        const { container } = render(<Settings />);
+        const freqSelect = [...container.querySelectorAll('select')]
+            .find(s => s.value === 'Medium');
+        expect(freqSelect).toBeTruthy();
+        fireEvent.change(freqSelect, { target: { value: 'Low' } });
+        expect(setLocalSettings).toHaveBeenCalledWith(expect.objectContaining({ frequency: 'Low' }));
     });
 });

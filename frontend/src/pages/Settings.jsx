@@ -5,6 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { getApiKey, setApiKey, apiFetch } from '../lib/apiClient';
 import { useI18n } from '../i18n/I18nProvider';
+import { RISK_APPETITE_OPTIONS, targetHfForAppetite, appetiteForTargetHf, CYCLE_FREQUENCIES } from '../lib/riskPresets';
 
 // Built-in fallback list — used only while the live OpenRouter catalog is
 // loading or unreachable (the picker normally shows every model OpenRouter
@@ -399,6 +400,28 @@ export default function Settings() {
                     </h3>
                     <div className="space-y-4">
                         <div>
+                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">{t('settings.riskAppetite')}</label>
+                            <select
+                                value={settings.riskAppetite || 'Balanced'}
+                                onChange={e => {
+                                    const value = e.target.value;
+                                    // Appetite is the high-level control — picking
+                                    // one snaps targetHf to its preset so the start
+                                    // screen, Settings and Overview stay in sync.
+                                    setLocalSettings({ ...settings, riskAppetite: value, targetHf: targetHfForAppetite(value) });
+                                    setSaved(false);
+                                }}
+                                className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-on-surface font-[JetBrains_Mono] text-[13px] outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                            >
+                                {RISK_APPETITE_OPTIONS.map(a => (
+                                    <option key={a} value={a}>
+                                        {t(`settings.appetite${a}`)} — target HF {targetHfForAppetite(a).toFixed(2)}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mt-1">{t('settings.riskAppetiteHint')}</p>
+                        </div>
+                        <div>
                             <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">{t('settings.targetHf')}</label>
                             <input
                                 type="number"
@@ -406,7 +429,13 @@ export default function Settings() {
                                 min="1.05"
                                 max="2.0"
                                 value={settings.targetHf}
-                                onChange={e => handleChange('targetHf', e.target.value === '' ? settings.targetHf : parseFloat(e.target.value))}
+                                onChange={e => {
+                                    const value = e.target.value === '' ? settings.targetHf : parseFloat(e.target.value);
+                                    // Manual targetHf edits re-derive the appetite
+                                    // label so the two never drift apart.
+                                    setLocalSettings({ ...settings, targetHf: value, riskAppetite: appetiteForTargetHf(value) });
+                                    setSaved(false);
+                                }}
                                 className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-on-surface font-[JetBrains_Mono] text-[13px] outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                             />
                             <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mt-1">{t('settings.targetHfHint')}</p>
@@ -423,6 +452,19 @@ export default function Settings() {
                                 className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-on-surface font-[JetBrains_Mono] text-[13px] outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                             />
                             <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mt-1">{t('settings.maxGasHint')}</p>
+                        </div>
+                        <div>
+                            <label className="block font-[JetBrains_Mono] text-[13px] text-on-surface-variant mb-1.5 uppercase tracking-wider">{t('settings.cycleFrequency')}</label>
+                            <select
+                                value={settings.frequency || 'Medium'}
+                                onChange={e => handleChange('frequency', e.target.value)}
+                                className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-on-surface font-[JetBrains_Mono] text-[13px] outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                            >
+                                {CYCLE_FREQUENCIES.map(f => (
+                                    <option key={f.value} value={f.value}>{f.label}</option>
+                                ))}
+                            </select>
+                            <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mt-1">{t('settings.cycleFrequencyHint')}</p>
                         </div>
                     </div>
                 </div>

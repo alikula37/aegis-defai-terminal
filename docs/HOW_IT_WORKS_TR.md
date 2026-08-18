@@ -79,7 +79,12 @@ Faktörünü** (HF) hesaplar:
 HF = (Teminat Değeri × Likidasyon Eşiği) / Borç Değeri
 ```
 
-Risk bölgeleri, **risk iştahınıza** göre belirlenir (Ayarlar sayfasında seçilir):
+Risk bölgeleri, **risk iştahınıza** göre belirlenir — yeni simülasyon başlatma
+ekranında veya **Ayarlar sayfasında** seçilir; ikisi her zaman senkrondur.
+İştah seçmek Hedef Sağlık Faktörünü hazır değerine sabitler; Hedef HF'yi elle
+düzenlemek de iştah etiketini yeniden türetir (Muhafazakâr 1.40 · Dengeli 1.25 ·
+Agresif 1.20). Ajan bu değeri her döngüde uygular; böylece Genel Bakış paneli,
+Ayarlar ve simülasyonun gerçek risk bölgeleri asla birbirinden sapmaz:
 
 | İştah | Hedef HF | Uyarı bölgesi | Kritik |
 |---|---|---|---|

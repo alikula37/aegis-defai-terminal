@@ -272,4 +272,26 @@ describe('SimulationStartModal', () => {
         const settingsPost = apiFetch.mock.calls.find(c => c[0] === '/api/settings' && c[1]?.method === 'POST');
         expect(JSON.parse(settingsPost[1].body)).toMatchObject({ brainMode: 'local' });
     });
+
+    it('couples Risk Appetite to Target HF and persists both', async () => {
+        mockRoutes({ settings: { ...storedSettings, hasRpcUrl: true, hasOpenRouterKey: true, brainMode: 'auto', riskAppetite: 'Balanced', frequency: 'Medium', targetHf: 1.25 } });
+        const { onStart, container } = renderModal();
+        await waitFor(() => {
+            expect(screen.getByDisplayValue('sim_1a2b3c4d')).not.toBeNull();
+        });
+
+        // Aggressive → targetHf snaps to 1.20.
+        const appetite = container.querySelector('select[name="riskAppetite"]');
+        expect(appetite).toBeTruthy();
+        fireEvent.change(appetite, { target: { value: 'Aggressive' } });
+        submitForm(container);
+
+        await waitFor(() => expect(onStart).toHaveBeenCalled());
+        // The start body carries the derived targetHf so the backend's risk
+        // zones match what the UI shows.
+        expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ riskAppetite: 'Aggressive', targetHf: 1.2 }));
+        // And the settings POST persists appetite + frequency + targetHf.
+        const settingsPost = apiFetch.mock.calls.find(c => c[0] === '/api/settings' && c[1]?.method === 'POST');
+        expect(JSON.parse(settingsPost[1].body)).toMatchObject({ riskAppetite: 'Aggressive', targetHf: 1.2, frequency: 'Medium' });
+    });
 });

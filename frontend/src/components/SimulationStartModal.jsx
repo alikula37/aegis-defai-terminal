@@ -4,6 +4,7 @@ import { useWebSocket } from '../contexts/WebSocketContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { useI18n } from '../i18n/I18nProvider';
 import { useModalA11y } from '../hooks/useModalA11y';
+import { targetHfForAppetite } from '../lib/riskPresets';
 
 const SCENARIOS = [
     { value: 'stable', label: 'Stable — baseline spread' },
@@ -34,6 +35,7 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
         seed: '',
         activeModel: '',
         brainMode: 'auto',
+        targetHf: 1.25,
     });
 
     // Per-start API credentials. Secrets never come back from the server;
@@ -88,6 +90,9 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                     dataScenario: data.dataScenario || 'stable',
                     activeModel: data.activeModel || '',
                     brainMode: data.brainMode || 'auto',
+                    riskAppetite: data.riskAppetite || 'Balanced',
+                    frequency: data.frequency || 'Medium',
+                    targetHf: data.targetHf != null ? data.targetHf : targetHfForAppetite(data.riskAppetite || 'Balanced'),
                 }));
             };
 
@@ -199,6 +204,9 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                 dataScenario: settings.dataScenario,
                 activeModel: settings.activeModel || undefined,
                 brainMode: settings.brainMode || 'auto',
+                riskAppetite: settings.riskAppetite || 'Balanced',
+                frequency: settings.frequency || 'Medium',
+                targetHf: settings.targetHf,
             };
             if (systemConfig.rpcUrl) payload.rpcUrl = systemConfig.rpcUrl;
             if (systemConfig.openRouterKey) payload.openRouterKey = systemConfig.openRouterKey;
@@ -486,13 +494,25 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                         <select
                             name="riskAppetite"
                             value={settings.riskAppetite}
-                            onChange={handleChange}
+                            onChange={e => {
+                                const value = e.target.value;
+                                // Appetite drives targetHf — the same mapping the
+                                // Settings page uses, so both screens agree.
+                                setSettings(prev => ({
+                                    ...prev,
+                                    riskAppetite: value,
+                                    targetHf: targetHfForAppetite(value),
+                                }));
+                            }}
                             className="w-full bg-surface-variant border border-outline-variant rounded-md px-3 py-2 text-[14px] text-on-surface focus:outline-none focus:border-primary"
                         >
                             <option value="Conservative">{t('startModal.riskConservative')}</option>
                             <option value="Balanced">{t('startModal.riskBalanced')}</option>
                             <option value="Aggressive">{t('startModal.riskAggressive')}</option>
                         </select>
+                        <p className="font-[JetBrains_Mono] text-[10px] text-on-surface-variant mt-1">
+                            {t('startModal.riskAppetiteHint', { targetHf: settings.targetHf })}
+                        </p>
                     </div>
 
                     {/* Advanced: deterministic seed + LLM model */}

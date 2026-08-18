@@ -45,9 +45,10 @@ vi.mock('../services/LLMService.js', () => {
 
 import { MarketDataSource } from '../core/data/MarketDataSource.js';
 import { callLLM, LLMUnavailableError } from '../services/LLMService.js';
-import { insertPortfolioStats, insertMemory } from '../db/database.js';
+import { insertPortfolioStats, insertMemory, getSettings } from '../db/database.js';
 import { AegisAgent } from '../agent.js';
 import aegisConfig from '../aegis.config.js';
+import { evaluateMarketConditions } from '../core/RiskEngine.js';
 
 function makeMarketData(overrides = {}) {
     return {
@@ -169,6 +170,11 @@ describe('AegisAgent.runCycle', () => {
 });
 
 describe('AegisAgent cycle watchdog (B2.5-7)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        setRngSeed(2026);
+    });
+
     it('broadcasts a watchdog alert when the cycle exceeds the threshold', async () => {
         aegisConfig.agent.cycleWatchdogMs = 20; // shrink threshold for the test
         // A slow snapshot (80ms) vs a 20ms watchdog → the alert fires mid-cycle
@@ -267,5 +273,57 @@ describe('AegisAgent cycle watchdog (B2.5-7)', () => {
 
         const notices = logs.filter(l => l.broadcastType === 'notification');
         expect(notices).toHaveLength(1);
+    });
+
+    // ---- Settings coupling (start modal ↔ Settings page ↔ agent) ----
+
+    it('risk assessment uses the persisted targetHf from settings', async () => {
+        // The persisted settings are merged into the active simulation config
+        // each cycle, so the risk zones the agent acts on match what the
+        // Settings page / start modal show.
+        getSettings.mockResolvedValue({
+            openRouterKey: '', activeModel: 'test',
+            targetHf: 1.40, maxGasClaim: 20, llmToolsEnabled: false, frequency: 'Medium',
+        });
+        callLLM.mockResolvedValue({ decision: 'hold', reasoning: 'ok', action: 'nothing' });
+        const agent = makeAgent(() => {});
+        agent.isRunning = true;
+        MarketDataSource.getSnapshot.mockResolvedValue(makeMarketData()); // HF 1.5
+
+        await agent.runCycle();
+
+        // Conservative (1.40) got merged over the default 1.25...
+        expect(agent.simulationSettings.targetHf).toBe(1.40);
+        // ...and the evaluated zones reflect it (critical 1.30, warning 1.36).
+        const conditions = evaluateMarketConditions(makeMarketData(), agent.simulationSettings);
+        expect(conditions.criticalHf).toBeCloseTo(1.30, 2);
+        expect(conditions.warningHf).toBeCloseTo(1.36, 2);
+    });
+
+    it('applies the persisted cycle frequency from settings', async () => {
+        getSettings.mockResolvedValue({
+            openRouterKey: '', activeModel: 'test',
+            targetHf: 1.25, maxGasClaim: 20, llmToolsEnabled: false, frequency: 'High',
+        });
+        const agent = makeAgent(() => {});
+        agent.isRunning = true;
+        MarketDataSource.getSnapshot.mockResolvedValue(makeMarketData());
+
+        await agent.runCycle();
+
+        expect(agent.cycleIntervalMs).toBe(15000);
+    });
+
+    it('auto-stops when the chosen duration is reached', async () => {
+        const logs = [];
+        const agent = makeAgent((type, payload) => logs.push({ broadcastType: type, ...payload }));
+        agent.isRunning = true;
+        agent.stopAfter = Date.now() - 1000; // expired
+
+        await agent.runCycle();
+
+        expect(logs.some(l => /auto-stopping/.test(l.message))).toBe(true);
+        expect(agent.isRunning).toBe(false);
+        expect(insertPortfolioStats).not.toHaveBeenCalled();
     });
 });

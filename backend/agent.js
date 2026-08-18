@@ -42,6 +42,7 @@ export class AegisAgent {
         this.activeSimulationId = null;
         this.simulationSettings = {};
         this.lastInitialBalance = 10000;
+        this.stopAfter = null;
         this.llmBudget = new LLMBudget({
             maxCallsPerCycle: aegisConfig.llm.budget.maxCallsPerCycle,
             weeklyMaxCalls: aegisConfig.llm.budget.weeklyMaxCalls || 0,
@@ -238,6 +239,12 @@ export class AegisAgent {
         this.cycleIntervalMs = 30000; // Default Medium
         if (settings.frequency === 'High') this.cycleIntervalMs = 15000;
         if (settings.frequency === 'Low') this.cycleIntervalMs = 60000;
+
+        // Duration auto-stop: Continuous runs forever; timed runs stop on their
+        // own (checked at the top of every cycle).
+        if (settings.duration === '1 Hour') this.stopAfter = Date.now() + 60 * 60 * 1000;
+        else if (settings.duration === '24 Hours') this.stopAfter = Date.now() + 24 * 60 * 60 * 1000;
+        else this.stopAfter = null;
 
         // Start recursive timeout loop
         this._scheduleNextCycle();
@@ -514,6 +521,12 @@ export class AegisAgent {
     async runCycle() {
         if (!this.isRunning) return;
 
+        // Duration auto-stop: "1 Hour" / "24 Hours" end the run on their own.
+        if (this.stopAfter && Date.now() > this.stopAfter) {
+            this.logAndBroadcast('scan', 'Simulation duration reached — auto-stopping.');
+            return this.stopSimulation();
+        }
+
         // Phase 4 (D8) — trace the full cycle as one span (no-op when disabled).
         return trace('aegis.cycle', async (span) => {
         // B2.5-7 — stuck-detection watchdog: if the cycle takes longer than
@@ -534,6 +547,18 @@ export class AegisAgent {
             // Persist a real-data snapshot for backtesting / trend analysis
             this._recordSnapshot(marketData);
 
+            // Persisted settings (Settings page / start modal) are the single
+            // source of truth for risk, claims and brain mode. Merge them over
+            // the start-time preferences so every screen agrees on the values
+            // the agent actually acts on.
+            const settings = await getSettings(this.ownerUserId);
+            this.simulationSettings = { ...this.simulationSettings, ...settings };
+
+            // Apply the persisted cycle frequency each cycle so changes made
+            // in Settings take effect without restarting the agent.
+            const freq = this.simulationSettings.frequency || 'Medium';
+            this.cycleIntervalMs = freq === 'High' ? 15000 : freq === 'Low' ? 60000 : 30000;
+
             // 2. Assess risk
             let conditions = evaluateMarketConditions(marketData, this.simulationSettings);
 
@@ -542,7 +567,6 @@ export class AegisAgent {
             }
 
             // 3. Decide (LLM + guardrails + deterministic fallback)
-            const settings = await getSettings(this.ownerUserId);
             let response = await this._makeDecision(marketData, conditions, settings);
 
             const { response: validated, warnings } = validateLLMDecision(response, marketData, conditions, simulationState);
