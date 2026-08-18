@@ -151,13 +151,23 @@ jobs:
           docker compose up -d || { docker compose logs backend; exit 1; }
 
       - name: Wait for health
+        # GH runner networking is occasionally transient (curl exit 56 = recv
+        # failure) even when the container reports Healthy — retry the final
+        # probe before giving up and dumping logs.
         run: |
+          ok=0
           for i in $(seq 1 90); do
-            if curl -sf http://localhost:3001/health >/dev/null; then break; fi
+            if curl -sf http://localhost:3001/health >/dev/null; then ok=1; break; fi
             sleep 2
           done
+          if [ "$ok" != "1" ]; then echo "backend never became healthy"; docker compose logs backend; exit 1; fi
+          # Post-health retry window for transient connection resets.
+          for i in $(seq 1 10); do
+            if curl -sf http://localhost:3001/health >/dev/null; then break; fi
+            sleep 3
+          done
           curl -sf http://localhost:3001/health || { docker compose logs backend; exit 1; }
-          curl -sf -o /dev/null http://localhost:8080
+          curl -sf -o /dev/null http://localhost:8080 || { docker compose logs frontend; exit 1; }
 
       - name: Smoke — first registration becomes admin, login, run a simulation
         run: |
