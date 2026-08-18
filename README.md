@@ -8,7 +8,6 @@
   <img src="https://img.shields.io/badge/Coverage%20(backend)-81%25-success?style=for-the-badge&logo=vitest" alt="Backend coverage">
   <img src="https://img.shields.io/badge/Coverage%20(frontend)-70%25-success?style=for-the-badge&logo=vitest" alt="Frontend coverage">
   <img src="https://img.shields.io/badge/E2E%20%26%20Visual-7%20tests%20passed-success?style=for-the-badge&logo=playwright" alt="E2E + visual regression">
-  <img src="https://img.shields.io/badge/SonarQube-0%20bugs%20%E2%80%A2%200%20vulnerabilities-success?style=for-the-badge&logo=sonarqube" alt="SonarQube">
   <img src="https://img.shields.io/badge/PRs-Welcome-ff69b4?style=for-the-badge&logo=github" alt="PRs welcome">
 </p>
 
@@ -111,7 +110,7 @@ graph TD
 | ⚙️ Backend | Node.js 22 · Express 4 · **node:sqlite** (built-in, zero deps) · WebSocket · Prometheus |
 | 🧠 AI Engine | OpenRouter API — **pick any model** (Llama, GPT, Claude, Gemini…) from the live catalog; tool-calling + fallback on retriable errors |
 | 🔒 Security | AES-256-GCM key encryption · scrypt (OWASP) · session auth · rate limiting · CSRF |
-| 🧪 Testing | Vitest (unit) · Playwright (E2E) · supertest (API + stress) · SonarQube |
+| 🧪 Testing | Vitest (unit) · Playwright (E2E) · supertest (API + stress) · CodeQL + Trivy |
 
 ## 🚀 Quick Start
 
@@ -159,7 +158,7 @@ npm run dev
 | Contract (API schemas) | `cd backend && npm test` | zod-validated in `server.test.js` |
 | Linting | backend: `npm run lint` · frontend: `npx oxlint .` | **0 errors** |
 
-Quality gates: SonarQube local scan — **0 bugs, 0 vulnerabilities**; CI enforces a **coverage floor** (backend ≥70%, frontend ≥65% lines) and runs the full E2E + visual-regression suite → [docs/PRODUCTION_READINESS_ANALYSIS.md](docs/PRODUCTION_READINESS_ANALYSIS.md).
+Quality gates: CI enforces a **coverage floor** (backend ≥70%, frontend ≥65% lines) and runs the full E2E + visual-regression suite; Docker images are scanned with Trivy and the repo with CodeQL on every push.
 
 ## 🧪 Testing Strategy
 
@@ -200,8 +199,6 @@ Where to enter them — two options:
 | 🛡️ **Optional API key gate** | `AEGIS_API_KEY` + `WS_API_KEY` for exposed deployments |
 | 🪵 **No secrets in logs** | Token/keys redacted across the codebase |
 
-Full audit: [docs/SECURITY_AUDIT_REPORT.md](docs/SECURITY_AUDIT_REPORT.md)
-
 ## 📊 Observability & Notifications
 
 - **Prometheus metrics** at `GET /metrics` — HTTP, WebSocket clients, TVL, agent state, LLM/tool calls, OTel spans. Optional Grafana dashboard included → [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md)
@@ -212,12 +209,8 @@ Full audit: [docs/SECURITY_AUDIT_REPORT.md](docs/SECURITY_AUDIT_REPORT.md)
 | Document | Purpose |
 |---|---|
 | [🇬🇧 How It Works](docs/HOW_IT_WORKS.md) / [🇹🇷 Nasıl Çalışır?](docs/HOW_IT_WORKS_TR.md) | The AI decision-making explained, in two languages |
-| [Target Architecture](docs/TARGET_ARCHITECTURE.md) | System design & data flows |
 | [Auth & Multi-user](docs/AUTH.md) | Session model, admin, lockout, CSRF |
-| [Security Audit](docs/SECURITY_AUDIT_REPORT.md) | Full security review |
-| [Market & Competitive Analysis](docs/MARKET_AND_COMPETITIVE_ANALYSIS.md) | Strategy research |
-| [Roadmap](docs/PRODUCT_ROADMAP.md) · [Backlog](docs/IMPLEMENTATION_BACKLOG.md) | Where this is going |
-| [Mainnet Fork](docs/MAINNET_FORK.md) · [Production Readiness](docs/PRODUCTION_READINESS_ANALYSIS.md) | Going live |
+| [Mainnet Fork](docs/MAINNET_FORK.md) | Testing against a live mainnet fork |
 
 ## 🤝 Contributing
 
@@ -309,7 +302,7 @@ graph TD
 | ⚙️ Arka Yüz | Node.js 22 · Express 4 · **node:sqlite** (yerleşik, sıfır bağımlılık) · WebSocket · Prometheus |
 | 🧠 AI Motoru | OpenRouter API — **istediğiniz modeli seçin** (Llama, GPT, Claude, Gemini…) canlı katalogdan; tool-calling + yeniden denenebilir hatalarda yedek |
 | 🔒 Güvenlik | AES-256-GCM anahtar şifreleme · scrypt (OWASP) · oturum doğrulama · hız sınırlama · CSRF |
-| 🧪 Test | Vitest (birim) · Playwright (E2E) · supertest (API + stres) · SonarQube |
+| 🧪 Test | Vitest (birim) · Playwright (E2E) · supertest (API + stres) · CodeQL + Trivy |
 
 ## 🚀 Hızlı Başlangıç
 
@@ -357,7 +350,7 @@ npm run dev
 | Contract (API şemaları) | `cd backend && npm test` | `server.test.js` içinde zod doğrulaması |
 | Lint | backend: `npm run lint` · frontend: `npx oxlint .` | **0 hata** |
 
-Kalite kapıları: SonarQube yerel tarama — **0 hata, 0 güvenlik açığı**; CI **kapsam tabanını** (backend ≥%70, frontend ≥%65 satır) ve tam E2E + görsel regresyon paketini çalıştırır → [docs/PRODUCTION_READINESS_ANALYSIS.md](docs/PRODUCTION_READINESS_ANALYSIS.md).
+Kalite kapıları: CI **kapsam tabanını** (backend ≥%70, frontend ≥%65 satır) ve tam E2E + görsel regresyon paketini çalıştırır; Docker imajları Trivy ile, repo CodeQL ile her push'ta taranır.
 
 ## 🔑 Yapılandırma (API Anahtarları & RPC)
 
@@ -382,8 +375,6 @@ Nereye gireceksiniz — iki seçenek:
 | 🛡️ **İsteğe bağlı API anahtarı kapısı** | Açık dağıtımlar için `AEGIS_API_KEY` + `WS_API_KEY` |
 | 🪵 **Loglarda gizli veri yok** | Tüm kod tabanında token/anahtar karartma (redact) |
 
-Tam denetim: [docs/SECURITY_AUDIT_REPORT.md](docs/SECURITY_AUDIT_REPORT.md)
-
 ## 📊 Gözlemlenebilirlik & Bildirimler
 
 - **Prometheus metrikleri** `GET /metrics` — HTTP, WebSocket istemcileri, TVL, ajan durumu, LLM/araç çağrıları, OTel span'leri. İsteğe bağlı Grafana paneli dahil → [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md)
@@ -394,12 +385,8 @@ Tam denetim: [docs/SECURITY_AUDIT_REPORT.md](docs/SECURITY_AUDIT_REPORT.md)
 | Doküman | Amaç |
 |---|---|
 | [🇬🇧 How It Works](docs/HOW_IT_WORKS.md) / [🇹🇷 Nasıl Çalışır?](docs/HOW_IT_WORKS_TR.md) | AI karar süreci, iki dilde anlatım |
-| [Hedef Mimari](docs/TARGET_ARCHITECTURE.md) | Sistem tasarımı ve veri akışları |
 | [Kimlik Doğrulama & Çok Kullanıcı](docs/AUTH.md) | Oturum modeli, admin, kilitlenme, CSRF |
-| [Güvenlik Denetimi](docs/SECURITY_AUDIT_REPORT.md) | Kapsamlı güvenlik incelemesi |
-| [Pazar & Rekabet Analizi](docs/MARKET_AND_COMPETITIVE_ANALYSIS.md) | Strateji araştırması |
-| [Yol Haritası](docs/PRODUCT_ROADMAP.md) · [Backlog](docs/IMPLEMENTATION_BACKLOG.md) | Projenin geleceği |
-| [Mainnet Fork](docs/MAINNET_FORK.md) · [Üretime Hazırlık](docs/PRODUCTION_READINESS_ANALYSIS.md) | Canlıya geçiş |
+| [Mainnet Fork](docs/MAINNET_FORK.md) | Canlı mainnet fork ile test |
 
 ## 🤝 Katkıda Bulunma
 
