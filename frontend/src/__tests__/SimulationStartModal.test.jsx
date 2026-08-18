@@ -26,7 +26,7 @@ const useSettingsMock = vi.fn(() => ({
         dataMode: 'LIVE', dataScenario: 'stable', slippage: '0.5',
         targetHf: 1.25, maxGasClaim: 20, automationRules: [],
         llmToolsEnabled: true, hasRpcUrl: false, hasOpenRouterKey: false,
-        activeModel: '',
+        activeModel: '', brainMode: 'auto',
     },
     isLoading: false,
 }));
@@ -49,6 +49,7 @@ const storedSettings = {
     automationRules: [],
     llmToolsEnabled: true,
     activeModel: 'meta-llama/llama-3.1-70b-instruct',
+    brainMode: 'auto',
 };
 
 function mockRoutes({ settings = storedSettings, name = 'sim_1a2b3c4d' } = {}) {
@@ -93,7 +94,7 @@ describe('SimulationStartModal', () => {
                 dataMode: 'LIVE', dataScenario: 'stable', slippage: '0.5',
                 targetHf: 1.25, maxGasClaim: 20, automationRules: [],
                 llmToolsEnabled: true, hasRpcUrl: false, hasOpenRouterKey: false,
-                activeModel: '',
+                activeModel: '', brainMode: 'auto',
             },
             isLoading: false,
         }));
@@ -227,5 +228,48 @@ describe('SimulationStartModal', () => {
         await waitFor(() => {
             expect(screen.getByDisplayValue('sim_1a2b3c4d')).not.toBeNull();
         });
+    });
+
+    // ---- Brain mode (free / no-credit UX) ----
+
+    it('LIVE data launches without an OpenRouter key in Auto brain mode', async () => {
+        mockRoutes({ settings: { ...storedSettings, hasRpcUrl: true, hasOpenRouterKey: false, brainMode: 'auto' } });
+        const { onStart, container } = renderModal();
+        await waitFor(() => {
+            expect(screen.getByDisplayValue('sim_1a2b3c4d')).not.toBeNull();
+        });
+        submitForm(container);
+        await waitFor(() => expect(onStart).toHaveBeenCalled());
+        const settingsPost = apiFetch.mock.calls.find(c => c[0] === '/api/settings' && c[1]?.method === 'POST');
+        expect(JSON.parse(settingsPost[1].body)).toMatchObject({ dataMode: 'LIVE', brainMode: 'auto' });
+    });
+
+    it('AI-only brain mode still requires an OpenRouter key for LIVE data', async () => {
+        mockRoutes({ settings: { ...storedSettings, hasRpcUrl: true, hasOpenRouterKey: false, brainMode: 'llm' } });
+        const { onStart, container } = renderModal();
+        await waitFor(() => {
+            expect(screen.getByDisplayValue('sim_1a2b3c4d')).not.toBeNull();
+        });
+        submitForm(container);
+        await waitFor(() => {
+            expect(screen.getByText(/AI-only brain mode requires an OpenRouter API key/i)).toBeTruthy();
+        });
+        expect(onStart).not.toHaveBeenCalled();
+    });
+
+    it('renders the brain mode selector and persists a selected mode', async () => {
+        mockRoutes({ settings: { ...storedSettings, hasRpcUrl: true, hasOpenRouterKey: true, brainMode: 'auto' } });
+        const { onStart, container } = renderModal();
+        await waitFor(() => {
+            expect(screen.getByDisplayValue('sim_1a2b3c4d')).not.toBeNull();
+        });
+        // Segmented control: Auto / Local only / AI only.
+        expect(screen.getByRole('button', { name: /Auto/i })).toBeTruthy();
+        fireEvent.click(screen.getByRole('button', { name: /Local only/i }));
+        submitForm(container);
+        await waitFor(() => expect(onStart).toHaveBeenCalled());
+        expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ brainMode: 'local' }));
+        const settingsPost = apiFetch.mock.calls.find(c => c[0] === '/api/settings' && c[1]?.method === 'POST');
+        expect(JSON.parse(settingsPost[1].body)).toMatchObject({ brainMode: 'local' });
     });
 });

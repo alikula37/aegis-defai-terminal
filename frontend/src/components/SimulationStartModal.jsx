@@ -33,6 +33,7 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
         dataScenario: 'stable',
         seed: '',
         activeModel: '',
+        brainMode: 'auto',
     });
 
     // Per-start API credentials. Secrets never come back from the server;
@@ -86,6 +87,7 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                     dataMode: data.dataMode || 'LIVE',
                     dataScenario: data.dataScenario || 'stable',
                     activeModel: data.activeModel || '',
+                    brainMode: data.brainMode || 'auto',
                 }));
             };
 
@@ -159,14 +161,16 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
             .catch(() => { /* non-critical */ });
     };
 
-    // LIVE market data needs a working RPC + LLM key; SIM (seeded) is
-    // self-contained (deterministic fallback + seeded data, no network).
+    // LIVE market data needs a working RPC; the OpenRouter key is only
+    // mandatory in AI-only mode. Auto/Local brains run the built-in rule
+    // engine on live data with no key and no credits.
     const validate = () => {
+        const brainMode = settings.brainMode || 'auto';
         if (settings.dataMode !== 'SIM') {
             if (!systemConfig.rpcUrl && !configFlags.hasRpcUrl) {
                 return t('startModal.errLiveRpc');
             }
-            if (!systemConfig.openRouterKey && !configFlags.hasOpenRouterKey) {
+            if (brainMode === 'llm' && !systemConfig.openRouterKey && !configFlags.hasOpenRouterKey) {
                 return t('startModal.errLiveKey');
             }
         }
@@ -194,6 +198,7 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                 dataMode: settings.dataMode,
                 dataScenario: settings.dataScenario,
                 activeModel: settings.activeModel || undefined,
+                brainMode: settings.brainMode || 'auto',
             };
             if (systemConfig.rpcUrl) payload.rpcUrl = systemConfig.rpcUrl;
             if (systemConfig.openRouterKey) payload.openRouterKey = systemConfig.openRouterKey;
@@ -230,9 +235,12 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
         setSystemConfig(prev => ({ ...prev, [name]: value }));
     };
 
+    const brainMode = settings.brainMode || 'auto';
     const modeIsLive = settings.dataMode !== 'SIM';
     const liveMissingRpc = modeIsLive && !systemConfig.rpcUrl && !configFlags.hasRpcUrl;
-    const liveMissingKey = modeIsLive && !systemConfig.openRouterKey && !configFlags.hasOpenRouterKey;
+    // The key is only required for live data when the brain is AI-only.
+    const keyRequired = modeIsLive && brainMode === 'llm';
+    const liveMissingKey = keyRequired && !systemConfig.openRouterKey && !configFlags.hasOpenRouterKey;
 
     return (
         // Bulletproof modal scroll: the overlay itself scrolls (overflow-y-auto)
@@ -338,6 +346,28 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                         </p>
                     </div>
 
+                    {/* Brain Mode — decides whether an API key is needed */}
+                    <div>
+                        <label className="block font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('startModal.brainModeLabel')}</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {['auto', 'local', 'llm'].map(m => (
+                                <button
+                                    key={m}
+                                    type="button"
+                                    onClick={() => handleChange({ target: { name: 'brainMode', value: m } })}
+                                    className={`px-2 py-2 rounded-md border text-[12px] font-[JetBrains_Mono] transition-colors ${brainMode === m
+                                        ? 'bg-primary/15 border-primary/50 text-primary'
+                                        : 'border-outline-variant text-on-surface-variant hover:border-primary/40'}`}
+                                >
+                                    {m === 'auto' ? t('settings.brainAuto') : m === 'local' ? t('settings.brainLocal') : t('settings.brainLlm')}
+                                </button>
+                            ))}
+                        </div>
+                        <p className="font-[JetBrains_Mono] text-[10px] text-on-surface-variant mt-1">
+                            {brainMode === 'llm' ? t('startModal.brainLlmHint') : t('startModal.brainFreeHint')}
+                        </p>
+                    </div>
+
                     {/* API Keys — always visible */}
                     <div className="pt-4 border-t border-outline-variant space-y-4">
                         <div className="flex items-center justify-between">
@@ -402,6 +432,9 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
                             />
                             {liveMissingKey && (
                                 <p className="font-[JetBrains_Mono] text-[10px] text-error mt-1">{t('startModal.keyRequiredHint')}</p>
+                            )}
+                            {!liveMissingKey && modeIsLive && !keyRequired && (
+                                <p className="font-[JetBrains_Mono] text-[10px] text-on-surface-variant mt-1">{t('startModal.keyOptionalHint')}</p>
                             )}
                         </div>
                     </div>

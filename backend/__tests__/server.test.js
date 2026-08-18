@@ -234,7 +234,7 @@ describe('API Integration Tests', () => {
         expect(validRes.body.initialBalance).toBe(15000);
     });
 
-    it('LIVE data mode requires RPC + OpenRouter key (400 with guidance)', async () => {
+    it('LIVE data mode requires RPC, but no key in auto/local brain mode', async () => {
         // The effective config includes the .env fallbacks (dotenv-loaded) —
         // stub them away plus wipe stored rows so the check sees emptiness.
         const savedKey = process.env.OPENROUTER_API_KEY;
@@ -249,7 +249,33 @@ describe('API Integration Tests', () => {
             expect(res.status).toBe(400);
             expect(res.body.error).toMatch(/LIVE market data requires/);
             expect(res.body.error).toMatch(/Sepolia RPC URL/);
-            expect(res.body.error).toMatch(/OpenRouter API key/);
+            // Auto mode (default) does NOT demand an OpenRouter key.
+            expect(res.body.error).not.toMatch(/OpenRouter API key/);
+        } finally {
+            if (savedKey !== undefined) process.env.OPENROUTER_API_KEY = savedKey;
+            if (savedRpc !== undefined) process.env.EVM_PROVIDER_URL = savedRpc;
+        }
+    });
+
+    it('LIVE data mode requires the OpenRouter key only in AI-only brain mode', async () => {
+        const savedKey = process.env.OPENROUTER_API_KEY;
+        const savedRpc = process.env.EVM_PROVIDER_URL;
+        delete process.env.OPENROUTER_API_KEY;
+        delete process.env.EVM_PROVIDER_URL;
+        await request(app).delete('/api/settings');
+        try {
+            // Provide RPC via request, but no key + brainMode llm → 400.
+            const blocked = await request(app)
+                .post('/api/simulation/start')
+                .send({ initialBalance: 10000, rpcUrl: 'https://sepolia.example', brainMode: 'llm', simulationName: `Live Llm No Key ${Date.now()}` });
+            expect(blocked.status).toBe(400);
+            expect(blocked.body.error).toMatch(/OpenRouter API key/);
+
+            // Same request in auto mode → key not needed, RPC present → starts.
+            const allowed = await request(app)
+                .post('/api/simulation/start')
+                .send({ initialBalance: 10000, rpcUrl: 'https://sepolia.example', brainMode: 'auto', simulationName: `Live Auto No Key ${Date.now()}` });
+            expect(allowed.status).toBe(200);
         } finally {
             if (savedKey !== undefined) process.env.OPENROUTER_API_KEY = savedKey;
             if (savedRpc !== undefined) process.env.EVM_PROVIDER_URL = savedRpc;

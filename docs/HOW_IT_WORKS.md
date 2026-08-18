@@ -94,7 +94,7 @@ The risk zones depend on your **risk appetite** (set in the Settings page):
 ## 4. The AI brain — your model, its tools
 
 The AI brain is **optional and credit-free by default**. Three **Brain Modes**
-are available in Settings:
+are available in Settings **and on the new-simulation start screen**:
 
 | Mode | Behavior |
 |---|---|

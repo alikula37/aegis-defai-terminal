@@ -94,7 +94,7 @@ Risk bölgeleri, **risk iştahınıza** göre belirlenir (Ayarlar sayfasında se
 ## 4. Yapay zeka beyni — sizin modeliniz, araçları
 
 AI beyni **varsayılan olarak isteğe bağlı ve krediden bağımsızdır**. Ayarlarda
-üç **Beyin Modu** vardır:
+**ve yeni simülasyon başlatma ekranında** üç **Beyin Modu** vardır:
 
 | Mod | Davranış |
 |---|---|

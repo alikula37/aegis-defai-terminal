@@ -361,9 +361,9 @@ const startSimulationSchema = z.object({
     });
 
 /**
- * LIVE mode needs real market data (RPC) + the LLM (OpenRouter) — an agent
- * without them would silently run on stale/empty state. SIM (seeded scenario)
- * is fully self-contained (deterministic fallback + seeded data).
+ * LIVE mode needs real market data (RPC). The OpenRouter key is only mandatory
+ * when the brain is in AI-only ('llm') mode — Auto/Local brains run the built-
+ * in rule engine on live data with no key and no credits.
  * Checks the effective values: what the request carries OR what is stored
  * (decrypted) OR the env fallbacks.
  */
@@ -372,13 +372,15 @@ async function assertLiveConfig(userId, body) {
     const hasRpc = Boolean(body.rpcUrl)
         || Boolean(stored?.rpcUrl)
         || Boolean(process.env.EVM_PROVIDER_URL);
-    const hasKey = Boolean(body.openRouterKey)
-        || Boolean(stored?.openRouterKey)
-        || Boolean(process.env.OPENROUTER_API_KEY);
-    if (!hasRpc || !hasKey) {
+    const brainMode = body.brainMode || stored?.brainMode || 'auto';
+    const keyRequired = brainMode === 'llm';
+    // The placeholder sentinel is not a usable key.
+    const hasKey = [body.openRouterKey, stored?.openRouterKey, process.env.OPENROUTER_API_KEY]
+        .some(k => Boolean(k) && k !== 'kullanici_buraya_girecek');
+    if (!hasRpc || (keyRequired && !hasKey)) {
         const missing = [];
         if (!hasRpc) missing.push('a Sepolia RPC URL (Alchemy/Infura)');
-        if (!hasKey) missing.push('an OpenRouter API key');
+        if (keyRequired && !hasKey) missing.push('an OpenRouter API key');
         throw new Error(`LIVE market data requires ${missing.join(' and ')}. Add them in Settings, or switch the Market Data Source to SIM (seeded scenario).`);
     }
 }
