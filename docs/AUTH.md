@@ -1,90 +1,97 @@
-# Kimlik Doğrulama ve Çok Kullanıcılı İzolasyon (Phase 4 — E9)
+# Users & Access / Kullanıcılar ve Erişim
 
-## Model
+> **English · Türkçe**
 
-**Server-side session** (JWT değil) — OWASP Session Management / JWT cheat
-sheet'leri ve Copenhagen Book'un tek sunuculu uygulamalar için önerdiği model:
+## English
 
-- Giriş → SQLite `sessions` tablosuna satır + **HttpOnly; SameSite=Lax;
-  Secure(prod)** çerez (`aegis_session`). Token `crypto.randomBytes(32)` olup
-  DB'de **sha256 hash'i** saklanır (DB sızıntısı ≠ oturum hırsızlığı).
-- Çıkış / yetki iptali = satırı sil (anında; JWT denylist mekanizması yok).
-- Şifreler: `crypto.scrypt` N=2^17, r=8, p=1, 128 MiB (Node maxmem ayarı),
-  parametreler hash içinde saklanır. Argon2id'ye geçişte eski hash'ler okunmaya
-  devam eder (parametreler gömülü).
-- Brute force: hesap başına kilitleme (5 hata → 15 dk), login rate limit
-  (20/15dk/IP), generic hata mesajı + bilinmeyen kullanıcı için dummy hash
-  doğrulaması (timing sızıntısı yok), `crypto.timingSafeEqual`.
-- CSRF/CSWSH: SameSite=Lax + state değiştiren isteklerde Origin allowlist
-  kontrolü (token mekanizması gereksiz — OWASP custom-header pattern'i).
+### How login works
 
-## Modlar
+Aegis uses **server-side sessions** (not JWTs). When you log in, the backend
+stores a session in SQLite and sets an `HttpOnly` cookie in your browser — your
+JavaScript never sees a token, and the session can be revoked instantly on
+logout.
 
-| Mod | Değer | Davranış |
+- Passwords are hashed with **scrypt** at OWASP parameters and the hash is
+  stored with its parameters, so old hashes keep working after upgrades.
+- Failed login attempts are throttled (per-account lockout + per-IP rate limit)
+  with a generic error message — an attacker cannot tell whether a username
+  exists.
+
+### Two modes
+
+| Mode | When | Behaviour |
 |---|---|---|
-| Açık (tek kullanıcı) | `AUTH_REQUIRED=false` (dev varsayılanı) | Her istek `local` kullanıcısı olarak çalışır; login ekranı hiç görünmez. E9 öncesi davranışın aynısı. |
-| Zorunlu | `AUTH_REQUIRED=true` (production varsayılanı) | Login zorunlu; tüm `/api` (auth hariç) geçerli session ister; veri kullanıcıya göre izole. |
+| **Open** (single user) | Local development (`AUTH_REQUIRED=false`) | Every request runs as the `local` user; the login screen never appears |
+| **Required** (multi-user) | Production (`AUTH_REQUIRED=true`, the default for `NODE_ENV=production`) | Login is mandatory; the **first registered account becomes admin** |
 
-Varsayılan: `NODE_ENV=production` ise `true`, değilse `false`.
+### Multi-user isolation
 
-## Endpoint'ler
+Each user's simulations, settings and logs are isolated: every query is scoped
+to the owner (`WHERE user_id = ?`), and trying to reach someone else's record
+returns a clean **404** (no existence leak). The agent is a single global
+instance — only one simulation runs at a time and only its **owner** can
+control it; other users see that it is running but not its data. Live
+WebSocket streams are broadcast only to the owner.
 
-| Endpoint | Açıklama |
+### Endpoints
+
+| Endpoint | Purpose |
 |---|---|
-| `POST /api/auth/register` | İlk hesap **admin** olur; sonrakiler `user`. 3-32 karakter kullanıcı adı, 8-128 karakter şifre. |
-| `POST /api/auth/login` | Başarıda session çerezi kurar. Hatalar generic döner. |
-| `POST /api/auth/logout` | Session'ı siler, çerezi temizler, kullanıcının WS soketlerini kapatır. |
-| `GET /api/auth/me` | Oturum sahibini döner; 401 = login sayfasına yönlendir. |
-| `GET/POST/DELETE /api/admin/users` | Admin-only kullanıcı yönetimi (kendi hesabını ve `local`'i silemez). |
+| `POST /api/auth/register` | Create an account (the first one becomes **admin**) |
+| `POST /api/auth/login` / `logout` | Start / end your session |
+| `GET /api/auth/me` | Current session owner |
+| `GET/POST/DELETE /api/admin/users` | Admin-only user management |
 
-## Veri izolasyonu
+### In production
 
-- `simulations` ve `settings` tablolarında `user_id` sütunu (FK + index).
-- E9 öncesi tüm satırlar `local` kullanıcısına backfill edilir (idempotent,
-  boot'ta).
-- Her sorgu `WHERE user_id = ?` taşır (`requireUserId` ile userId zorunlu).
-  Başkasının satırına erişim denemesi **404** döner (varlık sızıntısı yok).
-- `portfolio_stats`/`agent_logs`/`decision_memory` ana simülasyon üzerinden
-  izole: çocuk kayıtlar yalnızca sahibinin sim'sinden okunur/yazılır.
-- Simülasyon adı benzersizliği, prune ("son 5"), silme — tamamı kullanıcı
-  kapsamlı.
-- `market_history`/backtest bilinçli olarak küreseldir (kamu piyasa verisi).
+- Set `AUTH_REQUIRED=true` (default in production).
+- Optionally add an extra API-key gate (`AEGIS_API_KEY` + `WS_API_KEY`) for
+  exposed deployments; if unset, session auth is the single layer.
 
-## Tek ajan modeli (bilinçli kapsam)
+---
 
-Ajan tek global örnektir: aynı anda yalnızca bir simülasyon çalışır ve onun
-**sahibi** tarafından kontrol edilebilir (start/stop/reset/delete). Diğer
-kullanıcılar "çalışıyor" durumunu görür, verisini göremez. WS akışları
-`Map<userId, Set<ws>>` ile sahibine özel yayınlanır; logout'ta kapatılır.
-Kullanıcı başına eşzamanlı ajanlar (agentState/SimulationExecution context
-refactor'ü) gelecek iterasyon.
+## Türkçe
 
-## WS
+### Giriş nasıl çalışır?
 
-- Handshake'te session çerezi doğrulanır (geçersizse 1008 ile kapanır).
-- `simulation_status` tüm kullanıcılara; `portfolio_update`/`agent_log`/
-  `notification` yalnızca aktif sim'in sahibine.
-- Açık modda her soket `local` kullanıcısındadır (eski davranış).
+Aegis **sunucu taraflı oturum** (JWT değil) kullanır. Giriş yaptığınızda arka
+yüz SQLite'a bir oturum kaydeder ve tarayıcınıza `HttpOnly` bir çerez koyar —
+JavaScript hiçbir zaman token görmez; çıkışta oturum anında iptal edilir.
 
-## Frontend
+- Şifreler OWASP parametrelerinde **scrypt** ile karma'lanır ve parametreleri
+  hash ile saklanır — güncellemelerde eski hash'ler de okunmaya devam eder.
+- Başarısız girişler sınırlanır (hesap başına kilitlenme + IP başına hız
+  limiti) ve genel bir hata mesajı döner — saldırgan bir kullanıcı adının
+  var olup olmadığını anlayamaz.
 
-- `AuthContext`: açılışta `/api/auth/me`; 401 → login ekranı, açık modda asla.
-- `LoginPage`, TopNav'da kullanıcı çipi + çıkış.
-- JS **hiçbir token göremez** (HttpOnly çerez); `apiFetch` `credentials:
-  'include'` kullanır.
-- Eski `x-api-key` (Settings sayfası) açık modda çalışmaya devam eder.
+### İki mod
 
-## Production notları
+| Mod | Ne zaman | Davranış |
+|---|---|---|
+| **Açık** (tek kullanıcı) | Yerel geliştirme (`AUTH_REQUIRED=false`) | Her istek `local` kullanıcısı olarak çalışır; giriş ekranı hiç görünmez |
+| **Zorunlu** (çok kullanıcı) | Üretim (`AUTH_REQUIRED=true`, `NODE_ENV=production` varsayılanı) | Giriş zorunludur; **ilk kayıt olan hesap yönetici (admin) olur** |
 
-- `AUTH_REQUIRED=true` (production varsayılanı). İstersen ek katman olarak
-  `AEGIS_API_KEY` de set edilebilir; set edilmezse session auth tek katmandır
-  (eski fail-closed yazma guard'ı session varken devre dışı).
-- `WS_API_KEY` zorunlu modda yok sayılır (cookie esas).
-- Şifre hash maliyeti ~100ms/scrypt — login için normal.
+### Çok kullanıcılı izolasyon
 
-## Testler
+Her kullanıcının simülasyonları, ayarları ve logları izoledir: her sorgu
+sahibine göre sınırlandırılır (`WHERE user_id = ?`) ve başkasının kaydına
+erişim denemesi temiz bir **404** döner (varlık sızıntısı olmaz). Ajan tek bir
+küresel örnektir — aynı anda yalnızca bir simülasyon çalışır ve onu yalnızca
+**sahibi** kontrol edebilir; diğer kullanıcılar "çalışıyor" durumunu görür ama
+verisini göremez. Canlı WebSocket akışları yalnızca sahibine yayınlanır.
 
-`backend/__tests__/auth.test.js` (11): session çerezi flag'leri, generic hata,
-kilitleme, register, logout, RBAC, self/local silme koruması, Origin check,
-açık mod. `database.test.js` (16): kullanıcı/session fonksiyonları, per-user
-izolasyon, prune, settings scoping.
+### Endpoint'ler
+
+| Endpoint | Amaç |
+|---|---|
+| `POST /api/auth/register` | Hesap oluştur (ilk hesap **admin** olur) |
+| `POST /api/auth/login` / `logout` | Oturumu başlat / bitir |
+| `GET /api/auth/me` | Mevcut oturum sahibi |
+| `GET/POST/DELETE /api/admin/users` | Yalnızca admin — kullanıcı yönetimi |
+
+### Üretimde
+
+- `AUTH_REQUIRED=true` ayarlayın (üretimde varsayılan).
+- İsterseniz açık dağıtımlar için ek bir API anahtarı kapısı
+  (`AEGIS_API_KEY` + `WS_API_KEY`) ekleyebilirsiniz; ayarlanmazsa oturum
+  doğrulaması tek katmandır.

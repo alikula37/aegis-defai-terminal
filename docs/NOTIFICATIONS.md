@@ -1,61 +1,109 @@
-# Bildirimler (Phase 4 — C7)
+# Alerts & Notifications / Bildirimler
 
-Ajan, kritik olayları harici kanallara (Telegram / email) iletir. Sessizdir:
-hiçbir kanal yapılandırılmadıysa tüm çağrılar no-op'tur ve ajan aynı çalışır.
+> **English · Türkçe**
 
-## Tetiklenen olaylar
+## English
 
-| Ajan olayı | Tür | Kaynak |
-|---|---|---|
-| Watchdog: cycle kilitlendi (cycleWatchdogMs aşıldı) | `alert` | `agent.js` runCycle |
-| Oracle API hatası (cycle ertelendi) | `alert` | `agent.js` runCycle |
-| Cycle hatası (scheduler devam ediyor) | `alert` | `agent.js` logAndBroadcastSafe |
-| Onchain yürütme hataları (fail-closed mesajları dahil) | `alert` | OnchainExecution log |
-| LLM/OpenRouter API hatası (deterministik fallback) | `error` | `agent.js` callLLM catch |
-| Genel `alert`/`error`/`critical` log tipleri | ilgili | `logAndBroadcast` |
+The agent can send you an alert on **Telegram** or **email** when something
+critical happens. It is silent by default: if no channel is configured, all
+calls are no-ops and the agent runs exactly the same.
 
-`info`/`scan` tipleri dışarı gönderilmez (`NOTIFIABLE_TYPES` yalnızca
-`alert`, `error`, `critical`, `danger`).
+### What triggers an alert
 
-## Yapılandırma
+| Event | Type |
+|---|---|
+| Agent cycle watchdog fired (a cycle got stuck) | `alert` |
+| Oracle API error (cycle postponed) | `alert` |
+| Cycle error (scheduler continues) | `alert` |
+| On-chain execution errors (including fail-closed messages) | `alert` |
+| LLM/OpenRouter API error (deterministic fallback used) | `error` |
+| Any `alert` / `error` / `critical` / `danger` log | as logged |
 
-`backend/.env`'de (örnek: `.env.example`):
+Ordinary `info` / `scan` messages are **never** sent out — you only hear about
+things a human actually needs to see.
 
-### Telegram
+### Configuration (`backend/.env`)
+
+**Telegram**
 ```bash
 NOTIFY_TELEGRAM_TOKEN="<BotFather token>"
 NOTIFY_TELEGRAM_CHAT_ID="<chat_id>"
 ```
-- BotFather'dan token alınır; chat_id'yi öğrenmek için bota bir mesaj atıp
-  `https://api.telegram.org/bot<TOKEN>/getUpdates` üzerinden okuyun.
-- Teslimat: `POST https://api.telegram.org/bot<token>/sendMessage` (global fetch).
+Get the token from [@BotFather](https://t.me/BotFather); to find your chat_id,
+send a message to your bot and read it from
+`https://api.telegram.org/bot<TOKEN>/getUpdates`.
 
-### Email (SMTP)
+**Email (SMTP)**
 ```bash
 NOTIFY_EMAIL_HOST="smtp.example.com"
 NOTIFY_EMAIL_PORT="465"            # 587 + STARTTLS için SECURE=false
 NOTIFY_EMAIL_SECURE="true"
 NOTIFY_EMAIL_USER="aegis@example.com"
 NOTIFY_EMAIL_PASS="<app password>"
-NOTIFY_EMAIL_FROM="aegis@example.com"   # boşsa USER kullanılır
+NOTIFY_EMAIL_FROM="aegis@example.com"   # optional; defaults to USER
 NOTIFY_EMAIL_TO="ops@example.com"
 ```
-- İstemci AUTH LOGIN, implicit TLS (465) veya STARTTLS (587) destekler;
-  bağımlılıksız (`net`/`tls`).
+Supports implicit TLS (465) or STARTTLS (587), with certificate validation **on
+by default** (set `SMTP_ALLOW_INVALID_CERTS=true` only for a trusted private
+relay).
 
-## Tasarım
+### Design notes
 
-- `utils/NotificationService.js`: `NotificationService` + `TelegramTransport`
-  + `SmtpTransport` + `smtpSendMail` (minimal SMTP client).
-- Ajan constructor'ı `notifier` kabul eder (test enjeksiyonu); default,
-  import sırasında env'den kurulan tekil `notificationService`'tir.
-- `notify()` **fire-and-forget**: kanal hatası asla ajan cycle'ını durdurmaz
-  (`failed` sayısına yazılır, winston'a loglanır).
-- Test: `__tests__/notification-service.test.js` (sahte transport'lar —
-  gerçek soket/fetch yok).
+- Notifications are **fire-and-forget**: a channel error never stops the agent
+  cycle.
+- Implementation: `backend/utils/NotificationService.js`
+  (`TelegramTransport` + `SmtpTransport`, no external dependencies).
 
-## Doğrulama
+---
 
-1. `npm test` (notification-service suite + tam paket).
-2. Bir `alert` senaryosunu çalıştırıp kanala düşmesini kontrol edin, örn.
-   watchdog tetiklemesi veya `NOTIFY_EMAIL_*` ayarlayıp LLM hatası.
+## Türkçe
+
+Ajan, kritik bir olay olduğunda size **Telegram** veya **e-posta** ile bildirim
+gönderebilir. Varsayılan olarak sessizdir: hiçbir kanal yapılandırılmadıysa tüm
+çağrılar no-op'tur ve ajan aynı şekilde çalışır.
+
+### Hangi olaylar bildirim tetikler
+
+| Olay | Tür |
+|---|---|
+| Watchdog tetiklendi (cycle takıldı) | `alert` |
+| Oracle API hatası (cycle ertelendi) | `alert` |
+| Cycle hatası (zamanlayıcı devam ediyor) | `alert` |
+| Onchain yürütme hataları (fail-closed mesajları dahil) | `alert` |
+| LLM/OpenRouter API hatası (deterministik yedek kullanıldı) | `error` |
+| Herhangi bir `alert` / `error` / `critical` / `danger` logu | ilgili tür |
+
+Sıradan `info` / `scan` mesajları **asla** dışarı gönderilmez — yalnızca bir
+insanın gerçekten görmesi gereken şeyleri duyarsınız.
+
+### Yapılandırma (`backend/.env`)
+
+**Telegram**
+```bash
+NOTIFY_TELEGRAM_TOKEN="<BotFather token>"
+NOTIFY_TELEGRAM_CHAT_ID="<chat_id>"
+```
+Token'i [@BotFather](https://t.me/BotFather)'dan alın; chat_id'yi öğrenmek için
+botunuza bir mesaj atıp
+`https://api.telegram.org/bot<TOKEN>/getUpdates` üzerinden okuyun.
+
+**E-posta (SMTP)**
+```bash
+NOTIFY_EMAIL_HOST="smtp.example.com"
+NOTIFY_EMAIL_PORT="465"            # 587 + STARTTLS için SECURE=false
+NOTIFY_EMAIL_SECURE="true"
+NOTIFY_EMAIL_USER="aegis@example.com"
+NOTIFY_EMAIL_PASS="<uygulama şifresi>"
+NOTIFY_EMAIL_FROM="aegis@example.com"   # opsiyonel; USER kullanılır
+NOTIFY_EMAIL_TO="ops@example.com"
+```
+Implicit TLS (465) veya STARTTLS (587) desteklenir; sertifika doğrulaması
+varsayılan **açıktır** (yalnızca güvenilir özel bir relay için
+`SMTP_ALLOW_INVALID_CERTS=true` ayarlayın).
+
+### Tasarım notları
+
+- Bildirimler **fire-and-forget**: bir kanal hatası asla ajan cycle'ını
+  durdurmaz.
+- Uygulama: `backend/utils/NotificationService.js`
+  (`TelegramTransport` + `SmtpTransport`, harici bağımlılık yok).

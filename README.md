@@ -209,7 +209,9 @@ Where to enter them — two options:
 | Document | Purpose |
 |---|---|
 | [🇬🇧 How It Works](docs/HOW_IT_WORKS.md) / [🇹🇷 Nasıl Çalışır?](docs/HOW_IT_WORKS_TR.md) | The AI decision-making explained, in two languages |
-| [Auth & Multi-user](docs/AUTH.md) | Session model, admin, lockout, CSRF |
+| [Users & Access](docs/AUTH.md) | Login modes, admin, data isolation (EN + TR) |
+| [Alerts & Notifications](docs/NOTIFICATIONS.md) | Telegram / email alert setup (EN + TR) |
+| [Monitoring](docs/OBSERVABILITY.md) | Prometheus metrics + Grafana (EN + TR) |
 | [Mainnet Fork](docs/MAINNET_FORK.md) | Testing against a live mainnet fork |
 
 ## 🤝 Contributing
@@ -385,7 +387,9 @@ Nereye gireceksiniz — iki seçenek:
 | Doküman | Amaç |
 |---|---|
 | [🇬🇧 How It Works](docs/HOW_IT_WORKS.md) / [🇹🇷 Nasıl Çalışır?](docs/HOW_IT_WORKS_TR.md) | AI karar süreci, iki dilde anlatım |
-| [Kimlik Doğrulama & Çok Kullanıcı](docs/AUTH.md) | Oturum modeli, admin, kilitlenme, CSRF |
+| [Kullanıcılar & Erişim](docs/AUTH.md) | Giriş modları, admin, veri izolasyonu (EN + TR) |
+| [Bildirimler](docs/NOTIFICATIONS.md) | Telegram / e-posta bildirim kurulumu (EN + TR) |
+| [İzleme](docs/OBSERVABILITY.md) | Prometheus metrikleri + Grafana (EN + TR) |
 | [Mainnet Fork](docs/MAINNET_FORK.md) | Canlı mainnet fork ile test |
 
 ## 🤝 Katkıda Bulunma

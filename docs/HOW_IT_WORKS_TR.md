@@ -1,102 +1,157 @@
-# 🧠 Aegis DeFAI Terminal: Derinlemesine Sistem Mimarisi
+# 🧠 Aegis DeFAI Terminal — Nasıl Çalışır?
+
+Aegis, **delta-nötr** getiri (yield) toplayan ve pozisyonunuzu likidasyondan
+koruyan **otonom, yapay zeka destekli bir DeFi ajanıdır** — 7/24 çalışır.
+Sadece "borç al / borç ver" yapmaz: piyasayı izler, riski bir LLM ile
+değerlendirir ve sizin adınıza harekete geçer.
 
 ```mermaid
 graph TD
-    subgraph Oracle Katmanı
-        A[DeFiLlama API] -->|Fiyatlar & Getiriler| B(OracleService)
-        C[Çapraz Zincir Verisi] -->|L2 Borçlanma Oranları| B
+    subgraph Veri Katmanı
+        A[Canlı oracle'lar / DeFiLlama] --> B[Piyasa Özeti]
+        C[Stokastik SIM motoru] --> B
     end
 
     subgraph Risk Motoru
         B --> D{Sağlık Faktörü Kontrolü}
-        D -->|HF > 1.5| E[Güvenli Bölge: Getiriyi Maksimize Et]
-        D -->|1.2 < HF < 1.5| F[Uyarı Bölgesi: Borçlanmayı Durdur]
-        D -->|HF < 1.2| G[Kritik Bölge: Likidasyon Riski]
+        D -->|HF ≥ uyarı eşiği| E[Güvenli Bölge: getiriyi maksimize et]
+        D -->|kritik ≤ HF < uyarı| F[Uyarı Bölgesi: yeni borç durdur]
+        D -->|HF < kritik| G[Kritik Bölge: kurtarma aksiyonu]
     end
 
     subgraph Yapay Zeka Beyni (LLM)
-        F --> H((Llama 3.1 70B))
+        E --> H((Seçtiğiniz model))
+        F --> H
         G --> H
-        H -->|Bağlamı Analiz Et| I{Karar}
-        I -->|Hold| J[Piyasanın Toparlanmasını Bekle]
-        I -->|Kısmi Kaldıraç Düşürme| K[%25 Pozisyon Kapat]
-        I -->|Flash Loan Kurtarma| L[Aave Flash Loan Çalıştır]
+        H -->|salt-okunur araçlar + bağlam| I{Karar}
+        I -->|hold| J[Pozisyonu koru]
+        I -->|adjust_portfolio| K[LTV / teminat ayarla]
+        I -->|reallocate_capital| L[Loop / Basis / JIT dağılımı]
+        I -->|flash_loan_rescue| M[Acil flash loan]
     end
 
-    subgraph Uygulama Katmanı
-        E --> M[Stratejilere Fon Dağıt]
-        K --> N[Akıllı Kontrat İşlemi]
+    subgraph Uygulama ve Hafıza
+        J --> N[Planı uygula]
+        K --> N
         L --> N
-        M --> O[(SQLite Hafıza)]
-        N --> O
+        M --> N
+        N --> O[(SQLite hafıza)]
+        B --> O
     end
 ```
 
-Aegis DeFAI Terminal, sadece basit bir "borç al / borç ver" botu değildir. Kurumsal seviyede (institutional-grade) risk yönetimi yapan, piyasa verilerini anlık olarak analiz eden ve yapay zeka (LLM) destekli kararlar alan otonom bir **Delta-Neutral (Piyasa Yönünden Bağımsız)** getiri (yield) ajanıdır.
+## 1. Veri — canlı oracle'lar veya stokastik simülasyon
 
-İşte sistemin kaputunun altındaki detaylı çalışma mantığı:
+Ajan her döngüde (varsayılan 15 saniye) bir **piyasa özeti** oluşturur:
 
----
+- **LIVE modu (varsayılan):** ETH, USDC ve sUSDe için gerçek fiyatlar ve APY'ler;
+  DeFiLlama havuzlarından (Ethena, Pendle, Morpho Blue) canlı oranlar ve
+  zincir üstü borçlanma oranları.
+- **SIM modu:** **stokastik simülasyon motoru** aynı piyasayı Ornstein-Uhlenbeck
+  süreçleri, GBM ETH fiyat yolu ve ilişkili şoklarla modeller — sUSDe için
+  kademeli bir **depeg senaryosu** dahil. Simülasyon tamamen **seed'lenebilir**:
+  aynı seed + senaryo her zaman aynı yolu üretir; bu da backtest ve kantitatif
+  katmanın deterministik ve doğrulanabilir olmasını sağlar.
 
-## 1️⃣ Veri Toplama ve Çapraz Zincir (Cross-Chain) Analizi 📡
-Sistem her döngüde (varsayılan 15 saniye) piyasanın nabzını tutar. Sadece Ethereum ana ağını değil, Layer-2 (L2) ağlarını da tarar.
+Aynı özet risk motorunu, LLM'i ve panoyu besler — böylece her karar
+açıklanabilirdir.
 
-*   **Fiyat ve Getiri (Yield) Oracles:** DeFiLlama API'leri üzerinden ETH, USDC ve sUSDe fiyatlarını; Ethena, Pendle, Morpho Blue ve Aave havuzlarındaki anlık APY (Yıllık Getiri Oranı) verilerini toplar.
-*   **Cross-Chain Arbitrage (Çapraz Zincir Fırsatları):** Sistem, Ethereum ana ağındaki borçlanma maliyetleri (örneğin Morpho Blue'da %5) ile L2 ağlarındaki (Arbitrum veya Base üzerindeki Aave V3) borçlanma maliyetlerini karşılaştırır. Eğer L2'de borçlanmak, köprü (bridge) maliyetlerini çıkardıktan sonra bile daha kârlıysa, ajan fonları o ağa taşımayı değerlendirir.
+## 2. Strateji — üç delta-nötr yapı taşı
 
----
+Sermaye üç yapı taşı arasında bölünür; ajan koşullara göre bunlar arasında
+yeniden dağıtım yapar:
 
-## 2️⃣ Gelişmiş DeFi Stratejileri (Portfolio Allocation) 💼
-Ajan, sermayeyi tek bir sepete koymaz. Riski dağıtmak ve getiriyi maksimize etmek için fonları 5 farklı gelişmiş stratejiye böler:
+| Yapı taşı | Ne yapar | Risk |
+|---|---|---|
+| **Loop** | sUSDe/PT-sUSDe teminata karşı USDC borç alıp tekrar döngüye sokar — delta-nötr getiri motoru | Orta |
+| **Basis** | Ethena'nın fonlama oranı riskini hedge eder (sigorta bacağı) | Düşük (hedge) |
+| **JIT** | Boşta duran fonlarla Uniswap'te konsantre likidite sağlar | Düşük–orta |
 
-### 🎯 1. Pendle PT-sUSDe Arbitrajı (Portföyün %55'i)
-*   **Mantık:** Aave V4 E-Mode veya Morpho Blue üzerinden düşük faizle USDC borç alınır. Bu USDC, Ethena'nın sUSDe'sine çevrilir ve Pendle Finance üzerinde **PT-sUSDe (Principal Token)** alınarak sabit ve yüksek bir getiriye kilitlenir.
-*   **Neden?** Borçlanma maliyeti ile Pendle'ın sunduğu sabit getiri arasındaki fark (spread) risksiz bir kâr (arbitraj) yaratır.
+Varsayılan dağılım **%100 Loop** ile başlar; ajan, birleşik net APY'yi maksimize
+etmek için `reallocate_capital` kararıyla yapı taşları arasında geçiş yapabilir.
 
-### 🏢 2. PT-syrupUSDC RWA (Gerçek Dünya Varlıkları) (Portföyün %20'si)
-*   **Mantık:** Maple Finance gibi kurumsal RWA (Real World Assets) protokollerinin sunduğu sabit getirili tokenlar (syrupUSDC) kullanılır. Aave V4 üzerinden muhafazakar bir kaldıraç (4x) ile bu risksiz getiri katlanır.
-*   **Neden?** Kripto piyasasındaki dalgalanmalardan tamamen bağımsız, ABD Hazine Bonosu destekli gerçek dünya getirisi sağlar.
+## 3. Risk motoru — Sağlık Faktörü (HF)
 
-### 🚀 3. Ethena sUSDe Kaldıraçlı İşlem (Portföyün %15'i)
-*   **Mantık:** Morpho Blue üzerinde sUSDe teminat gösterilerek USDC borç alınır, alınan USDC tekrar sUSDe'ye çevrilir (Looping).
-*   **Neden?** Ethena'nın sunduğu yüksek APY'yi ve ENA airdrop puanlarını (Points) maksimize etmek için orta riskli bir kaldıraç stratejisidir.
+Kaldıraç likidasyon riski demektir; bu yüzden ajan her döngüde **Sağlık
+Faktörünü** (HF) hesaplar:
 
-### 🛡️ 4. Pendle Boros YU Hedge (Portföyün %5'i)
-*   **Mantık:** Ethena'nın getirisi, sürekli vadeli işlemlerdeki (perpetual futures) fonlama oranlarına (funding rates) bağlıdır. Fonlama oranları negatife düşerse sUSDe getirisi azalır. Ajan, Pendle Boros (Yield Utility) üzerinden bu riski hedge eder (sigortalar).
-*   **Neden?** Piyasa çöktüğünde ve fonlama oranları negatife döndüğünde bile portföyün zarar etmesini engeller.
+```
+HF = (Teminat Değeri × Likidasyon Eşiği) / Borç Değeri
+```
 
-### 💧 5. Morpho USDC Revolver (Portföyün %5'i)
-*   **Mantık:** Portföyün küçük bir kısmı her zaman likit olarak Morpho Blue'da USDC arzı (supply) olarak tutulur.
-*   **Neden?** Acil durumlarda (flash loan kurtarmaları veya ani teminat tamamlama çağrıları) kullanılmak üzere hazırda bekleyen, aynı zamanda düşük de olsa getiri sağlayan bir "acil durum fonu"dur.
+Risk bölgeleri, **risk iştahınıza** göre belirlenir (Ayarlar sayfasında seçilir):
 
----
+| İştah | Hedef HF | Uyarı bölgesi | Kritik |
+|---|---|---|---|
+| **Muhafazakar** | 1.40 | 1.30 – 1.40 | < 1.25 |
+| **Dengeli** (varsayılan) | 1.25 | 1.21 – 1.25 | < 1.15 |
+| **Agresif** | 1.20 | 1.15 – 1.20 | < 1.10 |
 
-## 3️⃣ Dinamik Risk Motoru ve Sağlık Faktörü (HF) 🧮
-Kaldıraçlı işlemler likidasyon (patlama) riski taşır. Ajan, bu riski saniye saniye hesaplar.
+- 🟢 **Güvenli (HF ≥ uyarı):** ajan getiriyi maksimize etmeye devam eder.
+- 🟡 **Uyarı:** yeni borç alınmaz, pozisyon sıkılaştırılır.
+- 🔴 **Kritik:** ajan kurtarma aksiyonu başlatır (aşağıda).
 
-*   **Dinamik HF Hesaplaması:** `HF = (Teminat Değeri * Likidasyon Eşiği) / Borç Değeri` formülü ile hesaplanır. Teminatın (sUSDe) fiyatı anlık olarak Oracle'dan alınır.
-*   **Risk Bölgeleri:**
-    *   🟢 **Güvenli (Safe):** HF > 1.5 (Ajan agresif getiri aramaya devam eder).
-    *   🟡 **Uyarı (Warning):** HF 1.2 - 1.5 arası (Ajan yeni borç almayı durdurur).
-    *   🔴 **Kritik (Critical):** HF < 1.2 (Likidasyon tehlikesi! Acil müdahale gerekir).
+## 4. Yapay zeka beyni — sizin modeliniz, araçları
 
----
+Portföy **Uyarı** veya **Kritik** bölgeye girdiğinde (veya bir karar noktası
+oluştuğunda) ajan **OpenRouter** üzerinden bir LLM'e danışır. Modeli **Ayarlar**
+sayfasındaki canlı katalogdan siz seçersiniz (Llama, GPT, Claude, Gemini…
+herhangi biri — birincil model + ağ hatası durumunda otomatik yedek model).
 
-## 4️⃣ Yapay Zeka Karar Mekanizması (LLM Katmanı) 🤖
-Eğer portföy **Uyarı** veya **Kritik** seviyeye düşerse, sistem klasik botlar gibi panik satışı yapmaz. Durumu toparlamak için Llama 3.1 70B (veya seçtiğiniz başka bir model) yapay zekasına danışır.
+Prompt, mevcut durumun tamamını (HF, LTV, dağılımlar, APY'ler, spread, TVL) ve
+salt-okunur araçlarının raporlarını (`get_market_snapshot`,
+`get_historical_yields`, `run_backtest`, …) içerir. Model şu kararlardan
+birini verir:
 
-Yapay zekaya şu bilgiler gönderilir:
-> *"Şu anki Sağlık Faktörümüz 1.15. Kritik bölgedeyiz. Elimde şu kadar sUSDe teminatı, şu kadar USDC borcu ve şu kadar acil durum likiditesi var. Ne yapmalıyım?"*
+| Karar | Anlamı |
+|---|---|
+| `hold` | Piyasa istikrarlı, pozisyonu koru |
+| `adjust_portfolio` | LTV veya teminat türünü değiştir |
+| `reallocate_capital` | Loop / Basis / JIT arasında geçiş yap |
+| `flash_loan_rescue` | **Kritik:** flash loan al, borcu kapat, teminatı kurtar |
+| `claim` | Biriken kârı, gaz maliyetini aştığında çek |
+| `migrate_borrow` / `cross_chain_migrate` | Borçlanmayı daha ucuz orana taşı |
 
-Yapay zeka durumu analiz eder ve şu aksiyonlardan birini seçer:
-*   ✅ **HOLD:** "Piyasadaki düşüş anlık bir iğne (wick), tasfiye seviyesine daha var, bekle."
-*   ⚠️ **PARTIAL_DELEVERAGE:** "Riski azaltmak için Ethena kaldıraç pozisyonunun %25'ini boz ve borcu kapa."
-*   🚨 **FLASH_LOAN_RESCUE:** "Acil durum! Aave'den Flash Loan (anında kredi) çek, borcu tamamen kapat, teminatı kurtar ve Flash Loan'ı geri öde."
+Araç çağrıları ve LLM tur sayısı **bütçelidir** (döngü başına azami çağrı,
+azami araç turu) — kötü bir yanıt asla ajanı kilitleyemez.
 
-*Bu kararlar, ajanın sadece kodlanmış kurallara göre değil, piyasa bağlamına göre hareket etmesini sağlar.*
+## 5. Uygulama ve hafıza
 
----
+- **Yürütme modu:** `simulation` (varsayılan, gerçek para yok) veya `onchain`
+  (Sepolia / yerel mainnet fork — provider ve signer yapılandırılmazsa ajan
+  işlem yapmayı **reddeder**).
+- **Hafıza:** her karar, gerekçesi ve ortaya çıkan portföy durumu SQLite'a
+  kaydedilir (`decision_memory`, `portfolio_history`, `agent_logs`) — tüm geçmiş
+  yeniden oynatılabilir.
 
-## 5️⃣ Hafıza ve Canlı İzleme (Execution & Memory) ⚡
-*   **Hafıza (Memory):** Ajanın aldığı her karar, gerekçesiyle birlikte SQLite veritabanına (`decision_memory` tablosu) kaydedilir.
-*   **Canlı İzleme (Frontend):** Siz, arkanıza yaslanıp tüm bu karmaşık süreci modern bir arayüzden izlersiniz. Toplam kilitli varlığınızı (TVL), anlık APY'nizi, aktif zinciri (Ethereum/Arbitrum) ve ajanın o an ne düşündüğünü Matrix ekranı gibi akan bir terminalden takip edersiniz.
+## 6. Veri bilimi katmanı (pano)
+
+Terminal performansı ölçer — sadece grafik değildir:
+
+- **Risk metrikleri** (`/api/portfolio/metrics`): Sharpe & Sortino oranları,
+  yıllıklandırılmış volatilite, maksimum düşüş, **Value at Risk (VaR)** ve
+  **CVaR**, kazanma oranı ve beta — simülasyonun gözlemlenen geçmişi üzerinden.
+- **Getiri tahmini** (`/api/forecast/:metric`): net APY ve TVL için EWMA
+  volatilite bantlı Holt doğrusal trend projeksiyonu. Bu bir **eğitim tahminidir,
+  vaat değildir** (arayüzde açıkça belirtilir).
+- **Backtest** (`/api/backtest`): %80/20 örneklem dışı (out-of-sample) ayrımı,
+  bootstrap güven aralıkları ve aynı risk metrikleriyle tarihsel senaryolar.
+- **Terim sözlüğü (Glossary)**: her finansal terimin üzerine gelince açıklama
+  ipucu belirir (HF, APY, TVL, spread, delta-nötr, kaldıraç, LTV, Sharpe, VaR,
+  …) — İngilizce ve Türkçe.
+
+## 7. Pano (Dashboard)
+
+Web terminali (localhost:5173) beş sayfadan oluşur:
+
+| Sayfa | Ne görürsünüz |
+|---|---|
+| **Overview (Genel Bakış)** | Canlı TVL, net APY, sağlık faktörü, risk bölgesi, tahmin grafiği + risk metriği kartları ve başlat/durdur kontrolleri |
+| **Yield Strategies** | Sermayenin yapı taşları arasında nasıl dağıldığı |
+| **Live Data** | Gerçek zamanlı piyasa verisi, borçlanma oranları, çapraz zincir fırsatları |
+| **AI Agent Logs** | Canlı "ajan konsolu" — AI neye karar verdi ve neden, gerçek zamanlı akar |
+| **Settings (Ayarlar)** | API anahtarlarınız (şifreli saklanır), model seçimi ve risk iştahı |
+
+> Arayüz **İngilizce** ve **Türkçe** sunulur ve her sayının arkasında düz dille
+> bir açıklama ipucu vardır — terminal sadece göstermek için değil, öğretmek
+> için tasarlanmıştır.
