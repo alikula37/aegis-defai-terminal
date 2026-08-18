@@ -51,6 +51,10 @@ test.describe('Aegis DeFAI Terminal', () => {
         await expect(page.locator('text=/🧠/').first()).toBeVisible({ timeout: 30000 });
         await expect(page.locator('text=/situation:/').first()).toBeVisible({ timeout: 15000 });
 
+        // The dashboard actually renders its charts (recharts SVG surfaces)
+        // once the first portfolio snapshot lands in the DB.
+        await expect(page.locator('.recharts-surface').first()).toBeVisible({ timeout: 30000 });
+
         // Stop the simulation and return to the idle state
         await stopButton.click();
         await expect(page.getByRole('button', { name: /Start New/i }).first()).toBeVisible({ timeout: 20000 });

@@ -1,0 +1,291 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Aegis DeFAI Terminal API",
+    "version": "1.0.0",
+    "description": "Backend API for the Aegis DeFAI agent: simulation control, live portfolio oracle data, quant risk analytics, yield forecasting and backtesting. Response shapes are validated against zod contracts in backend/schemas/apiSchemas.js (see server.test.js)."
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Liveness probe",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" } } } } }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "summary": "Prometheus metrics (text/plain)",
+        "responses": { "200": { "description": "Prometheus exposition format" } }
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "summary": "Current user settings (secrets masked)",
+        "responses": {
+          "200": {
+            "description": "Settings with masked secrets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "targetHf": { "type": "number" },
+                    "dataMode": { "type": "string", "enum": ["SIM", "LIVE"] },
+                    "hasOpenRouterKey": { "type": "boolean" },
+                    "hasRpcUrl": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolio": {
+      "get": {
+        "summary": "Latest portfolio snapshot (live/simulated market data)",
+        "responses": {
+          "200": {
+            "description": "Portfolio snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tvl": { "type": "number" },
+                    "netApy": { "type": "number" },
+                    "healthFactor": { "type": "number" },
+                    "baseSpread": { "type": "number" },
+                    "leverage": { "type": "number" },
+                    "oracleStatus": { "type": "string" },
+                    "strategies": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolio/history": {
+      "get": {
+        "summary": "Time-series history of portfolio snapshots",
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } },
+          { "name": "timeRange", "in": "query", "schema": { "type": "string", "enum": ["1H", "24H", "7D", "ALL"] } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of history rows",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "type": "object" } } } }
+          }
+        }
+      }
+    },
+    "/api/portfolio/metrics": {
+      "get": {
+        "summary": "Live risk report (Sharpe, Sortino, VaR/CVaR, vol, drawdown, win rate)",
+        "responses": {
+          "200": {
+            "description": "Risk metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "periods": { "type": "integer" },
+                    "sharpeRatio": { "type": "number" },
+                    "sortinoRatio": { "type": "number" },
+                    "annualizedVolatilityPct": { "type": "number" },
+                    "historicalVaRPct": { "type": "number" },
+                    "conditionalVaRPct": { "type": "number" },
+                    "winRate": { "type": "number" },
+                    "maxDrawdownPct": { "type": "number" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forecast/{metric}": {
+      "get": {
+        "summary": "Holt forecast + confidence band for a metric",
+        "parameters": [
+          { "name": "metric", "in": "path", "required": true, "schema": { "type": "string", "enum": ["netApy", "tvl"] } },
+          { "name": "horizon", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Forecast with band",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "metric": { "type": "string" },
+                    "fitted": { "type": "array", "items": { "type": "object" } },
+                    "future": { "type": "array", "items": { "type": "object", "properties": { "value": { "type": "number" }, "upper": { "type": "number" }, "lower": { "type": "number" } } } }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Unsupported metric" }
+        }
+      }
+    },
+    "/api/backtest": {
+      "get": {
+        "summary": "Backtest the delta-neutral loop on historical data",
+        "parameters": [
+          { "name": "rangeDays", "in": "query", "schema": { "type": "integer" } },
+          { "name": "leverage", "in": "query", "schema": { "type": "number" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backtest result incl. risk report, bootstrap CI, out-of-sample",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totalReturn": { "type": "number" },
+                    "cagr": { "type": "number" },
+                    "sharpe": { "type": "number" },
+                    "sortino": { "type": "number" },
+                    "maxDrawdown": { "type": "number" },
+                    "bootstrap": { "type": "object" },
+                    "outOfSample": { "type": "object", "nullable": true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backtest/monte-carlo": {
+      "get": {
+        "summary": "Monte Carlo liquidation/return distribution",
+        "responses": {
+          "200": {
+            "description": "MC summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "liquidationProbability": { "type": "number" },
+                    "medianReturnPct": { "type": "number" },
+                    "p5ReturnPct": { "type": "number" },
+                    "p95ReturnPct": { "type": "number" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backtest/sweep": {
+      "get": {
+        "summary": "Leverage sweep of backtest metrics",
+        "responses": { "200": { "description": "Array of per-leverage results" } }
+      }
+    },
+    "/api/simulation/start": {
+      "post": {
+        "summary": "Start a (SIM or LIVE) simulation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "initialBalance": { "type": "number" },
+                  "simulationName": { "type": "string" },
+                  "dataMode": { "type": "string", "enum": ["SIM", "LIVE"] },
+                  "dataScenario": { "type": "string" }
+                },
+                "required": ["initialBalance", "dataMode"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Simulation started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "simulationId": { "type": "string" },
+                    "initialBalance": { "type": "number" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation error" }
+        }
+      }
+    },
+    "/api/simulation/status": {
+      "get": {
+        "summary": "Current simulation status",
+        "responses": {
+          "200": {
+            "description": "Status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "isRunning": { "type": "boolean" },
+                    "simulationId": { "type": "string", "nullable": true },
+                    "simulationName": { "type": "string", "nullable": true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/logs": {
+      "get": {
+        "summary": "Agent decision/event log for the active simulation",
+        "responses": {
+          "200": {
+            "description": "Array of log rows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string" },
+                      "message": { "type": "string" },
+                      "timestamp": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,441 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`render tree snapshots > GlossaryTooltip — closed popover (help button only) 1`] = `
+<span
+  class="relative inline-flex items-center "
+>
+  <button
+    aria-expanded="false"
+    aria-haspopup="true"
+    aria-label="Health Factor (HF): Your collateral ÷ borrowed ratio. Above target = safe margin; dropping toward 1 means liquidation risk grows. The agent auto-rebalances or rescues below the warning threshold."
+    class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary transition-colors cursor-help"
+    type="button"
+  >
+    <span
+      class="material-symbols-outlined text-[12px] leading-none"
+    >
+      help
+    </span>
+  </button>
+</span>
+`;
+
+exports[`render tree snapshots > GlossaryTooltip — open popover shows title + description 1`] = `
+<span
+  class="relative inline-flex items-center "
+>
+  <button
+    aria-expanded="true"
+    aria-haspopup="true"
+    aria-label="Health Factor (HF): Your collateral ÷ borrowed ratio. Above target = safe margin; dropping toward 1 means liquidation risk grows. The agent auto-rebalances or rescues below the warning threshold."
+    class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary transition-colors cursor-help"
+    type="button"
+  >
+    <span
+      class="material-symbols-outlined text-[12px] leading-none"
+    >
+      help
+    </span>
+  </button>
+  <div
+    class="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-surface-container-high border border-outline-variant rounded-xl p-4 shadow-2xl text-left"
+    role="tooltip"
+  >
+    <p
+      class="font-[Inter] text-[13px] font-semibold text-on-surface mb-1.5"
+    >
+      Health Factor (HF)
+    </p>
+    <p
+      class="font-[JetBrains_Mono] text-[11px] leading-relaxed text-on-surface-variant"
+    >
+      Your collateral ÷ borrowed ratio. Above target = safe margin; dropping toward 1 means liquidation risk grows. The agent auto-rebalances or rescues below the warning threshold.
+    </p>
+  </div>
+</span>
+`;
+
+exports[`render tree snapshots > PointsTracker — awaiting-data state 1`] = `
+<div
+  class="bg-surface-container border border-outline-variant rounded-xl p-5"
+>
+  <h3
+    class="text-sm font-semibold text-on-surface-variant mb-3 flex items-center gap-2"
+  >
+    <span>
+      🎯
+    </span>
+     
+    Points & Airdrop Yield
+  </h3>
+  <p
+    class="text-xs text-on-surface-variant/60 text-center py-4"
+  >
+    Awaiting first oracle cycle…
+  </p>
+</div>
+`;
+
+exports[`render tree snapshots > PointsTracker — populated points 1`] = `
+<div
+  class="bg-surface-container border border-outline-variant rounded-xl p-5 space-y-4"
+>
+  <div
+    class="flex justify-between items-center"
+  >
+    <h3
+      class="text-sm font-semibold text-on-surface flex items-center gap-2"
+    >
+      <span>
+        🎯
+      </span>
+       
+      Points & Airdrop Yield
+    </h3>
+    <div
+      class="flex items-center gap-2"
+    >
+      <span
+        class="text-xs text-on-surface-variant"
+      >
+        Total Bonus:
+      </span>
+      <span
+        class="text-sm font-mono font-bold text-emerald-400"
+      >
+        +
+        2.90% APY
+      </span>
+    </div>
+  </div>
+  <p
+    class="text-xs text-on-surface-variant leading-relaxed"
+  >
+    Extra yield layer on top of base strategy APY. Points are not immediately liquid — estimated at 50% face-value realization.
+  </p>
+  <div
+    class="space-y-2"
+  >
+    <div
+      class="flex items-start gap-3 p-3 rounded-xl bg-surface-container-lowest border border-outline-variant hover:border-outline transition-all"
+    >
+      <div
+        class="text-xl mt-0.5"
+      >
+        🟣
+      </div>
+      <div
+        class="flex-1 min-w-0"
+      >
+        <div
+          class="flex items-center justify-between gap-2"
+        >
+          <span
+            class="text-sm font-semibold text-on-surface truncate"
+          >
+            Morpho MOR Points
+          </span>
+          <span
+            class="text-sm font-mono font-bold flex-shrink-0 text-violet-400"
+          >
+            +
+            1.00
+            %
+          </span>
+        </div>
+        <p
+          class="text-xs text-on-surface-variant mt-0.5 leading-snug"
+        >
+          Earned on USDC borrow / supply positions. Distributed as MOR tokens on snapshot.
+        </p>
+      </div>
+    </div>
+    <div
+      class="flex items-start gap-3 p-3 rounded-xl bg-surface-container-lowest border border-outline-variant hover:border-outline transition-all"
+    >
+      <div
+        class="text-xl mt-0.5"
+      >
+        🔵
+      </div>
+      <div
+        class="flex-1 min-w-0"
+      >
+        <div
+          class="flex items-center justify-between gap-2"
+        >
+          <span
+            class="text-sm font-semibold text-on-surface truncate"
+          >
+            Ethena ENA Season 6
+          </span>
+          <span
+            class="text-sm font-mono font-bold flex-shrink-0 text-blue-400"
+          >
+            +
+            2.00
+            %
+          </span>
+        </div>
+        <p
+          class="text-xs text-on-surface-variant mt-0.5 leading-snug"
+        >
+          40× multiplier via sENA lock. Applies to all sUSDe-adjacent positions. Ethereal & Derive airdrop eligible.
+        </p>
+      </div>
+    </div>
+    <div
+      class="flex items-start gap-3 p-3 rounded-xl bg-surface-container-lowest border border-outline-variant hover:border-outline transition-all"
+    >
+      <div
+        class="text-xl mt-0.5"
+      >
+        🟡
+      </div>
+      <div
+        class="flex-1 min-w-0"
+      >
+        <div
+          class="flex items-center justify-between gap-2"
+        >
+          <span
+            class="text-sm font-semibold text-on-surface truncate"
+          >
+            Boros YU Funding Yield
+          </span>
+          <span
+            class="text-sm font-mono font-bold flex-shrink-0 text-amber-400"
+          >
+            +
+            0.80
+            %
+          </span>
+        </div>
+        <p
+          class="text-xs text-on-surface-variant mt-0.5 leading-snug"
+        >
+          Funding rate tokenization via Pendle Boros. Positive when perpetual funding is bullish; earns Roots points.
+        </p>
+      </div>
+    </div>
+    <div
+      class="flex items-start gap-3 p-3 rounded-xl bg-surface-container-lowest border border-outline-variant hover:border-outline transition-all"
+    >
+      <div
+        class="text-xl mt-0.5"
+      >
+        🔴
+      </div>
+      <div
+        class="flex-1 min-w-0"
+      >
+        <div
+          class="flex items-center justify-between gap-2"
+        >
+          <span
+            class="text-sm font-semibold text-on-surface truncate"
+          >
+            Cork Depeg Hedge Cost
+          </span>
+          <span
+            class="text-sm font-mono font-bold flex-shrink-0 text-error"
+          >
+            -0.15
+            %
+          </span>
+        </div>
+        <p
+          class="text-xs text-on-surface-variant mt-0.5 leading-snug"
+        >
+          Insurance cost for sUSDe:USDT depeg swap (Cork Protocol). Protects against flash-crash liquidations.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div
+    class="mt-2 pt-3 border-t border-outline-variant flex items-center justify-between text-xs"
+  >
+    <span
+      class="text-on-surface-variant"
+    >
+      Realized bonus (50% of face value)
+    </span>
+    <span
+      class="font-mono text-emerald-300 font-bold"
+    >
+      +1.45% effective APY
+    </span>
+  </div>
+</div>
+`;
+
+exports[`render tree snapshots > RiskAlerts — awaiting-data state 1`] = `
+<div
+  class="bg-surface-container border border-outline rounded-lg p-5 flex flex-col"
+>
+  <h3
+    class="font-[Inter] text-[18px] leading-[24px] font-[510] text-paper mb-4 pb-4 border-b border-outline-variant flex items-center gap-2"
+  >
+    <span
+      class="material-symbols-outlined text-warning text-[20px]"
+    >
+      warning
+    </span>
+     
+    Risk Alerts
+  </h3>
+  <div
+    class="flex flex-col gap-3"
+  >
+    <div
+      class="bg-surface-variant border-outline-variant border rounded p-4 flex gap-3 items-start"
+    >
+      <span
+        class="material-symbols-outlined text-on-surface-variant text-[18px] mt-0.5"
+      >
+        monitor_heart
+      </span>
+      <div>
+        <p
+          class="text-[14px] leading-[20px] text-on-surface font-medium"
+        >
+          Awaiting market data
+        </p>
+        <p
+          class="font-[JetBrains_Mono] text-[12px] leading-[18px] text-on-surface-variant mt-1"
+        >
+          Connect to the backend to stream live oracle updates.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`render tree snapshots > RiskAlerts — danger state (low HF, negative spread, high gas) 1`] = `
+<div
+  class="bg-surface-container border border-outline rounded-lg p-5 flex flex-col"
+>
+  <h3
+    class="font-[Inter] text-[18px] leading-[24px] font-[510] text-paper mb-4 pb-4 border-b border-outline-variant flex items-center gap-2"
+  >
+    <span
+      class="material-symbols-outlined text-warning text-[20px]"
+    >
+      warning
+    </span>
+     
+    Risk Alerts
+  </h3>
+  <div
+    class="flex flex-col gap-3"
+  >
+    <div
+      class="bg-error/10 border-error/30 border rounded p-4 flex gap-3 items-start"
+    >
+      <span
+        class="material-symbols-outlined text-error text-[18px] mt-0.5"
+      >
+        shield_moon
+      </span>
+      <div>
+        <p
+          class="text-[14px] leading-[20px] text-error font-medium"
+        >
+          Health Factor 1.05 below target 1.25
+        </p>
+        <p
+          class="font-[JetBrains_Mono] text-[12px] leading-[18px] text-error/70 mt-1"
+        >
+          Agent will rebalance or rescue to restore a safe margin.
+        </p>
+      </div>
+    </div>
+    <div
+      class="bg-warning/10 border-warning/30 border rounded p-4 flex gap-3 items-start"
+    >
+      <span
+        class="material-symbols-outlined text-warning text-[18px] mt-0.5"
+      >
+        trending_down
+      </span>
+      <div>
+        <p
+          class="text-[14px] leading-[20px] text-warning font-medium"
+        >
+          Negative yield spread (-1.50%)
+        </p>
+        <p
+          class="font-[JetBrains_Mono] text-[12px] leading-[18px] text-warning mt-1"
+        >
+          Borrow cost exceeds supply yield — agent is unwinding leverage.
+        </p>
+      </div>
+    </div>
+    <div
+      class="bg-warning/10 border-warning/30 border rounded p-4 flex gap-3 items-start"
+    >
+      <span
+        class="material-symbols-outlined text-warning text-[18px] mt-0.5"
+      >
+        local_gas_station
+      </span>
+      <div>
+        <p
+          class="text-[14px] leading-[20px] text-warning font-medium"
+        >
+          Gas price high (40.00 gwei)
+        </p>
+        <p
+          class="font-[JetBrains_Mono] text-[12px] leading-[18px] text-warning mt-1"
+        >
+          Above claim threshold (20 gwei). Reward claims deferred.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`render tree snapshots > RiskAlerts — nominal state (no alerts fired) 1`] = `
+<div
+  class="bg-surface-container border border-outline rounded-lg p-5 flex flex-col"
+>
+  <h3
+    class="font-[Inter] text-[18px] leading-[24px] font-[510] text-paper mb-4 pb-4 border-b border-outline-variant flex items-center gap-2"
+  >
+    <span
+      class="material-symbols-outlined text-warning text-[20px]"
+    >
+      warning
+    </span>
+     
+    Risk Alerts
+  </h3>
+  <div
+    class="flex flex-col gap-3"
+  >
+    <div
+      class="bg-success/10 border-success/30 border rounded p-4 flex gap-3 items-start"
+    >
+      <span
+        class="material-symbols-outlined text-success text-[18px] mt-0.5"
+      >
+        verified_user
+      </span>
+      <div>
+        <p
+          class="text-[14px] leading-[20px] text-success font-medium"
+        >
+          Positive yield spread (2.00%)
+        </p>
+        <p
+          class="font-[JetBrains_Mono] text-[12px] leading-[18px] text-success mt-1"
+        >
+          Yield capture window is open. Agent monitoring for entry.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+`;

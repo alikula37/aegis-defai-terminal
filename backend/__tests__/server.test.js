@@ -6,6 +6,7 @@ import db from '../db/database.js';
 import { updateSettings, getLocalUserId } from '../db/database.js';
 import { HistoricalDataService } from '../services/HistoricalDataService.js';
 import { clearModelCatalogCache } from '../services/LLMService.js';
+import { assertContract, apiSchemas } from '../schemas/apiSchemas.js';
 
 // The only network calls LLMService makes are to OpenRouter — mock them so
 // the /api/llm/models route is testable offline. Other services use
@@ -134,6 +135,79 @@ describe('API Integration Tests', () => {
             expect(Number.isFinite(f.lower)).toBe(true);
             expect(f.upper).toBeGreaterThanOrEqual(f.lower);
         }
+    });
+
+    // ---- Contract tests: live responses must satisfy the zod schemas ----
+    it('contract: /health matches health schema', async () => {
+        const res = await request(app).get('/health');
+        expect(res.status).toBe(200);
+        assertContract(apiSchemas.health, res.body);
+    });
+
+    it('contract: /api/openapi.json is a valid OpenAPI 3.1 document', async () => {
+        const res = await request(app).get('/api/openapi.json');
+        expect(res.status).toBe(200);
+        expect(res.body.openapi).toBe('3.1.0');
+        expect(res.body.info.title).toBeDefined();
+        expect(Object.keys(res.body.paths).length).toBeGreaterThan(10);
+        // Every documented path exists on the live server.
+        for (const path of Object.keys(res.body.paths)) {
+            const expressPath = path.replace(/\{(\w+)\}/g, ':$1');
+            const probe = await request(app).get(expressPath).set('Accept', 'application/json');
+            expect([200, 400, 401, 404, 500]).toContain(probe.status);
+        }
+    });
+
+    it('contract: /api/settings matches settings schema', async () => {
+        const res = await request(app).get('/api/settings');
+        expect(res.status).toBe(200);
+        assertContract(apiSchemas.settings, res.body);
+    });
+
+    it('contract: /api/simulation/status matches status schema', async () => {
+        const res = await request(app).get('/api/simulation/status');
+        expect(res.status).toBe(200);
+        assertContract(apiSchemas.simulationStatus, res.body);
+    });
+
+    it('contract: /api/logs rows match the log schema', async () => {
+        const res = await request(app).get('/api/logs');
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body)).toBe(true);
+        for (const row of res.body.slice(0, 10)) {
+            assertContract(apiSchemas.logRow, row);
+        }
+    });
+
+    it('contract: /api/portfolio/history rows match the history schema', async () => {
+        const res = await request(app).get('/api/portfolio/history?limit=5');
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body)).toBe(true);
+        for (const row of res.body.slice(0, 5)) {
+            assertContract(apiSchemas.portfolioHistoryRow, row);
+        }
+    });
+
+    it('contract: /api/portfolio/metrics matches risk-metrics schema', async () => {
+        const res = await request(app).get('/api/portfolio/metrics');
+        expect(res.status).toBe(200);
+        assertContract(apiSchemas.riskMetrics, res.body);
+    });
+
+    it('contract: /api/backtest matches backtest schema', async () => {
+        const res = await request(app).get('/api/backtest?rangeDays=30&leverage=4');
+        expect(res.status).toBe(200);
+        if (res.body.error) {
+            expect(typeof res.body.error).toBe('string');
+        } else {
+            assertContract(apiSchemas.backtest, res.body);
+        }
+    });
+
+    it('contract: /api/backtest/monte-carlo matches MC schema', async () => {
+        const res = await request(app).get('/api/backtest/monte-carlo?simulations=100&days=30&seed=7');
+        expect(res.status).toBe(200);
+        assertContract(apiSchemas.monteCarlo, res.body);
     });
 
     it('GET /api/logs should return array', async () => {

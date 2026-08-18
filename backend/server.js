@@ -3,6 +3,9 @@ import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import dotenv from 'dotenv';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { getLogs, getLatestPortfolio, getInitialPortfolio, getPortfolioHistory, getSettings, updateSettings, deleteSettings, getRecentMemories, closeDatabase, checkSimulationNameExists, generateUniqueSimulationName, suggestSimulationName, getLatestSimulation, setSimulationStatus, getAllSimulations, deleteSimulation, getSimulationById, getLocalUserId } from './db/database.js';
 import { AegisAgent } from './agent.js';
 import { Backtester } from './backtest/Backtester.js';
@@ -29,6 +32,8 @@ dotenv.config();
 const app = express();
 const server = createServer(app);
 const metrics = createMetrics();
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const openApiSpec = JSON.parse(readFileSync(join(__dirname, 'api', 'openapi.json'), 'utf8'));
 
 // E9 — auth: open mode (AUTH_REQUIRED=false, dev default) attaches the seeded
 // 'local' user; required mode (production default) validates the session cookie.
@@ -308,7 +313,13 @@ agent.startOracleTicker();
 
 // ---- REST API Routes ----
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', uptime: process.uptime(), wsClients: totalClients() });
+    res.json({ status: 'ok', uptime: process.uptime() });
+});
+
+// OpenAPI 3.1 spec for the REST surface — the contract documentation that
+// mirrors backend/schemas/apiSchemas.js (contract-tested in server.test.js).
+app.get('/api/openapi.json', (req, res) => {
+    res.json(openApiSpec);
 });
 
 // Prometheus metrics endpoint (B2.5-6)
