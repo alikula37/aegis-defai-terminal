@@ -36,7 +36,9 @@ export default function StrategyComparison() {
     }, [rangeDays, t]);
 
     const rows = (data?.strategies || []).filter(s => !s.error);
-    const bestSharpe = rows.length ? Math.max(...rows.map(s => s.sharpe)) : -Infinity;
+    const bestSharpe = rows.length
+        ? Math.max(...rows.map(s => (Number.isFinite(Number(s.sharpe)) ? Number(s.sharpe) : -Infinity)))
+        : -Infinity;
 
     return (
         <ChartCard
@@ -108,7 +110,7 @@ export default function StrategyComparison() {
                                         </td>
                                         <td className="px-2 py-2.5">
                                             <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-[JetBrains_Mono] ${GRADE_STYLES[s.riskGrade] || GRADE_STYLES.balanced}`}>
-                                                {t(`analytics.riskGrade${s.riskGrade.charAt(0).toUpperCase()}${s.riskGrade.slice(1)}`)}
+                                                {t(`analytics.riskGrade${String(s.riskGrade || 'balanced').charAt(0).toUpperCase()}${String(s.riskGrade || 'balanced').slice(1)}`)}
                                             </span>
                                         </td>
                                         <td className={`px-2 py-2.5 text-right font-[Inter] text-[13px] font-bold tabular-nums ${(s.currentNetApy ?? 0) >= 0 ? 'text-success' : 'text-error'}`}>

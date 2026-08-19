@@ -21,7 +21,11 @@ export default function Analytics() {
         setOppError(null);
         apiFetch('/api/analytics/opportunities')
             .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-            .then(d => { if (d.error) { setOppError(d.error); setOppData(null); } else setOppData(d); })
+            .then(d => {
+                if (!d || typeof d !== 'object') throw new Error('invalid payload');
+                if (d.error) { setOppError(d.error); setOppData(null); }
+                else setOppData(Array.isArray(d.opportunities) ? d : null);
+            })
             .catch(() => setOppError(t('analytics.opportunitiesLoadFailed')))
             .finally(() => setOppLoading(false));
     }, [t]);

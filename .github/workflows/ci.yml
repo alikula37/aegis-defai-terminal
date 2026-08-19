@@ -135,3 +135,11 @@ jobs:
       run: |
         cd frontend
         npx playwright test
+
+    - name: Upload Playwright failure artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-e2e
+        path: frontend/test-results
+        if-no-files-found: ignore

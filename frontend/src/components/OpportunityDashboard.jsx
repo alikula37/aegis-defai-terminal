@@ -31,15 +31,17 @@ function trendMeta(cls) {
 
 function RiskBadge({ tier, t }) {
     const [open, setOpen] = useState(false);
-    const label = t(`analytics.risk${tier.charAt(0).toUpperCase()}${tier.slice(1)}`);
-    const desc = t(`analytics.risk${tier.charAt(0).toUpperCase()}${tier.slice(1)}Desc`);
+    const safeTier = ['low', 'medium', 'high'].includes(tier) ? tier : 'low';
+    const cap = safeTier.charAt(0).toUpperCase() + safeTier.slice(1);
+    const label = t(`analytics.risk${cap}`);
+    const desc = t(`analytics.risk${cap}Desc`);
     return (
         <span className="relative inline-flex">
             <button
                 type="button"
                 aria-expanded={open}
                 onClick={() => setOpen(o => !o)}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-[JetBrains_Mono] ${RISK_STYLES[tier]}`}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-[JetBrains_Mono] ${RISK_STYLES[safeTier]}`}
             >
                 <span className="w-1.5 h-1.5 rounded-full bg-current" />
                 {label}
@@ -214,7 +216,7 @@ export default function OpportunityDashboard({ data, isLoading, error, onRetry }
                                             </span>
                                             {trend && (
                                                 <span className={`inline-flex items-center gap-1 text-[10px] font-[JetBrains_Mono] ${trend.color}`}>
-                                                    {trend.arrow} {t(trend.key)} {o.prediction.probability != null ? `${Math.round(o.prediction.probability)}%` : ''}
+                                                    {trend.arrow} {t(trend.key)} {Number.isFinite(o.prediction.probability) ? `${Math.round(o.prediction.probability)}%` : ''}
                                                 </span>
                                             )}
                                         </div>

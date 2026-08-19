@@ -32,7 +32,7 @@ export default function MarketOutlook({ data }) {
                     <p className={`font-[Inter] text-[18px] font-bold mt-1 tabular-nums ${trendColor}`}>
                         {trend ? `${arrow} ${t(`analytics.trend${trend.charAt(0).toUpperCase()}${trend.slice(1)}`)}` : t('analytics.outlookN/A')}
                     </p>
-                    {pred?.probability != null && (
+                    {pred?.probability != null && Number.isFinite(Number(pred.probability)) && (
                         <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mt-1">{Math.round(pred.probability)}% · {fmtPct(market.susdeApy, { locale: lang, fractionDigits: 1 })}</p>
                     )}
                 </div>
