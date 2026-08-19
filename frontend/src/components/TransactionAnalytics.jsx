@@ -14,7 +14,7 @@ function fmtTime(iso) {
 }
 
 export default function TransactionAnalytics() {
-    const { t } = useI18n();
+    const { t, lang } = useI18n();
     const [transactions, setTransactions] = useState([]);
     const [portfolioStats, setPortfolioStats] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
