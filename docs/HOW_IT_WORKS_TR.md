@@ -152,7 +152,9 @@ Terminal performansı ölçer — sadece grafik değildir:
 
 - **Risk metrikleri** (`/api/portfolio/metrics`): Sharpe & Sortino oranları,
   yıllıklandırılmış volatilite, maksimum düşüş, **Value at Risk (VaR)** ve
-  **CVaR**, kazanma oranı ve beta — simülasyonun gözlemlenen geçmişi üzerinden.
+  **CVaR**, kazanma oranı, beta, **Calmar oranı**, **kuyruk oranı**; ayrıca
+  grafik verileri — normalize **öz sermaye eğrisi**, **getiri histogramı** ve
+  **kayan (30 günlük) oynaklık** — simülasyonun gözlemlenen geçmişi üzerinden.
 - **Getiri tahmini** (`/api/forecast/:metric`): net APY ve TVL için EWMA
   volatilite bantlı Holt doğrusal trend projeksiyonu. Bu bir **eğitim tahminidir,
   vaat değildir** (arayüzde açıkça belirtilir).
@@ -178,7 +180,7 @@ Terminal performansı ölçer — sadece grafik değildir:
 
 ## 7. Pano (Dashboard)
 
-Web terminali (localhost:5173) beş sayfadan oluşur:
+Web terminali (localhost:5173) altı sayfadan oluşur:
 
 | Sayfa | Ne görürsünüz |
 |---|---|

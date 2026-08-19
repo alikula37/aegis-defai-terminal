@@ -3,11 +3,11 @@
   <img src="https://github.com/alikula37/aegis-defai-terminal/actions/workflows/ci.yml/badge.svg" alt="CI">
   <img src="https://github.com/alikula37/aegis-defai-terminal/actions/workflows/docker.yml/badge.svg" alt="Docker">
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License">
-  <img src="https://img.shields.io/badge/Backend%20Tests-466%20passed-brightgreen?style=for-the-badge&logo=vitest" alt="Backend tests">
-  <img src="https://img.shields.io/badge/Frontend%20Tests-113%20passed-brightgreen?style=for-the-badge&logo=vitest" alt="Frontend tests">
-  <img src="https://img.shields.io/badge/Coverage%20(backend)-81%25-success?style=for-the-badge&logo=vitest" alt="Backend coverage">
-  <img src="https://img.shields.io/badge/Coverage%20(frontend)-70%25-success?style=for-the-badge&logo=vitest" alt="Frontend coverage">
-  <img src="https://img.shields.io/badge/E2E%20%26%20Visual-7%20tests%20passed-success?style=for-the-badge&logo=playwright" alt="E2E + visual regression">
+  <img src="https://img.shields.io/badge/Backend%20Tests-496%20passed-brightgreen?style=for-the-badge&logo=vitest" alt="Backend tests">
+  <img src="https://img.shields.io/badge/Frontend%20Tests-141%20passed-brightgreen?style=for-the-badge&logo=vitest" alt="Frontend tests">
+  <img src="https://img.shields.io/badge/Coverage%20(backend)-82%25-success?style=for-the-badge&logo=vitest" alt="Backend coverage">
+  <img src="https://img.shields.io/badge/Coverage%20(frontend)-73%25-success?style=for-the-badge&logo=vitest" alt="Frontend coverage">
+  <img src="https://img.shields.io/badge/E2E%20%26%20Visual-18%20tests%20passed-success?style=for-the-badge&logo=playwright" alt="E2E + visual regression">
   <img src="https://img.shields.io/badge/PRs-Welcome-ff69b4?style=for-the-badge&logo=github" alt="PRs welcome">
 </p>
 
@@ -39,7 +39,7 @@
 
 # 🛡️ Aegis DeFAI Terminal — English
 
-> **Autonomous DeFi yield agent.** Aegis runs a **delta-neutral yield farming** strategy across Aave, Morpho, Pendle and Ethena. It reads live market data, reasons with an **LLM brain (Llama 3.1 70B via OpenRouter)**, monitors your **Health Factor** in real time, and acts — automatically.
+> **Autonomous DeFi yield agent.** Aegis runs a **delta-neutral yield farming** strategy across Aave, Morpho, Pendle and Ethena. It reads live market data, reasons with an **LLM brain (any model from the live OpenRouter catalog — free Gemini by default)**, monitors your **Health Factor** in real time, and acts — automatically.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -59,8 +59,9 @@
 | 🌾 **Autonomous Yield Farming** | Allocates capital to the highest-yielding **delta-neutral** strategies automatically |
 | ⚖️ **Dynamic Risk Engine** | Monitors **Health Factor (HF)** — safe / warning / critical zones, each with its own playbook |
 | 🚑 **Self-Rescue** | On critical risk: **partial deleverage** (unwind 25%) or **Aave Flash Loan rescue** — executed by the agent itself |
-| 🧠 **LLM Brain** | Llama 3.1 70B analyzes market context and decides: **hold**, **rebalance**, or **deleverage** — with hard guardrails so it can't go rogue |
+| 🧠 **LLM Brain** | Picks any model from the live OpenRouter catalog (free Gemini by default, with automatic fallback) to analyze market context and decide: **hold**, **rebalance**, or **deleverage** — with hard guardrails so it can't go rogue |
 | 🔗 **Multi-Protocol** | Aave V4 · Morpho Blue · Pendle · Ethena (sUSDe) |
+| 📈 **Strategy Analytics** | Live opportunity dashboard (real yields, ranked and risk-labeled) vs **FRED T-Bill** & ETH-staking benchmarks, multi-strategy backtest comparison, Monte Carlo, leverage sweep and interactive rate scenarios |
 | 🖥️ **Real-Time Terminal** | Beautiful responsive dashboard — portfolio TVL, live yields, agent decisions, risk zones, decision history |
 | 🧪 **Simulation Mode** | Fully sandboxed paper trading with a **seeded scenario engine** (bull / bear / depeg stress tests) — before any real capital |
 | 🔐 **Security-First** | Encrypted API keys at rest, session auth, rate limiting, per-user data isolation |
@@ -83,7 +84,7 @@ graph TD
     end
 
     subgraph LLM Brain
-        F --> H((Llama 3.1 70B))
+        F --> H((LLM Brain))
         G --> H
         H -->|Analyze Context| I{Decision}
         I -->|Hold| J[Wait for Market Recovery]
@@ -106,7 +107,7 @@ graph TD
 
 | Layer | Technology |
 |---|---|
-| 🖥️ Frontend | React 18 · Vite 5 · TailwindCSS 3 · Recharts · WebSocket live updates |
+| 🖥️ Frontend | React 19 · Vite 8 · TailwindCSS 4 · Recharts 3 · WebSocket live updates |
 | ⚙️ Backend | Node.js 22 · Express 4 · **node:sqlite** (built-in, zero deps) · WebSocket · Prometheus |
 | 🧠 AI Engine | OpenRouter API — **pick any model** (Llama, GPT, Claude, Gemini…) from the live catalog; tool-calling + fallback on retriable errors |
 | 🔒 Security | AES-256-GCM key encryption · scrypt (OWASP) · session auth · rate limiting · CSRF |
@@ -150,11 +151,11 @@ npm run dev
 
 | Suite | Command | Status |
 |---|---|---|
-| Backend (unit + integration + stress) | `cd backend && npm test` | **466 passed** |
-| Backend coverage | `cd backend && npm run coverage` | **81% lines** (gate: ≥70%) |
-| Frontend (Vitest + snapshots) | `cd frontend && npm test` | **113 passed** |
-| Frontend coverage | `cd frontend && npm run coverage` | **70% lines** (gate: ≥65%) |
-| E2E (Playwright) | `cd frontend && npx playwright test` | 7 specs (incl. visual regression) |
+| Backend (unit + integration + stress) | `cd backend && npm test` | **496 passed** |
+| Backend coverage | `cd backend && npm run coverage` | **82% lines** (gate: ≥70%) |
+| Frontend (Vitest + snapshots) | `cd frontend && npm test` | **141 passed** |
+| Frontend coverage | `cd frontend && npm run coverage` | **73% lines** (gate: ≥65%) |
+| E2E (Playwright) | `cd frontend && npx playwright test` | **18 tests** · 3 viewports (desktop 1280px, mobile 375px, tablet 768px) + visual regression |
 | Contract (API schemas) | `cd backend && npm test` | zod-validated in `server.test.js` |
 | Linting | backend: `npm run lint` · frontend: `npx oxlint .` | **0 errors** |
 
@@ -171,10 +172,10 @@ A layered pyramid — categories overlap, but each adds a distinct guarantee:
 | **Contract** | API response shapes validated against zod schemas; served OpenAPI 3.1 spec probed path-by-path | `backend/schemas/apiSchemas.js`, `GET /api/openapi.json` |
 | **E2E** | Client → backend → DB journey: login, start sim, stream live data, render charts, stop | `frontend/e2e/aegis.spec.js` |
 | **Render-tree snapshot** | Component hierarchy stability across refactors | `frontend/src/__tests__/snapshots.test.jsx` (7 committed) |
-| **Visual regression** | Pixel-level layout/theme regressions on key screens | `frontend/e2e/visual.spec.js` + committed baselines |
+| **Visual regression** | Pixel-level layout/theme regressions + horizontal-overflow checks on desktop, mobile (375px) and tablet (768px) | `frontend/e2e/visual.spec.js` + committed baselines |
 | **Automation** | Playwright scenarios (crawl + happy path + visual) in CI | `.github/workflows/ci.yml` → `e2e` job |
 
-The data-science layer is tested against **known-value** fixtures (exact Sharpe/Sortino/VaR math, deterministic seeded Monte Carlo, forecast band growth) so the quant code is verifiable, not just executable.
+The data-science layer is tested against **known-value** fixtures (exact Sharpe/Sortino/VaR/Calmar math, rolling volatility, deterministic seeded Monte Carlo, multi-strategy backtest comparison, forecast band growth) so the quant code is verifiable, not just executable.
 
 ## 🔑 Configuration (API Keys & RPC)
 
@@ -241,7 +242,7 @@ MIT © 2026 — see the [LICENSE](LICENSE) file.
 
 # 🛡️ Aegis DeFAI Terminal — Türkçe
 
-> **Otonom DeFi getiri ajanı.** Aegis, Aave, Morpho, Pendle ve Ethena üzerinde **delta-nötr getiri stratejileri** uygular. Canlı piyasa verisini okur, **LLM beyniyle (OpenRouter üzerinden Llama 3.1 70B)** karar verir, **Health Factor'ünüzü** gerçek zamanlı izler ve — otomatik olarak harekete geçer.
+> **Otonom DeFi getiri ajanı.** Aegis, Aave, Morpho, Pendle ve Ethena üzerinde **delta-nötr getiri stratejileri** uygular. Canlı piyasa verisini okur, **LLM beyniyle (canlı OpenRouter kataloğundan istediğiniz model — varsayılan ücretsiz Gemini)** karar verir, **Health Factor'ünüzü** gerçek zamanlı izler ve — otomatik olarak harekete geçer.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -262,8 +263,9 @@ MIT © 2026 — see the [LICENSE](LICENSE) file.
 | 🌾 **Otonom Getiri Çiftçiliği** | Sermayeyi otomatik olarak en yüksek getirili **delta-nötr** stratejilere yönlendirir |
 | ⚖️ **Dinamik Risk Motoru** | **Health Factor (HF)** takibi — güvenli / uyarı / kritik bölgeler, her biri için ayrı senaryo |
 | 🚑 **Kendi Kendini Kurtarma** | Kritik riskte: **kısmi kaldıraç azaltma** (%25 çözülme) veya **Aave Flash Loan kurtarması** — ajan tarafından otomatik uygulanır |
-| 🧠 **LLM Beyni** | Llama 3.1 70B piyasa bağlamını analiz eder ve karar verir: **bekle**, **yeniden dengele** veya **kaldıracı azalt** — sert korkuluklarla korunur |
+| 🧠 **LLM Beyni** | Canlı OpenRouter kataloğundan istediği modeli seçer (varsayılan ücretsiz Gemini, otomatik yedekle) ve piyasa bağlamını analiz ederek karar verir: **bekle**, **yeniden dengele** veya **kaldıracı azalt** — sert korkuluklarla korunur |
 | 🔗 **Çoklu Protokol** | Aave V4 · Morpho Blue · Pendle · Ethena (sUSDe) |
+| 📈 **Strateji Analitiği** | Canlı fırsat panosu (gerçek getiriler, sıralı ve risk etiketli) ile **FRED T-Bill** ve ETH staking karşılaştırma ölçütleri, çok stratejili backtest karşılaştırması, Monte Carlo, kaldıraç taraması ve interaktif oran senaryoları |
 | 🖥️ **Gerçek Zamanlı Terminal** | Şık ve duyarlı (responsive) panel — portföy TVL, canlı getiriler, ajan kararları, risk bölgeleri, karar geçmişi |
 | 🧪 **Simülasyon Modu** | Tamamen izole sanal işlem; **senaryo motoru** ile (boğa / ayı / depeg stres testleri) — gerçek sermayeden önce |
 | 🔐 **Güvenlik Öncelikli** | Anahtarlar şifrelenmiş olarak saklanır, oturum doğrulaması, hız sınırlama, kullanıcı başına veri izolasyonu |
@@ -286,7 +288,7 @@ graph TD
     end
 
     subgraph LLM Beyni
-        F --> H((Llama 3.1 70B))
+        F --> H((LLM Beyni))
         G --> H
         H -->|Bağlamı Analiz Et| I{Karar}
         I -->|Bekle| J[Piyasa Toparlanmasını İzle]
@@ -309,7 +311,7 @@ graph TD
 
 | Katman | Teknoloji |
 |---|---|
-| 🖥️ Ön Yüz | React 18 · Vite 5 · TailwindCSS 3 · Recharts · WebSocket canlı güncelleme |
+| 🖥️ Ön Yüz | React 19 · Vite 8 · TailwindCSS 4 · Recharts 3 · WebSocket canlı güncelleme |
 | ⚙️ Arka Yüz | Node.js 22 · Express 4 · **node:sqlite** (yerleşik, sıfır bağımlılık) · WebSocket · Prometheus |
 | 🧠 AI Motoru | OpenRouter API — **istediğiniz modeli seçin** (Llama, GPT, Claude, Gemini…) canlı katalogdan; tool-calling + yeniden denenebilir hatalarda yedek |
 | 🔒 Güvenlik | AES-256-GCM anahtar şifreleme · scrypt (OWASP) · oturum doğrulama · hız sınırlama · CSRF |
@@ -353,11 +355,11 @@ npm run dev
 
 | Test | Komut | Durum |
 |---|---|---|
-| Arka yüz (birim + entegrasyon + stres) | `cd backend && npm test` | **466 geçti** |
-| Arka yüz kapsam | `cd backend && npm run coverage` | **%81 satır** (kapı: ≥%70) |
-| Ön yüz (Vitest + snapshot) | `cd frontend && npm test` | **113 geçti** |
-| Ön yüz kapsam | `cd frontend && npm run coverage` | **%70 satır** (kapı: ≥%65) |
-| E2E (Playwright) | `cd frontend && npx playwright test` | 7 spec (görsel regresyon dahil) |
+| Arka yüz (birim + entegrasyon + stres) | `cd backend && npm test` | **496 geçti** |
+| Arka yüz kapsam | `cd backend && npm run coverage` | **%82 satır** (kapı: ≥%70) |
+| Ön yüz (Vitest + snapshot) | `cd frontend && npm test` | **141 geçti** |
+| Ön yüz kapsam | `cd frontend && npm run coverage` | **%73 satır** (kapı: ≥%65) |
+| E2E (Playwright) | `cd frontend && npx playwright test` | **18 test** · 3 görünüm (masaüstü 1280px, mobil 375px, tablet 768px) + görsel regresyon |
 | Contract (API şemaları) | `cd backend && npm test` | `server.test.js` içinde zod doğrulaması |
 | Lint | backend: `npm run lint` · frontend: `npx oxlint .` | **0 hata** |
 

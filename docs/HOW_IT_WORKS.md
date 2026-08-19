@@ -151,7 +151,9 @@ The terminal quantifies performance — it is not just a chart:
 
 - **Risk metrics** (`/api/portfolio/metrics`): Sharpe & Sortino ratios,
   annualized volatility, max drawdown, **Value at Risk (VaR)** and **CVaR**,
-  win-rate and beta — computed on the simulation's observed history.
+  win-rate, beta, **Calmar ratio**, **tail ratio**, plus the chart payloads —
+  a normalized **equity curve**, a **return histogram** and **rolling (30-day)
+  volatility** — computed on the simulation's observed history.
 - **Yield forecast** (`/api/forecast/:metric`): a Holt linear-trend projection of
   net APY and TVL with an EWMA volatility band. This is an **educational
   estimate, not a promise** (clearly labelled in the UI).
@@ -179,7 +181,7 @@ The terminal quantifies performance — it is not just a chart:
 
 ## 7. The dashboard
 
-The web terminal (localhost:5173) has five pages:
+The web terminal (localhost:5173) has six pages:
 
 | Page | What you see |
 |---|---|

@@ -33,11 +33,19 @@ export default function DocsModal({ isOpen, onClose }) {
                     <section>
                         <h3 className="text-on-surface font-semibold text-base mb-2">{t('docs.changelog')}</h3>
                         <ul className="list-disc pl-5 space-y-2">
+                            <li><strong>v1.3.0:</strong> {t('docs.v130')}</li>
                             <li><strong>v1.2.0:</strong> {t('docs.v120')}</li>
                             <li><strong>v1.1.0:</strong> {t('docs.v110')}</li>
                             <li><strong>v1.0.5:</strong> {t('docs.v105')}</li>
                             <li><strong>v1.0.0:</strong> {t('docs.v100')}</li>
                         </ul>
+                    </section>
+
+                    <section>
+                        <h3 className="text-on-surface font-semibold text-base mb-2">{t('docs.analytics')}</h3>
+                        <p className="mb-2">
+                            {t('docs.analyticsBody')}
+                        </p>
                     </section>
 
                     <section>

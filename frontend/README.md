@@ -1,7 +1,17 @@
 # Aegis DeFAI Terminal — Frontend
 
 React 19 + Vite dashboard for the Aegis DeFAI agent: live portfolio, APY charts,
-AI agent execution logs, backtesting, risk analytics and settings.
+AI agent execution logs, and a full **Strategy Analytics** page (live opportunity
+dashboard with FRED T-Bill / ETH-staking benchmarks, multi-strategy backtest
+comparison, Monte Carlo, leverage sweep, rate scenarios and live risk metrics).
+
+## Pages
+
+- **Overview** — TVL, net APY, health factor, forecast + risk-metric cards
+- **Yield Strategies** — capital allocation + transaction analytics
+- **Analytics** — `/analytics`: opportunities dashboard, market outlook,
+  strategy comparison, rate scenarios and deep-dive backtest panels
+- **Live Data**, **AI Agent Logs**, **Settings**
 
 ## Development
 
@@ -18,6 +28,11 @@ npm run test:e2e     # Playwright end-to-end (backend must be running)
 npm run lint
 npm run build
 ```
+
+The Playwright suite runs **three viewport projects** — desktop (1280px),
+mobile (375px) and tablet (768px). The visual-regression spec
+(`e2e/visual.spec.js`) asserts no horizontal overflow on every page and compares
+committed pixel baselines (`.png` under `e2e/visual.spec.js-snapshots/`).
 
 ## Backend connectivity
 
