@@ -6,6 +6,7 @@ import YieldStrategies from './pages/YieldStrategies';
 import AIAgentLogs from './pages/AIAgentLogs';
 import Settings from './pages/Settings';
 import LiveData from './pages/LiveData';
+import Analytics from './pages/Analytics';
 import LoginPage from './pages/LoginPage';
 import { WebSocketProvider } from './contexts/WebSocketContext';
 import { SettingsProvider } from './contexts/SettingsContext';
@@ -42,6 +43,7 @@ function AppShell() {
                 <TopNav />
                 <Routes>
                     <Route path="/" element={<Overview />} />
+                    <Route path="/analytics" element={<Analytics />} />
                     <Route path="/yield-strategies" element={<YieldStrategies />} />
                     <Route path="/ai-agent-logs" element={<AIAgentLogs />} />
                     <Route path="/live-data" element={<LiveData />} />

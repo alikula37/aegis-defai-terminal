@@ -106,7 +106,7 @@ export default function DashboardMetrics() {
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-6 bg-surface-container border border-outline rounded-lg p-4">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 bg-surface-container border border-outline rounded-lg p-4">
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">lan</span>
                     <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">{t('dash.activeChain')}</span>
@@ -162,16 +162,16 @@ export default function DashboardMetrics() {
                             </div>
 
                             {m.bar ? (
-                                <div className="flex items-baseline gap-2">
-                                    <p className={`font-[Inter] text-[48px] leading-[56px] tracking-[-0.02em] font-bold ${valueColor}`}>{displayValue}</p>
-                                    <div className="w-16 h-2 bg-surface-variant rounded-full overflow-hidden flex">
+                                <div className="flex items-baseline gap-2 flex-wrap">
+                                    <p className={`font-[Inter] text-[clamp(28px,7vw,48px)] leading-none tracking-[-0.02em] font-bold tabular-nums ${valueColor}`}>{displayValue}</p>
+                                    <div className="w-16 h-2 bg-surface-variant rounded-full overflow-hidden flex shrink-0">
                                         <div className="h-full bg-error w-[20%]"></div>
                                         <div className="h-full bg-warning w-[60%]"></div>
                                         <div className="h-full bg-success w-[20%]"></div>
                                     </div>
                                 </div>
                             ) : (
-                                <p className={`font-[Inter] text-[48px] leading-[56px] tracking-[-0.02em] font-bold ${valueColor}`}>{displayValue}</p>
+                                <p className={`font-[Inter] text-[clamp(28px,7vw,48px)] leading-none tracking-[-0.02em] font-bold tabular-nums break-words ${valueColor}`}>{displayValue}</p>
                             )}
 
                             <div className="mt-4 flex items-center gap-2">

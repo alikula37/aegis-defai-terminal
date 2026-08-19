@@ -10,6 +10,10 @@ import {
     winRate,
     beta,
     annualizedVolatility,
+    rollingVolatility,
+    returnHistogram,
+    calmarRatio,
+    tailRatio,
 } from '../core/quant/RiskMetrics.js';
 
 describe('RiskMetrics', () => {
@@ -91,11 +95,47 @@ describe('RiskMetrics', () => {
             equityCurve: [1, 1.1, 0.95, 1.05],
             confidence: 0.95,
         });
-        for (const key of ['periods', 'meanDailyReturnPct', 'meanAnnualReturnPct', 'annualizedVolatilityPct', 'sharpeRatio', 'sortinoRatio', 'maxDrawdownPct', 'historicalVaRPct', 'parametricVaRPct', 'conditionalVaRPct', 'winRate', 'confidence']) {
+        for (const key of ['periods', 'meanDailyReturnPct', 'meanAnnualReturnPct', 'annualizedVolatilityPct', 'sharpeRatio', 'sortinoRatio', 'maxDrawdownPct', 'historicalVaRPct', 'parametricVaRPct', 'conditionalVaRPct', 'winRate', 'calmarRatio', 'tailRatio', 'confidence']) {
             expect(Number.isFinite(report[key])).toBe(true);
         }
         expect(report.periods).toBe(5);
         expect(report.maxDrawdownPct).toBeCloseTo((1.1 - 0.95) / 1.1 * 100, 6);
         expect(report.beta).toBeNull();
+    });
+
+    it('rollingVolatility yields one windowed annualized-vol point per window', () => {
+        const series = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2];
+        const roll = rollingVolatility(series, 5, 365);
+        expect(roll.length).toBe(series.length - 5 + 1);
+        // First window (all 1s) has zero variance → vol 0.
+        expect(roll[0].volPct).toBe(0);
+        expect(roll[0].i).toBe(4);
+        // The window that spans the 1→2 step has non-zero vol.
+        expect(roll.some(r => r.volPct > 0)).toBe(true);
+        expect(rollingVolatility([], 5)).toEqual([]);
+    });
+
+    it('returnHistogram bins daily returns and sums back to the input size', () => {
+        const returns = Array.from({ length: 40 }, (_, i) => (i % 4) - 1.5); // -1.5..1.5
+        const hist = returnHistogram(returns, 8);
+        expect(hist.length).toBe(8);
+        expect(hist.reduce((a, b) => a + b.count, 0)).toBe(returns.length);
+        expect(hist.every(h => h.count >= 0 && h.lower <= h.upper)).toBe(true);
+        expect(returnHistogram([], 8)).toEqual([]);
+        expect(returnHistogram([3, 3, 3], 8)).toEqual([{ bucket: 3, count: 3 }]);
+    });
+
+    it('calmarRatio = mean annual return / max drawdown (dd=0 guard)', () => {
+        const daily = [0.05, 0.05, 0.05]; // mean 0.05/day
+        const equity = [1, 0.9, 1.1]; // maxDD 10%
+        expect(calmarRatio(daily, equity, 365)).toBeCloseTo((0.05 * 365) / 10, 6);
+        expect(calmarRatio(daily, [1, 1, 1], 365)).toBe(0);
+    });
+
+    it('tailRatio is upside mean / |downside mean| (0 when data is too small)', () => {
+        const returns = [...Array(80).fill(1), ...Array(20).fill(-0.5)];
+        // tailPct 5% → top 5 (+1) vs bottom 5 (-0.5) → 1 / 0.5 = 2
+        expect(tailRatio(returns, 0.05)).toBeCloseTo(2, 6);
+        expect(tailRatio([1, -1], 0.05)).toBe(0); // < 20 samples
     });
 });

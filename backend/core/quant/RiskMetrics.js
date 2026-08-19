@@ -102,6 +102,73 @@ export function winRate(dailyReturnsPct) {
 }
 
 /**
+ * Rolling (windowed) annualized volatility. Returns one point per window:
+ * [{ i, volPct }] where i is the last index of the window (so the series can
+ * be aligned with the equity/time axis).
+ */
+export function rollingVolatility(dailyReturnsPct, window = 30, periodsPerYear = 365) {
+    if (!dailyReturnsPct.length) return [];
+    const w = Math.max(2, Math.min(Math.floor(window), dailyReturnsPct.length));
+    const out = [];
+    for (let end = w; end <= dailyReturnsPct.length; end++) {
+        const slice = dailyReturnsPct.slice(end - w, end);
+        out.push({ i: end - 1, volPct: annualizedVolatility(slice, periodsPerYear) });
+    }
+    return out;
+}
+
+/**
+ * Histogram of daily returns into N buckets — the input to a return
+ * distribution chart. Buckets are rounded to 2 decimals for stable labels.
+ */
+export function returnHistogram(dailyReturnsPct, buckets = 10) {
+    if (!dailyReturnsPct.length) return [];
+    const n = Math.max(2, Math.min(Math.floor(buckets), 30));
+    const min = Math.min(...dailyReturnsPct);
+    const max = Math.max(...dailyReturnsPct);
+    if (min === max) return [{ bucket: round2(min), count: dailyReturnsPct.length }];
+    const width = (max - min) / n;
+    const counts = new Array(n).fill(0);
+    for (const r of dailyReturnsPct) {
+        let idx = Math.floor((r - min) / width);
+        if (idx >= n) idx = n - 1;
+        counts[idx] += 1;
+    }
+    return counts.map((count, idx) => ({
+        bucket: round2(min + width * (idx + 0.5)),
+        lower: round2(min + width * idx),
+        upper: round2(min + width * (idx + 1)),
+        count,
+    }));
+}
+
+/** Calmar ratio: annualized mean return / max drawdown (guard dd=0 → 0). */
+export function calmarRatio(dailyReturnsPct, equityCurve = null, periodsPerYear = 365) {
+    const dd = equityCurve ? maxDrawdown(equityCurve) : 0;
+    if (dd <= 0) return 0;
+    return (mean(dailyReturnsPct) * periodsPerYear) / dd;
+}
+
+/**
+ * Tail ratio: mean of the best 5% / |mean of the worst 5%| returns. A value
+ * > 1 means upside tails dominate downside tails.
+ */
+export function tailRatio(dailyReturnsPct, tailPct = 0.05) {
+    if (dailyReturnsPct.length < 20) return 0;
+    const n = Math.max(1, Math.floor(dailyReturnsPct.length * tailPct));
+    const sorted = [...dailyReturnsPct].sort((a, b) => a - b);
+    const upside = sorted.slice(-n);
+    const downside = sorted.slice(0, n);
+    const dMean = Math.abs(mean(downside));
+    if (dMean === 0) return 0;
+    return mean(upside) / dMean;
+}
+
+function round2(n) {
+    return Math.round(n * 100) / 100;
+}
+
+/**
  * Beta vs a benchmark return series (cov/var). Returns null when there is no
  * benchmark or the benchmark is constant.
  */
@@ -143,6 +210,8 @@ export function computeRiskMetrics({
         conditionalVaRPct: conditionalVaR(dailyReturnsPct, confidence),
         winRate: winRate(dailyReturnsPct),
         beta: benchmarkReturnsPct ? beta(dailyReturnsPct, benchmarkReturnsPct) : null,
+        calmarRatio: calmarRatio(dailyReturnsPct, equityCurve, periodsPerYear),
+        tailRatio: tailRatio(dailyReturnsPct),
         confidence,
     };
 }

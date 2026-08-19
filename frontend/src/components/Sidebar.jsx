@@ -10,6 +10,7 @@ import SupportModal from './SupportModal';
 
 export const navItems = [
     { to: '/', icon: 'dashboard', labelKey: 'nav.overview' },
+    { to: '/analytics', icon: 'query_stats', labelKey: 'nav.analytics' },
     { to: '/yield-strategies', icon: 'account_balance_wallet', labelKey: 'nav.yieldStrategies' },
     { to: '/live-data', icon: 'sensors', labelKey: 'nav.liveData' },
     { to: '/ai-agent-logs', icon: 'terminal', labelKey: 'nav.agentLogs' },

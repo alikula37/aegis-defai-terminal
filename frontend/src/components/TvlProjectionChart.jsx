@@ -2,12 +2,14 @@ import { useMemo } from 'react';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useI18n } from '../i18n/I18nProvider';
 import { chartColors } from '../lib/chartColors';
+import { xAxis, yAxis, grid, tooltipCursor } from './chartTheme';
+import { fmtUsd, fmtUsdCompact } from '../lib/format';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 
 export default function TvlProjectionChart() {
-    const { t } = useI18n();
+    const { t, lang } = useI18n();
     const { portfolioData: liveData } = useWebSocket();
 
     const projectionData = useMemo(() => {
@@ -45,14 +47,14 @@ export default function TvlProjectionChart() {
                 </p>
                 <div className="flex justify-between items-center gap-4">
                     <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">{t('tvl.projectedTvl')}</span>
-                    <span className="font-[Inter] text-[13px] font-bold text-primary">
-                        ${data.tvl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <span className="font-[Inter] text-[13px] font-bold text-primary tabular-nums">
+                        {fmtUsd(data.tvl, { locale: lang })}
                     </span>
                 </div>
                 <div className="flex justify-between items-center gap-4 mt-1">
                     <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">{t('tvl.estProfit')}</span>
-                    <span className="font-[Inter] text-[13px] font-bold text-success">
-                        +${(data.tvl - currentTvl).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <span className="font-[Inter] text-[13px] font-bold text-success tabular-nums">
+                        {fmtUsd(data.tvl - currentTvl, { locale: lang })}
                     </span>
                 </div>
             </div>
@@ -61,8 +63,8 @@ export default function TvlProjectionChart() {
 
     return (
         <div className="bg-surface-container border border-outline-variant rounded-xl p-6 flex flex-col h-full">
-            <div className="flex justify-between items-start mb-6">
-                <div>
+            <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
+                <div className="min-w-0">
                     <h3 className="font-[Inter] text-[16px] font-semibold text-on-surface flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary">trending_up</span>
                         {t('tvl.projectionTitle')}
@@ -71,34 +73,31 @@ export default function TvlProjectionChart() {
                         {t('tvl.basedOnNetApy', { apy: Number(liveData.netApy).toFixed(2) })}
                     </p>
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right shrink-0">
                     <p className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('tvl.projected1y')}</p>
-                    <p className="font-[Inter] text-[20px] font-bold text-success">
-                        +${projected1YearYield.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <p className="font-[Inter] text-[20px] font-bold text-success tabular-nums">
+                        {fmtUsd(projected1YearYield, { locale: lang })}
                     </p>
                 </div>
             </div>
 
             <div className="flex-1 min-h-[250px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={projectionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <AreaChart data={projectionData} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorTvl" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor={chartColors.primary} stopOpacity={0.3} />
                                 <stop offset="95%" stopColor={chartColors.primary} stopOpacity={0} />
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.border} vertical={false} />
-                        <XAxis dataKey="time" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
+                        <CartesianGrid {...grid} />
+                        <XAxis {...xAxis} dataKey="time" />
                         <YAxis
-                            stroke="#ffffff40"
-                            fontSize={10}
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`}
+                            {...yAxis}
+                            tickFormatter={v => fmtUsdCompact(v, lang)}
                             domain={['dataMin', 'dataMax']}
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#ffffff20', strokeWidth: 1, strokeDasharray: '3 3' }} />
+                        <Tooltip content={<CustomTooltip />} cursor={tooltipCursor} />
                         <Area
                             type="monotone"
                             dataKey="tvl"

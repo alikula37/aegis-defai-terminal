@@ -24,7 +24,7 @@ export default function Overview() {
                     <p className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant mb-8">
                         {t('yield.idleMsg')}
                     </p>
-                    <div className="flex gap-4 max-w-sm mx-auto">
+                    <div className="flex flex-col sm:flex-row gap-4 max-w-sm mx-auto">
                         <button
                             onClick={() => setIsStartModalOpen(true)}
                             className="flex-1 py-3 rounded-md font-[JetBrains_Mono] text-[14px] font-medium transition-colors flex items-center justify-center gap-2 bg-primary text-on-primary hover:bg-primary-fixed hover:text-on-primary-fixed"

@@ -5,6 +5,8 @@ import {
     ScatterChart, Scatter, ZAxis, Cell
 } from 'recharts';
 import { useI18n } from '../i18n/I18nProvider';
+import { xAxis, yAxis, grid } from './chartTheme';
+import { fmtUsd, fmtPct } from '../lib/format';
 
 function fmtTime(iso) {
     const d = new Date(iso);
@@ -94,7 +96,7 @@ export default function TransactionAnalytics() {
                 <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mb-2 pb-2 border-b border-white/10">
                     {data.time}
                 </p>
-                <p className="font-[Inter] text-[13px] text-on-surface mb-2">{data.action}</p>
+                <p className="font-[Inter] text-[13px] text-on-surface mb-2 break-words">{data.action}</p>
                 <div className="flex justify-between items-center gap-4">
                     <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">{t('market.status')}:</span>
                     <span className={`font-[Inter] text-[13px] font-bold ${data.isSuccessful ? 'text-success' : 'text-error'}`}>
@@ -103,14 +105,14 @@ export default function TransactionAnalytics() {
                 </div>
                 <div className="flex justify-between items-center gap-4">
                     <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">{t('txn.estImpact')}</span>
-                    <span className={`font-[Inter] text-[13px] font-bold ${Number(data.pnl) >= 0 ? 'text-success' : 'text-error'}`}>
-                        ${Number(data.pnl ?? 0).toFixed(2)}
+                    <span className={`font-[Inter] text-[13px] font-bold tabular-nums ${Number(data.pnl) >= 0 ? 'text-success' : 'text-error'}`}>
+                        {fmtUsd(data.pnl, { locale: lang })}
                     </span>
                 </div>
                 <div className="flex justify-between items-center gap-4">
                     <span className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant">{t('txn.netApy')}</span>
-                    <span className="font-[Inter] text-[13px] font-bold text-primary">
-                        {Number(data.netApy ?? 0).toFixed(2)}%
+                    <span className="font-[Inter] text-[13px] font-bold text-primary tabular-nums">
+                        {fmtPct(data.netApy ?? 0, { locale: lang, signed: true })}
                     </span>
                 </div>
                 {data.pnl < 0 && (
@@ -128,34 +130,28 @@ export default function TransactionAnalytics() {
 
     const totalYieldAccrued = portfolioStats ? portfolioStats.totalYield : 0;
 
-    const formatCurrency = (val) => {
-        const isNegative = val < 0;
-        const absVal = Math.abs(val);
-        return `${isNegative ? '-' : '+'}$${absVal.toFixed(2)}`;
-    };
-
     return (
         <div className="flex flex-col gap-[1rem]">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-[1rem]">
                 <div className="bg-surface-container border border-outline-variant rounded-xl p-5 flex flex-col justify-center">
                     <span className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('txn.totalYield')}</span>
-                    <span className={`font-[Inter] text-[24px] font-bold ${totalYieldAccrued >= 0 ? 'text-success' : 'text-error'}`}>
-                        {formatCurrency(totalYieldAccrued)}
+                    <span className={`font-[Inter] text-[24px] font-bold tabular-nums ${totalYieldAccrued >= 0 ? 'text-success' : 'text-error'}`}>
+                        {fmtUsd(totalYieldAccrued, { locale: lang })}
                     </span>
                     <span className="font-[Inter] text-[11px] text-on-surface-variant mt-1">{t('txn.realizedGrowth')}</span>
                 </div>
                 <div className="bg-surface-container border border-outline-variant rounded-xl p-5 flex flex-col justify-center">
                     <span className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('txn.executionCosts')}</span>
-                    <span className="font-[Inter] text-[24px] font-bold text-error">
-                        -${Math.abs(totalTxCosts).toFixed(2)}
+                    <span className="font-[Inter] text-[24px] font-bold tabular-nums text-error">
+                        {fmtUsd(-totalTxCosts, { locale: lang })}
                     </span>
                     <span className="font-[Inter] text-[11px] text-on-surface-variant mt-1">{t('txn.executionCostsSub')}</span>
                 </div>
                 <div className="bg-surface-container border border-outline-variant rounded-xl p-5 flex flex-col justify-center">
                     <span className="font-[JetBrains_Mono] text-[12px] text-on-surface-variant mb-1">{t('txn.valueCreated')}</span>
-                    <span className="font-[Inter] text-[24px] font-bold text-success">
-                        +${totalTxProfits.toFixed(2)}
+                    <span className="font-[Inter] text-[24px] font-bold tabular-nums text-success">
+                        {fmtUsd(totalTxProfits, { locale: lang })}
                     </span>
                     <span className="font-[Inter] text-[11px] text-on-surface-variant mt-1">{t('txn.valueCreatedSub')}</span>
                 </div>
@@ -170,10 +166,10 @@ export default function TransactionAnalytics() {
                     </h3>
                     <div className="h-[250px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={transactions} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                                <XAxis dataKey="time" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                                <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
+                            <BarChart data={transactions} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+                                <CartesianGrid {...grid} />
+                                <XAxis {...xAxis} dataKey="time" />
+                                <YAxis {...yAxis} tickFormatter={v => `$${v}`} />
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: '#ffffff05' }} />
                                 <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                                     {transactions.map((entry, index) => (
@@ -193,10 +189,10 @@ export default function TransactionAnalytics() {
                     </h3>
                     <div className="h-[250px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <ScatterChart margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                                <XAxis dataKey="time" type="category" allowDuplicatedCategory={false} stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                                <YAxis dataKey="netApy" type="number" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}%`} domain={['auto', 'auto']} />
+                            <ScatterChart margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+                                <CartesianGrid {...grid} />
+                                <XAxis {...xAxis} dataKey="time" type="category" allowDuplicatedCategory={false} />
+                                <YAxis {...yAxis} dataKey="netApy" type="number" tickFormatter={v => `${v}%`} domain={['auto', 'auto']} />
                                 <ZAxis dataKey="pnl" range={[50, 400]} />
                                 <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
                                 <Scatter name="Transactions" data={transactions} fill="#17c3b2" fillOpacity={0.8} />

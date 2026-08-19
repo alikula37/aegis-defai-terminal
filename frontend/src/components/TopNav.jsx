@@ -27,7 +27,7 @@ function ExecutionBadge({ executionStatus }) {
     const dotClass = isOnchain ? (onchainReady ? 'bg-success animate-pulse' : 'bg-error') : 'bg-on-surface-variant';
 
     return (
-        <span title={title} className={`px-2 py-0.5 rounded-md text-[12px] font-[JetBrains_Mono] flex items-center gap-1 border ${pillClass}`}>
+        <span title={title} className={`hidden md:inline-flex px-2 py-0.5 rounded-md text-[12px] font-[JetBrains_Mono] items-center gap-1 border ${pillClass}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${dotClass}`}></span>
             {isOnchain ? `Onchain · ${walletShort || 'no wallet'}` : 'Simulation'}
         </span>
@@ -45,6 +45,7 @@ export default function TopNav() {
 
     const pageTitles = {
         '/': t('nav.overview'),
+        '/analytics': t('nav.analytics'),
         '/yield-strategies': t('nav.yieldStrategies'),
         '/ai-agent-logs': t('nav.agentLogs'),
         '/settings': t('nav.settings'),
@@ -53,30 +54,30 @@ export default function TopNav() {
     const currentDate = new Date().toLocaleDateString(lang, { month: 'short', day: 'numeric', year: 'numeric' });
 
     return (
-        <header className="flex justify-between items-center h-16 px-[1.5rem] border-b border-outline-variant bg-surface-container-low sticky top-0 z-40 w-full">
-            <div className="flex items-center gap-3">
+        <header className="flex justify-between items-center gap-2 h-16 px-4 sm:px-6 border-b border-outline-variant bg-surface-container-low sticky top-0 z-40 w-full">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 {/* E10 — mobile hamburger (desktop keeps the fixed sidebar) */}
                 <button
                     onClick={() => setIsMobileNavOpen(true)}
-                    className="md:hidden text-on-surface-variant hover:text-on-surface p-1.5 rounded-lg hover:bg-surface-variant transition-colors"
+                    className="md:hidden text-on-surface-variant hover:text-on-surface p-1.5 rounded-lg hover:bg-surface-variant transition-colors shrink-0"
                     aria-label="Open navigation menu"
                 >
                     <span className="material-symbols-outlined">menu</span>
                 </button>
-                <div className="flex flex-col">
-                    <div className="flex items-center gap-3">
-                        <h2 className="font-[Inter] text-[20px] leading-[28px] font-[510] text-paper tracking-[-0.02em]">{title}</h2>
+                <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <h2 className="font-[Inter] text-[18px] sm:text-[20px] leading-[28px] font-[510] text-paper tracking-[-0.02em] truncate max-w-[38vw] sm:max-w-none">{title}</h2>
                         {isSimulationRunning && (
-                            <span className="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-md text-[12px] font-[JetBrains_Mono] flex items-center gap-1">
+                            <span className="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-md text-[12px] font-[JetBrains_Mono] flex items-center gap-1 truncate">
                                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
                                 {simulationName}
                             </span>
                         )}
                     </div>
-                    <span className="font-[Inter] text-[14px] leading-[20px] text-on-surface-variant">{currentDate}</span>
+                    <span className="hidden sm:block font-[Inter] text-[14px] leading-[20px] text-on-surface-variant">{currentDate}</span>
                 </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
                 <ExecutionBadge executionStatus={executionStatus} />
                 <LanguageToggle />
                 <div className="relative">
@@ -132,7 +133,7 @@ export default function TopNav() {
                 </div>
 
                 {authRequired && user && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-variant/50 border border-outline-variant">
+                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-variant/50 border border-outline-variant">
                         <span className="material-symbols-outlined text-[18px] text-on-surface-variant">person</span>
                         <div className="flex flex-col leading-tight">
                             <span className="text-[13px] font-medium text-on-surface">{user.username}</span>
@@ -151,7 +152,7 @@ export default function TopNav() {
                 <button
                     disabled
                     title="Wallet connection arrives in Phase 2 (onchain execution)."
-                    className="bg-primary-container text-on-primary-container px-4 py-1.5 rounded-lg text-[14px] font-medium opacity-50 cursor-not-allowed flex items-center gap-2"
+                    className="hidden sm:flex bg-primary-container text-on-primary-container px-4 py-1.5 rounded-lg text-[14px] font-medium opacity-50 cursor-not-allowed items-center gap-2"
                 >
                     <span className="material-symbols-outlined text-[18px]">account_balance_wallet</span>
                     {t('nav.wallet')}

@@ -8,15 +8,18 @@ import { useWebSocket } from '../contexts/WebSocketContext';
 import { useI18n } from '../i18n/I18nProvider';
 
 // ---- Helpers ----
-function fmtTime(iso) {
+function fmtTime(iso, { withDate = false } = {}) {
     const d = new Date(iso);
-    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    if (isNaN(d.getTime())) return '--:--';
+    const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    if (!withDate) return time;
+    return `${d.getMonth() + 1}/${d.getDate()} ${time}`;
 }
 
-function rowToPoint(row) {
+function rowToPoint(row, { withDate = false } = {}) {
     const o = row.oracle || {};
     return {
-        time: fmtTime(row.timestamp),
+        time: fmtTime(row.timestamp, { withDate }),
         timestamp: row.timestamp,
         netApy: Number((row.net_apy || 0).toFixed(2)),
         pendleApy: Number((o.pendlePtSusdeApy || 0).toFixed(2)),
@@ -98,7 +101,7 @@ export default function LiveYieldChart() {
                 // only skip null/zero-value rows.
                 const pts = (Array.isArray(rows) ? rows : [])
                     .filter(r => r.net_apy != null && r.net_apy !== 0)
-                    .map(rowToPoint)
+                    .map(row => rowToPoint(row, { withDate: timeRange === '7D' || timeRange === 'ALL' }))
                     .reverse(); // Reverse to show oldest to newest
 
                 seenTimestamps.current.clear();
@@ -129,7 +132,7 @@ export default function LiveYieldChart() {
             },
         };
 
-        const pt = rowToPoint(syntheticRow);
+        const pt = rowToPoint(syntheticRow, { withDate: timeRange === '7D' || timeRange === 'ALL' });
 
         setData(prev => {
             // Avoid duplicate timestamps within the same minute
@@ -141,7 +144,7 @@ export default function LiveYieldChart() {
             const next = [...prev, pt];
             return next.length > MAX_POINTS ? next.slice(-MAX_POINTS) : next;
         });
-    }, [liveData]);
+    }, [liveData, timeRange]);
 
     const hasData = data.length > 0;
 
@@ -151,10 +154,10 @@ export default function LiveYieldChart() {
     const yMin = Math.min(0, ...(data.map(d => d.morphoBorrow)));
 
     return (
-        <div className="bg-surface-container border border-outline-variant rounded-xl p-[1.5rem] flex flex-col h-[380px] relative overflow-hidden">
+        <div className="bg-surface-container border border-outline-variant rounded-xl p-[1.5rem] flex flex-col h-[320px] sm:h-[380px] relative overflow-hidden">
             {/* Header */}
-            <div className="flex justify-between items-start mb-3 relative z-10">
-                <div>
+            <div className="flex flex-wrap justify-between items-start gap-3 mb-3 relative z-10">
+                <div className="min-w-0">
                     <h3 className="font-[Inter] text-[16px] leading-[24px] font-semibold text-on-surface">
                         {t('chart.title')}
                     </h3>
@@ -163,7 +166,7 @@ export default function LiveYieldChart() {
                     </p>
                     <ChartLegend series={SERIES} />
                 </div>
-                <div className="flex flex-col items-end gap-2 shrink-0">
+                <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
                     <div className="flex items-center gap-2 bg-surface-container-lowest px-3 py-1.5 rounded-full border border-outline-variant/50">
                         <span className={`w-2 h-2 rounded-full ${hasData ? 'bg-primary animate-pulse' : 'bg-on-surface-variant'}`}></span>
                         <span className="font-[JetBrains_Mono] text-[11px] font-bold text-primary tracking-wider">
@@ -188,7 +191,7 @@ export default function LiveYieldChart() {
             </div>
 
             {/* Chart or empty state */}
-            <div className="flex-1 w-full relative z-10 -ml-4">
+            <div className="flex-1 w-full relative z-10">
                 {!hasData ? (
                     <div className="flex flex-col items-center justify-center h-full gap-3 text-on-surface-variant">
                         <span className={`material-symbols-outlined text-[40px] ${loadError ? 'text-error opacity-70' : 'opacity-30'}`}>show_chart</span>
@@ -229,7 +232,8 @@ export default function LiveYieldChart() {
                                 tickLine={false}
                                 axisLine={false}
                                 tickMargin={10}
-                                minTickGap={30}
+                                minTickGap={timeRange === '7D' || timeRange === 'ALL' ? 48 : 30}
+                                interval="preserveStartEnd"
                             />
                             <YAxis
                                 stroke="#383b3f"
@@ -240,7 +244,7 @@ export default function LiveYieldChart() {
                                 tickLine={false}
                                 axisLine={false}
                                 tickMargin={8}
-                                width={42}
+                                width={52}
                             />
                             <Tooltip content={<CustomTooltip tvlLabel={t('chart.tvlLabel')} />} cursor={{ stroke: '#17c3b2', strokeWidth: 1, strokeDasharray: '4 4', opacity: 0.4 }} />
 

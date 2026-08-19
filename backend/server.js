@@ -9,7 +9,7 @@ import { dirname, join } from 'node:path';
 import { getLogs, getLatestPortfolio, getInitialPortfolio, getPortfolioHistory, getSettings, updateSettings, deleteSettings, getRecentMemories, closeDatabase, checkSimulationNameExists, generateUniqueSimulationName, suggestSimulationName, getLatestSimulation, setSimulationStatus, getAllSimulations, deleteSimulation, getSimulationById, getLocalUserId } from './db/database.js';
 import { AegisAgent } from './agent.js';
 import { Backtester } from './backtest/Backtester.js';
-import { computeRiskMetrics } from './core/quant/RiskMetrics.js';
+import { computeRiskMetrics, returnHistogram, rollingVolatility } from './core/quant/RiskMetrics.js';
 import { forecast as runForecast } from './core/quant/ForecastService.js';
 import aegisConfig from './aegis.config.js';
 import helmet from 'helmet';
@@ -623,7 +623,12 @@ app.get('/api/portfolio/metrics', async (req, res) => {
     const simId = await activeSimForUser(req, res);
     if (simId === false) return;
     if (simId === null) {
-        return res.json(computeRiskMetrics({ dailyReturnsPct: [], equityCurve: null }));
+        return res.json({
+            ...computeRiskMetrics({ dailyReturnsPct: [], equityCurve: null }),
+            equityCurve: [],
+            returnHistogram: [],
+            rollingVolatility: [],
+        });
     }
     try {
         const limit = Math.min(Math.max(parseInt(req.query.limit) || 2000, 10), 10000);
@@ -646,6 +651,12 @@ app.get('/api/portfolio/metrics', async (req, res) => {
             ...report,
             lastNetApy: netApySeries.length ? netApySeries[netApySeries.length - 1] : null,
             lastTvl: tvlSeries.length ? tvlSeries[tvlSeries.length - 1] : null,
+            // Chart payloads: normalized equity curve (starts at 1), daily
+            // return distribution and rolling (windowed) volatility — used by
+            // the Analytics page.
+            equityCurve: tvlSeries.length > 1 ? tvlSeries.map((v, i) => ({ i, equity: v / tvlSeries[0] })) : [],
+            returnHistogram: returnHistogram(dailyReturnsPct, 12),
+            rollingVolatility: rollingVolatility(dailyReturnsPct, 30),
         });
     } catch (err) {
         res.status(500).json({ error: err.message });

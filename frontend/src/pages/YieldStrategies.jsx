@@ -27,7 +27,7 @@ export default function YieldStrategies() {
                     <p className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant mb-8">
                         {t('yield.idleMsg')}
                     </p>
-                    <div className="flex gap-4 max-w-sm mx-auto">
+                    <div className="flex flex-col sm:flex-row gap-4 max-w-sm mx-auto">
                         <button
                             onClick={() => setIsStartModalOpen(true)}
                             className="flex-1 py-3 rounded-md font-[JetBrains_Mono] text-[14px] font-medium transition-colors flex items-center justify-center gap-2 bg-primary text-on-primary hover:bg-primary-fixed hover:text-on-primary-fixed"
@@ -90,7 +90,7 @@ export default function YieldStrategies() {
         <main className="flex-1 overflow-y-auto p-[2rem] bg-background pb-12">
             <div className="max-w-[1200px] mx-auto space-y-[1rem]">
                 {/* Active State Banner */}
-                <div className="flex items-center gap-6 bg-surface-container border border-outline-variant rounded-md p-4">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 bg-surface-container border border-outline-variant rounded-md p-4">
                     <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-primary">lan</span>
                         <span className="font-[JetBrains_Mono] text-[14px] text-on-surface-variant">{t('yield.activeChain')}</span>
@@ -118,12 +118,12 @@ export default function YieldStrategies() {
                             <p className="font-[JetBrains_Mono] text-[13px] leading-[16px] font-medium text-on-surface-variant mb-2">{m.label}</p>
 
                             {m.suffix ? (
-                                <h3 className={`font-[Inter] text-[48px] leading-[56px] tracking-[-0.02em] font-bold ${m.valueColor} flex items-center gap-3`}>
+                                <h3 className={`font-[Inter] text-[clamp(28px,7vw,48px)] leading-none tracking-[-0.02em] font-bold tabular-nums ${m.valueColor} flex items-center gap-3 flex-wrap`}>
                                     {m.value}
                                     <span className="font-[Inter] text-[20px] leading-[28px] font-semibold text-on-surface-variant font-normal">{m.suffix}</span>
                                 </h3>
                             ) : (
-                                <h3 className={`font-[Inter] text-[48px] leading-[56px] tracking-[-0.02em] font-bold ${m.valueColor}`}>{m.value}</h3>
+                                <h3 className={`font-[Inter] text-[clamp(28px,7vw,48px)] leading-none tracking-[-0.02em] font-bold tabular-nums break-words ${m.valueColor}`}>{m.value}</h3>
                             )}
 
                             {m.bar && (

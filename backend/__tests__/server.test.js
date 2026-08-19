@@ -117,6 +117,12 @@ describe('API Integration Tests', () => {
         for (const key of ['sharpeRatio', 'sortinoRatio', 'annualizedVolatilityPct', 'historicalVaRPct', 'conditionalVaRPct', 'winRate']) {
             expect(Number.isFinite(res.body[key])).toBe(true);
         }
+        // Chart payloads must be arrays (may be empty with no active sim).
+        expect(Array.isArray(res.body.equityCurve)).toBe(true);
+        expect(Array.isArray(res.body.returnHistogram)).toBe(true);
+        expect(Array.isArray(res.body.rollingVolatility)).toBe(true);
+        expect(Number.isFinite(res.body.calmarRatio)).toBe(true);
+        expect(Number.isFinite(res.body.tailRatio)).toBe(true);
     });
 
     it('GET /api/forecast/:metric validates the metric and returns forecast shape', async () => {

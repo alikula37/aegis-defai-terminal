@@ -36,7 +36,7 @@ test.describe('Aegis DeFAI Terminal — active-sim page crawl', () => {
         await expect(page.getByRole('button', { name: /Stop Simulation/i })).toBeVisible({ timeout: 20000 });
         await page.waitForTimeout(3000);
 
-        const routes = ['/', '/yield-strategies', '/live-data', '/ai-agent-logs', '/settings'];
+        const routes = ['/', '/analytics', '/yield-strategies', '/live-data', '/ai-agent-logs', '/settings'];
         for (const route of routes) {
             await page.goto(route);
             await expect(page.getByText('AEGIS DeFAI').first()).toBeVisible({ timeout: 15000 });

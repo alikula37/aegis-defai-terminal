@@ -13,7 +13,16 @@ export default defineConfig({
         baseURL: 'http://localhost:5173',
         trace: 'retain-on-failure',
     },
-    projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
+    projects: [
+        // Keep the first project named 'chromium' so the existing desktop
+        // baselines (chromium-win32) stay valid.
+        { name: 'chromium', use: { browserName: 'chromium' } },
+        // Mobile/tablet projects only run the viewport-sensitive visual spec —
+        // the functional specs assume the desktop sidebar (visible Stop button)
+        // and would fail purely because of layout, not logic.
+        { name: 'mobile-chromium', use: { browserName: 'chromium', viewport: { width: 375, height: 812 } }, testMatch: /visual\.spec\.js/ },
+        { name: 'tablet-chromium', use: { browserName: 'chromium', viewport: { width: 768, height: 1024 } }, testMatch: /visual\.spec\.js/ },
+    ],
     webServer: [
         {
             command: 'node server.js',

@@ -2,6 +2,8 @@ import { apiFetch } from '../lib/apiClient';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { useI18n } from '../i18n/I18nProvider';
 import { useState, useEffect } from 'react';
+import { xAxis, yAxis, grid, tooltipCursor } from './chartTheme';
+import { fmtUsd, fmtUsdCompact } from '../lib/format';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid,
     Tooltip, ResponsiveContainer
@@ -21,8 +23,8 @@ const CustomTooltip = ({ active, payload, label }) => {
             <p className="font-[JetBrains_Mono] text-[11px] text-on-surface-variant mb-2 pb-2 border-b border-white/10">
                 {label}
             </p>
-            <p className="font-[Inter] text-[14px] font-bold text-primary">
-                ${Number(tvl).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <p className="font-[Inter] text-[14px] font-bold text-primary tabular-nums">
+                {fmtUsd(tvl)}
             </p>
         </div>
     );
@@ -91,31 +93,21 @@ export default function TvlHistoryModal({ isOpen, onClose }) {
                         </div>
                     ) : (
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <AreaChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="gradTvlHistory" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#17c3b2" stopOpacity={0.3} />
                                         <stop offset="95%" stopColor="#17c3b2" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                                <XAxis
-                                    dataKey="time"
-                                    stroke="#ffffff40"
-                                    fontSize={10}
-                                    tickMargin={10}
-                                    tickLine={false}
-                                    axisLine={false}
-                                />
+                                <CartesianGrid {...grid} />
+                                <XAxis {...xAxis} dataKey="time" />
                                 <YAxis
-                                    stroke="#ffffff40"
-                                    fontSize={10}
-                                    tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`}
-                                    tickLine={false}
-                                    axisLine={false}
+                                    {...yAxis}
+                                    tickFormatter={v => fmtUsdCompact(v)}
                                     domain={['auto', 'auto']}
                                 />
-                                <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#ffffff20', strokeWidth: 1, strokeDasharray: '3 3' }} />
+                                <Tooltip content={<CustomTooltip />} cursor={tooltipCursor} />
                                 <Area
                                     type="monotone"
                                     dataKey="tvl"

@@ -46,6 +46,15 @@ describe('Backtester', () => {
         expect(a.liquidationProbability).toBeLessThanOrEqual(1);
     });
 
+    it('Monte Carlo returns a return distribution histogram', async () => {
+        const a = await Backtester.runMonteCarlo({ simulations: 300, days: 30, seed: 7 });
+        expect(Array.isArray(a.distribution)).toBe(true);
+        expect(a.distribution.length).toBeGreaterThan(0);
+        const total = a.distribution.reduce((sum, b) => sum + b.count, 0);
+        expect(total).toBe(a.simulations);
+        expect(a.distribution.every(b => b.count >= 0 && b.lower <= b.upper)).toBe(true);
+    });
+
     it('sweep returns one row per leverage level', async () => {
         const sweep = await Backtester.sweep({ leverages: [2, 3, 4], dataset: makeDataset() });
         expect(sweep.length).toBe(3);

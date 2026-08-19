@@ -227,6 +227,10 @@ export class Backtester {
         const sorted = [...finalEquities].sort((a, b) => a - b);
         const pct = (q) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
 
+        // Return distribution histogram (of total returns, %) for the UI.
+        const returnsPct = finalEquities.map(e => (e - 1) * 100);
+        const distribution = histogram(returnsPct, 12);
+
         return {
             strategy: 'Pendle PT-sUSDe Delta-Neutral Loop (Monte Carlo)',
             simulations,
@@ -238,6 +242,7 @@ export class Backtester {
             p5ReturnPct: (pct(0.05) - 1) * 100,
             p95ReturnPct: (pct(0.95) - 1) * 100,
             meanReturnPct: (finalEquities.reduce((a, b) => a + b, 0) / simulations - 1) * 100,
+            distribution,
         };
     }
 
@@ -266,4 +271,30 @@ function gaussian(rand) {
     while (u === 0) u = rand();
     while (v === 0) v = rand();
     return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+}
+
+/** Fixed-width histogram of a numeric array → [{ bucket, lower, upper, count }]. */
+function histogram(values, buckets = 12) {
+    if (!values.length) return [];
+    const n = Math.max(2, Math.min(Math.floor(buckets), 40));
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    if (min === max) return [{ bucket: round2(min), lower: min, upper: max, count: values.length }];
+    const width = (max - min) / n;
+    const counts = new Array(n).fill(0);
+    for (const v of values) {
+        let idx = Math.floor((v - min) / width);
+        if (idx >= n) idx = n - 1;
+        counts[idx] += 1;
+    }
+    return counts.map((count, idx) => ({
+        bucket: round2(min + width * (idx + 0.5)),
+        lower: round2(min + width * idx),
+        upper: round2(min + width * (idx + 1)),
+        count,
+    }));
+}
+
+function round2(n) {
+    return Math.round(n * 100) / 100;
 }

@@ -59,9 +59,9 @@ export default function PortfolioAllocationChart() {
                             data={data}
                             cx="50%"
                             cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={5}
+                            innerRadius="45%"
+                            outerRadius="75%"
+                            paddingAngle={4}
                             dataKey="value"
                             stroke="none"
                         >
@@ -74,7 +74,7 @@ export default function PortfolioAllocationChart() {
                             verticalAlign="bottom"
                             height={36}
                             iconType="circle"
-                            wrapperStyle={{ fontSize: '12px', fontFamily: 'Inter', color: 'var(--color-on-surface-variant)' }}
+                            wrapperStyle={{ fontSize: '12px', fontFamily: 'Inter', color: 'var(--color-on-surface-variant)', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0 12px' }}
                         />
                     </PieChart>
                 </ResponsiveContainer>
