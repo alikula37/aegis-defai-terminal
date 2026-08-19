@@ -21,6 +21,9 @@ vi.mock('../contexts/WebSocketContext', () => ({
 // The modal renders instantly from the SettingsContext cache and refreshes
 // from /api/settings in the background — tests drive the real values through
 // apiFetch (mockRoutes), the cache only shapes the very first paint.
+// updateSettings is the context write-back the modal now uses to persist the
+// start-screen choices (so Settings + Overview stay in sync).
+const updateSettingsMock = vi.fn().mockResolvedValue(true);
 const useSettingsMock = vi.fn(() => ({
     settings: {
         dataMode: 'LIVE', dataScenario: 'stable', slippage: '0.5',
@@ -29,6 +32,7 @@ const useSettingsMock = vi.fn(() => ({
         activeModel: '', brainMode: 'auto',
     },
     isLoading: false,
+    updateSettings: updateSettingsMock,
 }));
 vi.mock('../contexts/SettingsContext', () => ({
     useSettings: (...args) => useSettingsMock(...args),
@@ -88,6 +92,8 @@ function submitForm(container) {
 describe('SimulationStartModal', () => {
     beforeEach(() => {
         apiFetch.mockReset();
+        updateSettingsMock.mockReset();
+        updateSettingsMock.mockResolvedValue(true);
         useSettingsMock.mockReset();
         useSettingsMock.mockImplementation(() => ({
             settings: {
@@ -97,6 +103,7 @@ describe('SimulationStartModal', () => {
                 activeModel: '', brainMode: 'auto',
             },
             isLoading: false,
+            updateSettings: updateSettingsMock,
         }));
     });
 
@@ -140,11 +147,11 @@ describe('SimulationStartModal', () => {
         });
         submitForm(container);
         await waitFor(() => expect(onStart).toHaveBeenCalled());
-        // Empty key fields keep the stored values (the GET call has no body —
-        // only the POST /api/settings call carries one).
-        const settingsPost = apiFetch.mock.calls.find(c => c[0] === '/api/settings' && c[1]?.method === 'POST');
-        expect(settingsPost).toBeTruthy();
-        expect(JSON.parse(settingsPost[1].body)).not.toHaveProperty('rpcUrl');
+        // Empty key fields keep the stored values — the payload written back
+        // to SettingsContext must not carry blank secrets.
+        expect(updateSettingsMock).toHaveBeenCalled();
+        const payload = updateSettingsMock.mock.calls[0][0];
+        expect(payload).not.toHaveProperty('rpcUrl');
     });
 
     it('SIM seeded mode launches without any keys', async () => {
@@ -155,8 +162,7 @@ describe('SimulationStartModal', () => {
         });
         submitForm(container);
         await waitFor(() => expect(onStart).toHaveBeenCalled());
-        const settingsPost = apiFetch.mock.calls.find(c => c[0] === '/api/settings' && c[1]?.method === 'POST');
-        expect(JSON.parse(settingsPost[1].body)).toMatchObject({ dataMode: 'SIM' });
+        expect(updateSettingsMock.mock.calls[0][0]).toMatchObject({ dataMode: 'SIM' });
     });
 
     it('refresh button fetches a fresh unique name', async () => {
@@ -208,7 +214,7 @@ describe('SimulationStartModal', () => {
     it('shows an error state with retry when settings fail to load AND no cache exists', async () => {
         // No usable cache (context still loading) + fetch failure -> the
         // error state with retry must appear (previously silent forever).
-        useSettingsMock.mockImplementation(() => ({ settings: null, isLoading: true }));
+        useSettingsMock.mockImplementation(() => ({ settings: null, isLoading: true, updateSettings: updateSettingsMock }));
         apiFetch.mockImplementation(() => Promise.reject(new Error('network down')));
         const { container } = renderModal();
         await waitFor(() => {
@@ -226,6 +232,7 @@ describe('SimulationStartModal', () => {
                 activeModel: '',
             },
             isLoading: false,
+            updateSettings: updateSettingsMock,
         }));
         fireEvent.click(screen.getByRole('button', { name: /Retry/i }));
         await waitFor(() => {
@@ -243,8 +250,7 @@ describe('SimulationStartModal', () => {
         });
         submitForm(container);
         await waitFor(() => expect(onStart).toHaveBeenCalled());
-        const settingsPost = apiFetch.mock.calls.find(c => c[0] === '/api/settings' && c[1]?.method === 'POST');
-        expect(JSON.parse(settingsPost[1].body)).toMatchObject({ dataMode: 'LIVE', brainMode: 'auto' });
+        expect(updateSettingsMock.mock.calls[0][0]).toMatchObject({ dataMode: 'LIVE', brainMode: 'auto' });
     });
 
     it('AI-only brain mode still requires an OpenRouter key for LIVE data', async () => {
@@ -272,8 +278,7 @@ describe('SimulationStartModal', () => {
         submitForm(container);
         await waitFor(() => expect(onStart).toHaveBeenCalled());
         expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ brainMode: 'local' }));
-        const settingsPost = apiFetch.mock.calls.find(c => c[0] === '/api/settings' && c[1]?.method === 'POST');
-        expect(JSON.parse(settingsPost[1].body)).toMatchObject({ brainMode: 'local' });
+        expect(updateSettingsMock.mock.calls[0][0]).toMatchObject({ brainMode: 'local' });
     });
 
     it('couples Risk Appetite to Target HF and persists both', async () => {
@@ -293,8 +298,9 @@ describe('SimulationStartModal', () => {
         // The start body carries the derived targetHf so the backend's risk
         // zones match what the UI shows.
         expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ riskAppetite: 'Aggressive', targetHf: 1.2 }));
-        // And the settings POST persists appetite + frequency + targetHf.
-        const settingsPost = apiFetch.mock.calls.find(c => c[0] === '/api/settings' && c[1]?.method === 'POST');
-        expect(JSON.parse(settingsPost[1].body)).toMatchObject({ riskAppetite: 'Aggressive', targetHf: 1.2, frequency: 'Medium' });
+        // And the SettingsContext write-back persists appetite + frequency +
+        // targetHf — the coupling fix that keeps Settings + Overview in sync.
+        expect(updateSettingsMock).toHaveBeenCalled();
+        expect(updateSettingsMock.mock.calls[0][0]).toMatchObject({ riskAppetite: 'Aggressive', targetHf: 1.2, frequency: 'Medium' });
     });
 });

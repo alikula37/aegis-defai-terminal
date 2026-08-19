@@ -72,4 +72,52 @@ test.describe('Aegis DeFAI Terminal', () => {
             await expect(page.locator('text=/Something went wrong/i')).toHaveCount(0);
         }
     });
+
+    test('start-screen risk choices sync to Settings Automation Parameters', async ({ page, request }) => {
+        // Regression guard for the start-screen ↔ Settings/Overview coupling:
+        // choosing a risk appetite in the new-simulation modal must propagate to
+        // the SettingsContext (and thus the Settings page's Automation Parameters
+        // and Overview's Health Factor target), not just the backend row.
+        await request.post(`${BACKEND}/api/auth/login`, {
+            data: { username: 'local', password: 'AegisAdmin123' },
+        }).catch(() => {});
+        const seeded = await request.post(`${BACKEND}/api/settings`, {
+            data: {
+                dataMode: 'SIM',
+                dataScenario: 'stable',
+                rpcUrl: 'https://e2e-sepolia.invalid',
+                openRouterKey: 'sk-or-e2e-placeholder',
+                riskAppetite: 'Balanced',
+                targetHf: 1.25,
+                frequency: 'Medium',
+                maxGasClaim: 20,
+            },
+        });
+        expect(seeded.ok()).toBeTruthy();
+
+        await page.goto('/');
+        const startNew = page.getByRole('button', { name: /Start New/i }).first();
+        await expect(startNew).toBeVisible({ timeout: 15000 });
+        await startNew.click();
+
+        // Aggressive → target HF snaps to 1.20 in the modal.
+        await page.locator('input[name="simulationName"]').fill(`Coupling ${Date.now()}`);
+        await page.locator('select[name="riskAppetite"]').selectOption('Aggressive');
+        await page.getByRole('button', { name: /Launch Agent/i }).click();
+        await expect(page.getByRole('button', { name: /Stop Simulation/i })).toBeVisible({ timeout: 20000 });
+
+        // The Settings page reads the SAME context — its Automation Parameters
+        // section must reflect the new appetite (previously stale).
+        await page.goto('/settings');
+        await expect(page.getByText(/Automation Parameters|Otomasyon Parametreleri/i).first()).toBeVisible({ timeout: 15000 });
+        const appetiteSelect = page.locator('select').filter({ has: page.getByRole('option', { name: /Aggressive — target HF 1\.20/ }) });
+        await expect(appetiteSelect).toHaveValue('Aggressive');
+
+        // And the Automation Parameters rules card on Yield Strategies must show
+        // the new 1.20 target in its system rule (previously stale 1.25).
+        await page.goto('/yield-strategies');
+        await expect(page.getByText(/Health Factor < 1\.2/i).first()).toBeVisible({ timeout: 15000 });
+
+        await request.post(`${BACKEND}/api/simulation/stop`);
+    });
 });

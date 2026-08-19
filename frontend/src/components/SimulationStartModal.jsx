@@ -30,7 +30,7 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
     // The SettingsContext already fetched /api/settings at login — reuse that
     // cache so the form renders instantly; the /api/settings call below only
     // refreshes it in the background (no spinner in the common case).
-    const { settings: contextSettings, isLoading: contextSettingsLoading } = useSettings();
+    const { settings: contextSettings, isLoading: contextSettingsLoading, updateSettings } = useSettings();
     const contextSettingsRef = useRef(contextSettings);
     contextSettingsRef.current = contextSettings;
     const contextLoadingRef = useRef(contextSettingsLoading);
@@ -212,7 +212,10 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
 
         // Persist the data source + any provided credentials (empty key = keep
         // the stored one) + carry forward stored preferences. Secrets are
-        // encrypted (AES-256-GCM) server-side.
+        // encrypted (AES-256-GCM) server-side. updateSettings POSTs the payload
+        // AND writes the server's response back into SettingsContext — so the
+        // Settings page (Automation Parameters) and Overview's Health Factor
+        // target immediately reflect what was chosen here.
         setIsSaving(true);
         try {
             const payload = {
@@ -227,11 +230,7 @@ export default function SimulationStartModal({ isOpen, onClose, onStart }) {
             };
             if (systemConfig.rpcUrl) payload.rpcUrl = systemConfig.rpcUrl;
             if (systemConfig.openRouterKey) payload.openRouterKey = systemConfig.openRouterKey;
-            await apiFetch('/api/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
+            await updateSettings(payload);
         } catch (err) {
             console.error("Failed to save settings:", err);
         } finally {
