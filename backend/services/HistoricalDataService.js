@@ -8,6 +8,7 @@ export const HISTORY_SOURCES = {
     POOL_APY: 'pool_apy',
     FUNDING: 'funding',
     MORPHO_BORROW: 'morpho_borrow',
+    MORPHO_SUPPLY: 'morpho_supply',
 };
 
 const REFRESH_TTL_MS = 12 * 3600000; // 12h before a stored series is refetched
@@ -115,16 +116,39 @@ export class HistoricalDataService {
      * @returns {Promise<Array<{time: number, borrowApy: number}>>} oldest -> newest
      */
     static async getBorrowRateHistory(chainId, loanAsset, symbol, rangeDays = 90) {
-        const stored = await getLatestMarketHistory(HISTORY_SOURCES.MORPHO_BORROW, symbol);
+        return this.getMorphoRateHistory(chainId, loanAsset, symbol, 'borrowApy', rangeDays);
+    }
+
+    /**
+     * Real historical Morpho USDC supply APY for a chain (used by the strategy
+     * comparison backtests).
+     * @returns {Promise<Array<{time: number, supplyApy: number}>>} oldest -> newest
+     */
+    static async getSupplyRateHistory(chainId, loanAsset, symbol, rangeDays = 90) {
+        return this.getMorphoRateHistory(chainId, loanAsset, symbol, 'supplyApy', rangeDays);
+    }
+
+    /**
+     * Real historical Morpho APY for either the borrow or supply side.
+     * @param {number} chainId
+     * @param {string} loanAsset USDC address
+     * @param {string} symbol label for the DB key
+     * @param {'borrowApy'|'supplyApy'} field which rate to pull
+     * @param {number} rangeDays days of history to return
+     * @returns {Promise<Array<{time: number, [field]: number}>>} oldest -> newest
+     */
+    static async getMorphoRateHistory(chainId, loanAsset, symbol, field = 'borrowApy', rangeDays = 90) {
+        const source = field === 'supplyApy' ? HISTORY_SOURCES.MORPHO_SUPPLY : HISTORY_SOURCES.MORPHO_BORROW;
+        const stored = await getLatestMarketHistory(source, symbol);
         const stale = !stored || (Date.now() - new Date(stored.timestamp).getTime()) > REFRESH_TTL_MS;
 
         if (stale) {
-            const points = await fetchMorphoBorrowHistory(chainId, loanAsset);
-            recordMarketHistory(HISTORY_SOURCES.MORPHO_BORROW, symbol, points);
+            const points = await fetchMorphoRateHistory(chainId, loanAsset, field);
+            recordMarketHistory(source, symbol, points);
             return filterBorrowByRange(points, rangeDays);
         }
 
-        const rows = await getMarketHistory(HISTORY_SOURCES.MORPHO_BORROW, symbol, 1);
+        const rows = await getMarketHistory(source, symbol, 1);
         if (!rows.length) return [];
         const points = JSON.parse(rows[0].payload_json);
         return filterBorrowByRange(points, rangeDays);
@@ -226,7 +250,7 @@ async function fetchFundingWindow(coin, startTime, endTime) {
     if (!Array.isArray(raw)) throw new Error('Invalid funding history structure.');
     return raw.map(p => ({ time: p.time, fundingRate: parseFloat(p.fundingRate) }));
 }
-async function fetchMorphoBorrowHistory(chainId, loanAsset) {
+async function fetchMorphoRateHistory(chainId, loanAsset, field = 'borrowApy') {
     const query = {
         query: `{
             markets(first: 40, where: {
@@ -236,7 +260,7 @@ async function fetchMorphoBorrowHistory(chainId, loanAsset) {
                 items {
                     marketId
                     state { borrowAssetsUsd utilization }
-                    historicalState { borrowApy { x y } }
+                    historicalState { ${field} { x y } }
                 }
             }
         }`
@@ -257,10 +281,10 @@ async function fetchMorphoBorrowHistory(chainId, loanAsset) {
             && m.state.utilization < 0.95)
         .sort((a, b) => b.state.borrowAssetsUsd - a.state.borrowAssetsUsd)[0];
 
-    if (!top?.historicalState?.borrowApy) return [];
-    return top.historicalState.borrowApy
-        .map(p => ({ time: p.x, borrowApy: (p.y || 0) * 100 }))
-        .filter(p => p.borrowApy > 0 && p.borrowApy < 50) // clamp to a sane APY range
+    if (!top?.historicalState?.[field]) return [];
+    return top.historicalState[field]
+        .map(p => ({ time: p.x, [field]: (p.y || 0) * 100 }))
+        .filter(p => p[field] > 0 && p[field] < 50) // clamp to a sane APY range
         .sort((a, b) => a.time - b.time);
 }
 

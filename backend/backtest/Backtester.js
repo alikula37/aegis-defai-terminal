@@ -3,12 +3,11 @@ import { createSeededRandom } from '../utils/rng.js';
 import {
     computeRiskMetrics,
     sharpeRatio,
-    sortinoRatio,
 } from '../core/quant/RiskMetrics.js';
 
 const LIQUIDATION_THRESHOLD = 0.94; // sUSDe liquidation threshold on Morpho
 
-function loopNetApy(susdeApy, borrowApy, leverage) {
+export function loopNetApy(susdeApy, borrowApy, leverage) {
     return susdeApy * leverage - borrowApy * (leverage - 1);
 }
 
@@ -34,10 +33,10 @@ function computeMaxDrawdown(equityCurve) {
     return maxDd * 100;
 }
 
-function aggregateMonthly(days, dailyReturnsPct) {
+function aggregateMonthly(dates, dailyReturnsPct) {
     const map = new Map();
-    days.forEach((d, i) => {
-        const month = d.date.slice(0, 7);
+    dates.forEach((d, i) => {
+        const month = dateOf(d).slice(0, 7);
         if (!map.has(month)) map.set(month, []);
         map.get(month).push(dailyReturnsPct[i]);
     });
@@ -95,9 +94,9 @@ function bootstrapCagr(dailyNetApy, iterations = 500, seed = 42) {
 }
 
 /** Out-of-sample split: train on the first 80%, evaluate on the last 20%. */
-function outOfSampleSplit(days, dailyNetApy) {
-    if (days.length < 10) return null;
-    const split = Math.floor(days.length * 0.8);
+function outOfSampleSplit(dates, dailyNetApy) {
+    if (dates.length < 10) return null;
+    const split = Math.floor(dates.length * 0.8);
     const train = dailyNetApy.slice(0, split);
     const test = dailyNetApy.slice(split);
     const { equity: trainEq } = compoundSeries(train);
@@ -112,12 +111,88 @@ function outOfSampleSplit(days, dailyNetApy) {
         trainCagr: cagr(trainEq, train.length),
         testCagr: cagr(testEq, test.length),
         totalReturnPct: (testEq - 1) * 100,
-        startDate: days[split].date,
-        endDate: days[days.length - 1].date,
+        startDate: dateOf(dates[split]),
+        endDate: dateOf(dates[dates.length - 1]),
     };
 }
 
+/** Normalize a date reference (ISO string or {date}) to a plain date string. */
+function dateOf(d) {
+    if (d == null) return '';
+    if (typeof d === 'string') return d.slice(0, 10);
+    if (typeof d.date === 'string') return d.date.slice(0, 10);
+    return '';
+}
+
 export class Backtester {
+    /**
+     * Shared report builder: given a daily net-APY series (percent) and its
+     * aligned dates, compute the full metric report (CAGR, Sharpe, drawdown,
+     * VaR, bootstrap CI, out-of-sample split, monthly + equity curve).
+     * @param {object} opts { dailyNetApy, dates, leverage, gasImpactApy, riskFreeRatePct, seed }
+     */
+    static _backtestSeries({ dailyNetApy, dates = [], riskFreeRatePct = 0, seed = 42 } = {}) {
+        const { equity, curve } = compoundSeries(dailyNetApy);
+        const totalReturn = (equity - 1) * 100;
+        const years = dailyNetApy.length / 365;
+        const cagr = years > 0 ? (Math.pow(equity, 1 / years) - 1) * 100 : 0;
+        const sharpe = computeSharpe(dailyNetApy, riskFreeRatePct);
+        const maxDrawdown = computeMaxDrawdown(curve);
+
+        const riskMetrics = computeRiskMetrics({
+            dailyReturnsPct: dailyNetApy.map(r => r / 365),
+            equityCurve: curve,
+            riskFreeRatePct,
+            periodsPerYear: 365,
+            confidence: 0.95,
+        });
+
+        return {
+            totalReturn,
+            cagr,
+            sharpe,
+            maxDrawdown,
+            sortino: riskMetrics.sortinoRatio,
+            annualizedVolatilityPct: riskMetrics.annualizedVolatilityPct,
+            vaR95Pct: riskMetrics.historicalVaRPct,
+            cVaR95Pct: riskMetrics.conditionalVaRPct,
+            winRate: riskMetrics.winRate,
+            riskMetrics,
+            bootstrap: bootstrapCagr(dailyNetApy, 500, seed),
+            outOfSample: outOfSampleSplit(dates, dailyNetApy),
+            monthly: aggregateMonthly(dates, dailyNetApy),
+            equityCurve: curve.map((v, i) => ({ date: dateOf(dates[i]), equity: v })),
+        };
+    }
+
+    /**
+     * Backtest an arbitrary daily net-APY series (used by the strategy
+     * comparison: direct sUSDe, Pendle, Morpho supply, the leverage loop).
+     * @param {object} opts { dailyNetApy, dates, leverage, gasImpactApy, seed }
+     */
+    static runStrategySeries({ dailyNetApy = [], dates = [], leverage = 1, gasImpactApy = 0.5, seed = 42 } = {}) {
+        const filled = dailyNetApy
+            .map((net, i) => ({ date: dateOf(dates[i]), net }))
+            .filter(d => d.net != null && Number.isFinite(d.net));
+        if (filled.length < 7) {
+            return { error: 'Not enough historical data to backtest.', days: filled.length };
+        }
+        const series = this._backtestSeries({
+            dailyNetApy: filled.map(d => d.net),
+            dates: filled.map(d => d.date),
+            leverage,
+            gasImpactApy,
+            seed,
+        });
+        return {
+            days: filled.length,
+            currentNetApy: filled[filled.length - 1].net,
+            startDate: filled[0].date,
+            endDate: filled[filled.length - 1].date,
+            ...series,
+        };
+    }
+
     /**
      * Backtest the delta-neutral loop strategy on real historical APY data.
      * @param {object} opts { rangeDays, leverage, gasImpactApy, riskFreeRatePct, dataset, seed }
@@ -131,22 +206,13 @@ export class Backtester {
         }
 
         const dailyNetApy = filled.map(d => loopNetApy(d.susdeApy, d.borrowApy, leverage) - gasImpactApy);
-        const { equity, curve } = compoundSeries(dailyNetApy);
-
-        const totalReturn = (equity - 1) * 100;
-        const years = filled.length / 365;
-        const cagr = years > 0 ? (Math.pow(equity, 1 / years) - 1) * 100 : 0;
-        const sharpe = computeSharpe(dailyNetApy, riskFreeRatePct);
-        const maxDrawdown = computeMaxDrawdown(curve);
-
-        // Full risk report (Sortino, VaR, CVaR, vol, win rate) on actual daily
-        // returns (apy/365) so the annualization is exact.
-        const riskMetrics = computeRiskMetrics({
-            dailyReturnsPct: dailyNetApy.map(r => r / 365),
-            equityCurve: curve,
+        const series = this._backtestSeries({
+            dailyNetApy,
+            dates: filled.map(d => d.date),
+            leverage,
+            gasImpactApy,
             riskFreeRatePct,
-            periodsPerYear: 365,
-            confidence: 0.95,
+            seed,
         });
 
         return {
@@ -156,18 +222,18 @@ export class Backtester {
             gasImpactApy,
             riskFreeRatePct,
             days: filled.length,
-            totalReturn,
-            cagr,
-            sharpe,
-            maxDrawdown,
-            sortino: riskMetrics.sortinoRatio,
-            annualizedVolatilityPct: riskMetrics.annualizedVolatilityPct,
-            vaR95Pct: riskMetrics.historicalVaRPct,
-            cVaR95Pct: riskMetrics.conditionalVaRPct,
-            winRate: riskMetrics.winRate,
-            riskMetrics,
-            bootstrap: bootstrapCagr(dailyNetApy, 500, seed),
-            outOfSample: outOfSampleSplit(filled, dailyNetApy),
+            totalReturn: series.totalReturn,
+            cagr: series.cagr,
+            sharpe: series.sharpe,
+            maxDrawdown: series.maxDrawdown,
+            sortino: series.sortino,
+            annualizedVolatilityPct: series.annualizedVolatilityPct,
+            vaR95Pct: series.vaR95Pct,
+            cVaR95Pct: series.cVaR95Pct,
+            winRate: series.winRate,
+            riskMetrics: series.riskMetrics,
+            bootstrap: series.bootstrap,
+            outOfSample: series.outOfSample,
             liquidationPriceAtLeverage: liquidationPrice(leverage),
             startDate: filled[0].date,
             endDate: filled[filled.length - 1].date,
@@ -177,8 +243,8 @@ export class Backtester {
                 borrowApy: filled[filled.length - 1].borrowApy,
                 loopNetApy: dailyNetApy[dailyNetApy.length - 1],
             },
-            monthly: aggregateMonthly(filled, dailyNetApy),
-            equityCurve: curve.map((v, i) => ({ date: filled[i].date, equity: v })),
+            monthly: series.monthly,
+            equityCurve: series.equityCurve,
         };
     }
 

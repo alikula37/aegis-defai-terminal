@@ -4,15 +4,19 @@ import {
 } from 'recharts';
 import { apiFetch } from '../lib/apiClient';
 import ChartCard from './ChartCard';
+import GlossaryTooltip from './GlossaryTooltip';
 import { xAxis, yAxis, grid } from './chartTheme';
 import { chartColors } from '../lib/chartColors';
 import { fmtPct, fmtNumber } from '../lib/format';
 import { useI18n } from '../i18n/I18nProvider';
 
-function Metric({ label, value, color = 'text-on-surface' }) {
+function Metric({ label, value, color = 'text-on-surface', glossary = null }) {
     return (
         <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-2.5 min-w-0">
-            <p className="font-[JetBrains_Mono] text-[10px] text-on-surface-variant uppercase tracking-wider truncate">{label}</p>
+            <p className="font-[JetBrains_Mono] text-[10px] text-on-surface-variant uppercase tracking-wider truncate flex items-center gap-1">
+                <span className="truncate">{label}</span>
+                {glossary && <GlossaryTooltip term={glossary} />}
+            </p>
             <p className={`font-[Inter] text-[16px] font-bold mt-1 tabular-nums ${color}`}>{value}</p>
         </div>
     );
@@ -63,12 +67,12 @@ export default function LiveRiskPanel() {
             ) : (
                 <>
                     <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-6 gap-2">
-                        <Metric label={t('analytics.sharpe')} value={fmtNumber(m?.sharpeRatio, { locale: lang })} />
-                        <Metric label={t('analytics.sortino')} value={fmtNumber(m?.sortinoRatio, { locale: lang })} />
-                        <Metric label={t('analytics.volatility')} value={fmtPct(m?.annualizedVolatilityPct, { locale: lang })} />
-                        <Metric label={t('analytics.maxDrawdown')} value={fmtPct(m?.maxDrawdownPct, { locale: lang, signed: true })} color="text-error" />
-                        <Metric label={t('analytics.calmar')} value={fmtNumber(m?.calmarRatio, { locale: lang })} />
-                        <Metric label={t('analytics.tailRatio')} value={fmtNumber(m?.tailRatio, { locale: lang })} />
+                        <Metric label={t('analytics.sharpe')} value={fmtNumber(m?.sharpeRatio, { locale: lang })} glossary="glossary.sharpe" />
+                        <Metric label={t('analytics.sortino')} value={fmtNumber(m?.sortinoRatio, { locale: lang })} glossary="glossary.sortino" />
+                        <Metric label={t('analytics.volatility')} value={fmtPct(m?.annualizedVolatilityPct, { locale: lang })} glossary="glossary.volatility" />
+                        <Metric label={t('analytics.maxDrawdown')} value={fmtPct(m?.maxDrawdownPct, { locale: lang, signed: true })} color="text-error" glossary="glossary.maxDrawdown" />
+                        <Metric label={t('analytics.calmar')} value={fmtNumber(m?.calmarRatio, { locale: lang })} glossary="glossary.calmar" />
+                        <Metric label={t('analytics.tailRatio')} value={fmtNumber(m?.tailRatio, { locale: lang })} glossary="glossary.tailRatio" />
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

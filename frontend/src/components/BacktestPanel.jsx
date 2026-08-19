@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { apiFetch } from '../lib/apiClient';
 import ChartCard from './ChartCard';
+import GlossaryTooltip from './GlossaryTooltip';
 import { xAxis, yAxis, grid, tooltipCursor } from './chartTheme';
 import { chartColors } from '../lib/chartColors';
 import { fmtPct, fmtNumber } from '../lib/format';
@@ -13,10 +14,13 @@ import { useI18n } from '../i18n/I18nProvider';
 const RANGE_OPTIONS = [30, 90, 180, 365];
 const LEVERAGE_OPTIONS = [2, 3, 4, 5, 6];
 
-function MetricCell({ label, value, color = 'text-on-surface' }) {
+function MetricCell({ label, value, color = 'text-on-surface', glossary = null }) {
     return (
         <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-2.5 min-w-0">
-            <p className="font-[JetBrains_Mono] text-[10px] text-on-surface-variant uppercase tracking-wider truncate">{label}</p>
+            <p className="font-[JetBrains_Mono] text-[10px] text-on-surface-variant uppercase tracking-wider truncate flex items-center gap-1">
+                <span className="truncate">{label}</span>
+                {glossary && <GlossaryTooltip term={glossary} />}
+            </p>
             <p className={`font-[Inter] text-[16px] font-bold mt-1 tabular-nums ${color}`}>{value}</p>
         </div>
     );
@@ -91,12 +95,12 @@ export default function BacktestPanel() {
             ) : (
                 <>
                     <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
-                        <MetricCell label={t('analytics.cagr')} value={fmtPct(result.cagr, { locale: lang })} color="text-success" />
-                        <MetricCell label={t('analytics.sharpe')} value={fmtNumber(result.sharpe, { locale: lang })} />
-                        <MetricCell label={t('analytics.maxDrawdown')} value={fmtPct(result.maxDrawdown, { locale: lang, signed: true })} color="text-error" />
-                        <MetricCell label={t('analytics.vaR95')} value={fmtPct(result.vaR95Pct, { locale: lang, signed: true })} color="text-warning" />
-                        <MetricCell label={t('analytics.sortino')} value={fmtNumber(result.sortino, { locale: lang })} />
-                        <MetricCell label={t('analytics.winRate')} value={fmtPct(result.winRate * 100, { locale: lang, fractionDigits: 0 })} />
+                        <MetricCell label={t('analytics.cagr')} value={fmtPct(result.cagr, { locale: lang })} color="text-success" glossary="glossary.cagr" />
+                        <MetricCell label={t('analytics.sharpe')} value={fmtNumber(result.sharpe, { locale: lang })} glossary="glossary.sharpe" />
+                        <MetricCell label={t('analytics.maxDrawdown')} value={fmtPct(result.maxDrawdown, { locale: lang, signed: true })} color="text-error" glossary="glossary.maxDrawdown" />
+                        <MetricCell label={t('analytics.vaR95')} value={fmtPct(result.vaR95Pct, { locale: lang, signed: true })} color="text-warning" glossary="glossary.var" />
+                        <MetricCell label={t('analytics.sortino')} value={fmtNumber(result.sortino, { locale: lang })} glossary="glossary.sortino" />
+                        <MetricCell label={t('analytics.winRate')} value={fmtPct(result.winRate * 100, { locale: lang, fractionDigits: 0 })} glossary="glossary.winRate" />
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

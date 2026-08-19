@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path';
 import { getLogs, getLatestPortfolio, getInitialPortfolio, getPortfolioHistory, getSettings, updateSettings, deleteSettings, getRecentMemories, closeDatabase, checkSimulationNameExists, generateUniqueSimulationName, suggestSimulationName, getLatestSimulation, setSimulationStatus, getAllSimulations, deleteSimulation, getSimulationById, getLocalUserId } from './db/database.js';
 import { AegisAgent } from './agent.js';
 import { Backtester } from './backtest/Backtester.js';
+import { AnalyticsService } from './services/AnalyticsService.js';
 import { computeRiskMetrics, returnHistogram, rollingVolatility } from './core/quant/RiskMetrics.js';
 import { forecast as runForecast } from './core/quant/ForecastService.js';
 import aegisConfig from './aegis.config.js';
@@ -805,6 +806,34 @@ app.get('/api/backtest/sweep', async (req, res) => {
             gasImpactApy: toFloat(req.query.gasImpactApy, 0.5),
         });
         res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ---- Analytics (opportunities, benchmarks, strategy comparison) ----
+app.get('/api/analytics/opportunities', async (req, res) => {
+    try {
+        res.json(await AnalyticsService.getOpportunities());
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/analytics/benchmarks', async (req, res) => {
+    try {
+        res.json(await AnalyticsService.getBenchmarks());
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/analytics/strategies', async (req, res) => {
+    try {
+        res.json(await AnalyticsService.getStrategyComparison({
+            rangeDays: toInt(req.query.rangeDays, 90),
+            leverage: toFloat(req.query.leverage, 4),
+        }));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

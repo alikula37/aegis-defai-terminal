@@ -101,9 +101,11 @@ test.describe('Visual regression', () => {
     test('analytics page renders consistently', async ({ page }) => {
         await page.goto('/analytics');
         await expect(page.getByText(/Strategy Analytics/i).first()).toBeVisible({ timeout: 15000 });
-        // Wait for every panel to finish its fetch (spinners gone) so the
-        // screenshot captures settled data/error states, not mid-load frames.
-        await expect(page.locator('.animate-spin')).toHaveCount(0, { timeout: 20000 });
+        // Wait for the opportunities dashboard (hero) to render its content and
+        // for every panel to finish its fetch (spinners gone) so the screenshot
+        // captures settled data/error states, not mid-load frames.
+        await expect(page.getByText(/Live Opportunities|Canlı Fırsatlar/i).first()).toBeVisible({ timeout: 20000 });
+        await expect(page.locator('.animate-spin')).toHaveCount(0, { timeout: 25000 });
         await expect(page).toHaveScreenshot('analytics.png', { maxDiffPixelRatio: 0.02, fullPage: true });
         await assertNoHorizontalOverflow(page);
     });

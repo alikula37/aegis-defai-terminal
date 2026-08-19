@@ -157,8 +157,25 @@ The terminal quantifies performance — it is not just a chart:
   estimate, not a promise** (clearly labelled in the UI).
 - **Backtesting** (`/api/backtest`): historical scenarios with an 80/20
   out-of-sample split, bootstrap confidence intervals and the same risk metrics.
+- **Live opportunities** (`/api/analytics/opportunities`): a ranked, risk-labeled
+  snapshot of **real current yields** across the strategy universe — sUSDe
+  staking, Pendle fixed yield, Morpho USDC supply and reward-boosted vaults,
+  Aave, and selected RWA/private-credit pools. Each card shows base vs reward
+  APY, TVL, DefiLlama's ML trend prediction and a plain-language risk tier
+  (Low/Medium/High). Benchmarks (T-Bill from FRED, ETH staking) are shown for
+  context, and the delta-neutral loop is flagged honestly when its net spread
+  is currently negative.
+- **Strategy comparison** (`/api/analytics/strategies`): backtests the whole
+  strategy universe side-by-side (sUSDe stake, Pendle, Morpho supply, the
+  leverage loop) with CAGR, Sharpe, max drawdown and a Conservative/Balanced/
+  Aggressive risk grade — so a user can see that "the loop is not always the
+  best vehicle".
+- **Rate scenarios**: an interactive slider panel that recomputes the loop's
+  net APY live from editable sUSDe / borrow / leverage / gas inputs.
 - **Glossary tooltips** hover over every financial term (HF, APY, TVL, spread,
-  delta-neutral, leverage, LTV, Sharpe, VaR, …) — in English and Turkish.
+  delta-neutral, leverage, LTV, Sharpe, Sortino, VaR, CAGR, max drawdown,
+  win rate, volatility, Calmar, tail ratio, RWA credit, …) — in English and
+  Turkish.
 
 ## 7. The dashboard
 
@@ -168,6 +185,7 @@ The web terminal (localhost:5173) has five pages:
 |---|---|
 | **Overview** | Live TVL, net APY, health factor, risk zone, forecast chart + risk-metric cards, and the start/stop controls |
 | **Yield Strategies** | How capital is allocated across the primitives |
+| **Analytics** | Live opportunity dashboard with benchmarks, market outlook, rate scenarios, strategy comparison and deep-dive backtest/Monte Carlo/leverage-sweep panels — every metric explained in plain language |
 | **Live Data** | Real-time market data, borrow rates, cross-chain opportunities |
 | **AI Agent Logs** | A live "agent console" — what the AI decided and why, streaming in real time |
 | **Settings** | Your API keys (encrypted at rest), model selection and risk appetite |

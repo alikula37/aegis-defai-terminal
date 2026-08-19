@@ -158,9 +158,23 @@ Terminal performansı ölçer — sadece grafik değildir:
   vaat değildir** (arayüzde açıkça belirtilir).
 - **Backtest** (`/api/backtest`): %80/20 örneklem dışı (out-of-sample) ayrımı,
   bootstrap güven aralıkları ve aynı risk metrikleriyle tarihsel senaryolar.
+- **Canlı fırsatlar** (`/api/analytics/opportunities`): strateji evrenindeki
+  **gerçek güncel getirilerin** sıralı, risk etiketli anlık görüntüsü — sUSDe
+  staking, Pendle sabit getiri, Morpho USDC supply ve ödüllü vault'lar, Aave ve
+  seçili RWA/özel kredi havuzları. Her kart taban vs ödül APY, TVL, DefiLlama'nın
+  ML trend tahmini ve sade dille bir risk kademesi (Düşük/Orta/Yüksek) gösterir.
+  Karşılaştırma ölçütleri (FRED'den T-Bill, ETH staking) bağlam için sunulur ve
+  delta-nötr loop, net spreadi şu an negatifse dürüstçe işaretlenir.
+- **Strateji karşılaştırması** (`/api/analytics/strategies`): tüm strateji
+  evrenini yan yana backtest eder (sUSDe stake, Pendle, Morpho supply, kaldıraçlı
+  loop) — CAGR, Sharpe, maks. düşüş ve Muhafazakâr/Dengeli/Agresif risk notuyla.
+  Böylece kullanıcı "loop her zaman en iyi araç değildir"i görür.
+- **Oran senaryoları**: interaktif kaydırıcı paneli — sUSDe / borçlanma /
+  kaldıraç / gas girdilerinden loopun net APY'sini anında yeniden hesaplar.
 - **Terim sözlüğü (Glossary)**: her finansal terimin üzerine gelince açıklama
-  ipucu belirir (HF, APY, TVL, spread, delta-nötr, kaldıraç, LTV, Sharpe, VaR,
-  …) — İngilizce ve Türkçe.
+  ipucu belirir (HF, APY, TVL, spread, delta-nötr, kaldıraç, LTV, Sharpe, Sortino,
+  VaR, CAGR, maks. düşüş, kazanma oranı, oynaklık, Calmar, kuyruk oranı, RWA
+  kredisi, …) — İngilizce ve Türkçe.
 
 ## 7. Pano (Dashboard)
 
@@ -170,6 +184,7 @@ Web terminali (localhost:5173) beş sayfadan oluşur:
 |---|---|
 | **Overview (Genel Bakış)** | Canlı TVL, net APY, sağlık faktörü, risk bölgesi, tahmin grafiği + risk metriği kartları ve başlat/durdur kontrolleri |
 | **Yield Strategies** | Sermayenin yapı taşları arasında nasıl dağıldığı |
+| **Analytics (Analitik)** | Karşılaştırma ölçütleriyle canlı fırsat panosu, piyasa görünümü, oran senaryoları, strateji karşılaştırması ve derin backtest/Monte Carlo/kaldıraç taraması panelleri — her metrik sade dille açıklanır |
 | **Live Data** | Gerçek zamanlı piyasa verisi, borçlanma oranları, çapraz zincir fırsatları |
 | **AI Agent Logs** | Canlı "ajan konsolu" — AI neye karar verdi ve neden, gerçek zamanlı akar |
 | **Settings (Ayarlar)** | API anahtarlarınız (şifreli saklanır), model seçimi ve risk iştahı |
